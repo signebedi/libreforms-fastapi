@@ -13,6 +13,12 @@ from sqlalchemy import (
 )
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy_signing import (
+    Signatures,
+    RateLimitExceeded, 
+    KeyDoesNotExist, 
+    KeyExpired,
+)
 
 from .config import (
     DevelopmentConfig, 
@@ -27,7 +33,6 @@ from .models import (
 )
 
 from utils.smtp import Mailer
-from utils.sqlalchemy_signing import Signatures
 from utils.scripts import (
     check_configuration_assumptions,
     generate_password_hash,
@@ -86,10 +91,12 @@ Base.metadata.create_all(bind=engine)
 
 
 # Initialize the signing table
-signatures = Signatures(config.SQLALCHEMY_DATABASE_URI)
-
-
-
+signatures = Signatures(config.SQLALCHEMY_DATABASE_URI, byte_len=32, 
+    # Pass the rate limiting settings from the app config
+    rate_limiting=config.RATE_LIMITS_ENABLED,
+    rate_limiting_period=config.RATE_LIMITS_PERIOD, 
+    rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
+)
 
 
 def get_db():
@@ -106,3 +113,13 @@ async def read_item(request: Request, id: str):
         request=request, name="item.html", context={"id": id}
     )
 
+
+@app.get("/create")
+async def create_key():
+    key = signatures.write_key()
+    return {"key": key}
+
+@app.get("/get")
+async def get_key_details(key: str):
+    key_details = signatures.get_key(key)
+    return {"key": key_details}
