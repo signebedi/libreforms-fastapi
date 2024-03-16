@@ -105,10 +105,8 @@ class ProductionConfig(Config):
     # Defaults to True in production
     SMTP_ENABLED:bool = os.getenv('SMTP_ENABLED', 'False') == 'True'
 
-    # Defaults to True / Enabled in production, with more stringent default settings
+    # Defaults to True / Enabled in production, inheriting the other default settings
     RATE_LIMITS_ENABLED:bool = os.getenv('RATE_LIMITS_ENABLED', 'True') == 'True'
-    # RATE_LIMITS_PERIOD:timedelta = timedelta(minutes=int(os.getenv('RATE_LIMITS_PERIOD', 60)))
-    # RATE_LIMITS_MAX_REQUESTS:int = int(os.getenv('RATE_LIMITS_MAX_REQUESTS', 20))
 
     MAX_LOGIN_ATTEMPTS:int = int(os.getenv('MAX_LOGIN_ATTEMPTS', "5")) 
     REQUIRE_EMAIL_VERIFICATION:bool = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'True') == 'True'
@@ -134,7 +132,6 @@ class TestingConfig(Config):
     RATE_LIMITS_ENABLED:bool = False
     MAX_LOGIN_ATTEMPTS:int = 0
     REQUIRE_EMAIL_VERIFICATION:bool = False
-    PERMANENT_SESSION_LIFETIME:timedelta = timedelta(hours=int(os.getenv('PERMANENT_SESSION_LIFETIME', 6)))
 
 
 
