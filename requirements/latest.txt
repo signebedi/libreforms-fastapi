@@ -1,3 +1,7 @@
 fastapi
+Jinja2
+passlib[bcrypt]
+pydantic-settings
 pymongo
 SQLAlchemy
+uvicorn
