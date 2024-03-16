@@ -1,0 +1,27 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+Usage Statistics
+{% endblock %}
+
+
+{% block content %}
+<h1>Usage Statistics</h1>
+<p>The visualization below is intended to provide basic insight into site usage at an appropriate level of detail. If you are looking for more powerful insights like user-by-user data or within-day load and hot-spots, consider <a href="https://grafana.com/docs/grafana/latest/datasources/postgres/">integrating your database with Grafana</a>.</p>
+
+<div id="plot"></div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{url_for('static', filename='js/plotly-2.29.1.min.js')}}"></script>
+
+<script>
+    // Retrieve the JSON-encoded graph from the backend
+    var graphJSON = {{ graph_json|safe }};
+
+    // Use Plotly to render the graph
+    Plotly.react('plot', graphJSON);
+</script>
+
+{% endblock %}

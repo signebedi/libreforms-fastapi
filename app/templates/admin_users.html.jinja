@@ -1,0 +1,60 @@
+{% extends "base.html.jinja" %}
+
+
+{% block header %}
+    <link href="{{ url_for('static', filename='css/datatables.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+Admin - User Management
+{% endblock %}
+
+{% block content %}
+<h1>User Management</h1>
+<div class="container table-responsive">
+
+    <table id="usersTable" class="table table-hover table-striped table-light">
+        <thead>
+            <tr>
+                <th>ID</th>
+                <th>Username</th>
+                <th>Email</th>
+                <th>Active Status</th>
+                <th>Site Admin</th>
+                <th>Last Login</th>
+            </tr>
+        </thead>
+        <tbody>
+
+            {% for user in users %}
+            <tr>
+                <td>{{ user.id }}</td>
+                <td>
+                    <a class="dropdown-toggle" data-bs-toggle="dropdown" data-bs-placement="right" role="button" aria-haspopup="true" aria-expanded="false" href="#">{{ user.username }}</a>
+                    <div class="dropdown-menu">
+                        {# <a class="dropdown-item" href="{{url_for('admin_view_other_profiles',username=user.username)}}">View User</a> #}
+                        {# <a class="dropdown-item" href="{{url_for('admin_edit_profile',username=user.username)}}">Edit User Profile</a> #}
+                        <a class="dropdown-item" href="{{url_for('admin_toggle_user_active_status', username=user.username)}}">{{"Deactivate" if user.active else "Activate"}} User</a>
+                    </div> 
+                </td>
+                <td>{{ user.email }}</td>
+                <td>{{ 'Active' if user.active else 'Inactive' }}</td>
+                <td>{{ 'Yes' if user.site_admin else 'No' }}</td>
+                <td>{{ user.last_login.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{url_for('static', filename='js/datatables.js')}}"></script>
+<script>
+    $(document).ready( function () {
+        $('#usersTable').DataTable({
+            "scrollX": true
+        });
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,159 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+Create User
+{% endblock %}
+
+{% block content %}
+<h1>Create User</h1>
+<form id="registrationForm" method="POST" action="{{ url_for('create_user') }}">
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="usernameHelpInline" for="username" class="form-check-label">Username</label>
+         <span id="usernameHelpInline" class="form-text">
+        | Username should be 5-15 characters long and contain only letters, numbers, and underscores.
+        </span>
+        <input type="text" id="username" name="username" class="form-control" 
+                onchange="validateField('username', /^[a-z0-9_]{5,15}$/, 'Invalid username. Username should be 5-15 characters long and contain only letters, numbers, and underscores.')" required>
+        {# Username should be 3-15 characters long and contain only lowercase letters, numbers, and underscores. #}
+        <div class="valid-feedback" id="username-is-valid" style="display: none;">This field is valid!</div>
+        <div class="invalid-feedback" id="username-is-invalid" style="display: none;"></div>
+    </fieldset>
+    
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="emailHelpInline" for="email" class="form-check-label">Email</label>
+         <span id="emailHelpInline" class="form-text">
+        | Please enter your email.
+        </span>
+        <input type="email" class="form-control" id="email" name="email" required>
+    </fieldset>
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="passwordHelpInline" for="password" class="form-check-label">Password</label>
+        <span id="passwordHelpInline" class="form-text">
+        | Passwords must be at least 8 characters long, and include at least one uppercase letter, one lowercase letter, one symbol, and one number.
+        </span>
+        <input type="password" id="password" name="password" class="form-control" 
+                onchange="validateField('password', /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 'Invalid password. Password must be at least 8 characters long, and include at least one uppercase letter, one lowercase letter, one symbol, and one number.')" required>
+        {# Password must be at least 8 characters long, and include at least one uppercase letter, one lowercase letter, and one number. #}
+        <div class="valid-feedback" id="password-is-valid" style="display: none;">This field is valid!</div>
+        <div class="invalid-feedback" id="password-is-invalid" style="display: none;"></div>
+    </fieldset>
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="confirmPasswordHelpInline" for="confirmPassword" class="form-check-label">Confirm Password</label>
+        <span id="confirmPasswordHelpInline" class="form-text">
+        | Please re-enter your password here.
+        </span>
+        <input type="password" id="confirmPassword" class="form-control" onchange="validateConfirmPassword()" required>
+        <div class="valid-feedback">Passwords match!</div>
+        <div class="invalid-feedback" id="confirmPassword-is-invalid">Passwords do not match.</div>
+    </fieldset>
+
+
+    {% if config["COLLECT_USAGE_STATISTICS"] %}
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div style="padding-bottom: 10px;">
+            <label for="optOut">Opt Out</label>
+            <span id="optOutHelpInline" class="form-text">
+                | This application collects usage statistics at a user level to monitor security concerns and usage trends. These statistics are limited to the information you used to register your account and will not be provided to any commercial third parties. If you'd like to opt out of providing detailed usage statistics, check the box below. By opting out, any usage information collected will be stripped of your personal identifiers.
+            </span>
+        </div>
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="optOut" id="optOut" value="true" checked="" onchange="updateLabel(this)">
+            <label class="form-check-label" for="optOut" id="optOutStatus">You will be opted out of detailed usage statistics</label>
+        </div>
+    </fieldset>
+    {% endif %}
+
+
+    {% if config['HCAPTCHA_ENABLED'] %}
+    <fieldset style="padding-top: 10px;" class="form-check" title="captcha">
+        <div class="h-captcha" data-theme="dark" id="captcha" data-sitekey="{{ config['HCAPTCHA_SITE_KEY'] }}"></div>
+    </fieldset>
+    {% endif %}
+
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="submit" class="btn btn-primary" onClick="this.form.submit(); this.disabled=true; this.value='Creating...';">Create</button>
+    </fieldset>
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <p style="padding-top: 10px;">Already have an account? Login <a href="{{url_for('login')}}">here</a>.</p>
+    </fieldset>
+
+</form>
+{% endblock %}
+
+
+
+
+
+{% block scripts %}
+<script>
+
+$(document).ready(function() {
+    var submitBtn = $('#registrationForm button[type="submit"]');
+    submitBtn.prop('disabled', true); // Initially disable the submit button
+
+    window.validateField = function(fieldId, regex, invalidMessage) {
+        var field = $('#' + fieldId);
+        var value = field.val();
+        var isValid = regex.test(value);
+
+        var feedbackId = fieldId + '-is-' + (isValid ? 'valid' : 'invalid');
+        var oppositeFeedbackId = fieldId + '-is-' + (isValid ? 'invalid' : 'valid');
+
+        $('#' + feedbackId).show().text(isValid ? 'This field is valid!' : invalidMessage);
+        $('#' + oppositeFeedbackId).hide();
+        
+        field.removeClass(isValid ? 'is-invalid' : 'is-valid');
+        field.addClass(isValid ? 'is-valid' : 'is-invalid');
+
+        updateSubmitButton();
+    };
+
+    window.validateConfirmPassword = function() {
+        var password = $('#password').val();
+        var confirmPassword = $('#confirmPassword').val();
+
+        var isMatch = password === confirmPassword;
+        $('#confirmPassword').removeClass(isMatch ? 'is-invalid' : 'is-valid');
+        $('#confirmPassword').addClass(isMatch ? 'is-valid' : 'is-invalid');
+        $('#confirmPassword-is-invalid').toggle(!isMatch);
+
+        updateSubmitButton();
+    };
+
+    function updateSubmitButton() {
+        var isUsernameValid = /^[a-z0-9_]{5,15}$/.test($('#username').val());
+        var isPasswordValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test($('#password').val());
+        var arePasswordsMatching = $('#password').val() === $('#confirmPassword').val();
+
+        submitBtn.prop('disabled', !(isUsernameValid && isPasswordValid && arePasswordsMatching));
+    }
+
+    $('#registrationForm').on('submit', function(event) {
+        var isUsernameValid = /^[a-z0-9_]{5,15}$/.test($('#username').val());
+        var isPasswordValid = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/.test($('#password').val());
+        var arePasswordsMatching = $('#password').val() === $('#confirmPassword').val();
+
+        if (!(isUsernameValid && isPasswordValid && arePasswordsMatching)) {
+            event.preventDefault();
+        }
+    });
+
+});
+
+function updateLabel(checkbox) {
+    var label = document.getElementById('optOutStatus');
+    if (checkbox.checked) {
+        label.innerHTML = 'You will be opted out of detailed usage statistics';
+    } else {
+        label.innerHTML = 'You will be opted in to detailed usage statistics';
+    }
+}
+
+</script>
+
+{% endblock %}

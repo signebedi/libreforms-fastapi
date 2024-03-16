@@ -1,0 +1,129 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+    <link href="{{ url_for('static', filename='css/datatables.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+User Profile
+{% endblock %}
+
+{% block content %}
+<h1>User Profile</h1>
+<div class="container table-responsive">
+    <table id="profileTable" class="table table-hover table-striped table-light">
+        <thead>
+            <tr>
+                <th>Attribute</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td>Email</td>
+                <td>{{ current_user.email }}</td>
+            </tr>
+            <tr>
+                <td>Username</td>
+                <td>{{ current_user.username }}</td>
+            </tr>
+            <tr>
+                <td>Account Status</td>
+                <td>{{ 'Active' if current_user.active else 'Inactive' }}</td>
+            </tr>
+            {% if config["COLLECT_USAGE_STATISTICS"] %}
+            <tr>
+                <td>Opted out of detailed usage statistics</td>
+                <td>{{ 'Yes' if current_user.opt_out else 'No' }}</td>
+            </tr>
+            {% endif %}
+            <tr>
+                <td>Account Created</td>
+                <td>{{ current_user.created_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            </tr>
+            <tr>
+                <td>Last Login</td>
+                <td>{{ current_user.last_login.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            </tr>
+            <tr>
+                <td>Last Password Change</td>
+                <td>{{ current_user.last_password_change.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+            </tr>
+            <tr>
+                <td title="Expires: {{ key_expiry }}">API Key</td>
+                <td>
+                    <span title="Expires: {{ key_expiry }}" id="apiKey">{{ current_user.api_key }}</span>
+                    <svg title="Click to copy to the clipboard" onclick="copyToClipboard(this)" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="fa-xs profile-icon clipboard-icon bi bi-clipboard" viewBox="0 0 16 16">
+                        <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+                        <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
+                    </svg>
+
+                    <a title="Click to generate a new API key" class="text-decoration-none" href="{{ url_for('rotate') }}">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-arrow-counterclockwise profile-icon" viewBox="0 0 16 16">
+                            <path fill-rule="evenodd" d="M8 3a5 5 0 1 1-4.546 2.914.5.5 0 0 0-.908-.417A6 6 0 1 0 8 2z"/>
+                            <path d="M8 4.466V.534a.25.25 0 0 0-.41-.192L5.23 2.308a.25.25 0 0 0 0 .384l2.36 1.966A.25.25 0 0 0 8 4.466"/>
+                        </svg>
+                    </a>
+                </td>
+            </tr>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{url_for('static', filename='js/datatables.js')}}"></script>
+<script>
+    $(document).ready( function () {
+        $('#profileTable').DataTable({
+            "ordering": false,
+            "info": false,
+            "paging": false,
+            "searching": false 
+        });
+    });
+    // Function to copy to clipboard and show tooltip
+    function copyToClipboard(element) {
+        // Copying to clipboard
+        var textElement = element.closest('td').querySelector('#apiKey');
+        var text = textElement.innerText;
+        var elem = document.createElement("textarea");
+        document.body.appendChild(elem);
+        elem.value = text;
+        elem.select();
+        document.execCommand("copy");
+        document.body.removeChild(elem);
+
+        // Change the icon
+        var icon = element;
+        icon.innerHTML = '<path fill-rule="evenodd" d="M10.854 7.146a.5.5 0 0 1 0 .708l-3 3a.5.5 0 0 1-.708 0l-1.5-1.5a.5.5 0 1 1 .708-.708L7.5 9.793l2.646-2.647a.5.5 0 0 1 .708 0"/><path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/><path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>';
+
+
+        // Tooltip activation
+        var tooltip = new bootstrap.Tooltip(element, {
+            title: "Copied!",
+            trigger: "manual",
+            placement: 'top' // Adjust if needed
+        });
+
+        tooltip.show(); // Show the tooltip
+
+        // Hide tooltip after 2 seconds
+        setTimeout(function() {
+            tooltip.hide();
+        }, 2000);
+
+        // Original icon paths
+        var originalIconPaths = `
+            <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+            <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>`;
+
+        // Revert the icon back to its original state after 3 seconds
+        setTimeout(function() {
+            icon.innerHTML = originalIconPaths;
+        }, 3000);
+
+    }
+</script>
+
+{% endblock %}

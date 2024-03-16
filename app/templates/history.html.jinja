@@ -1,0 +1,46 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+    <link href="{{ url_for('static', filename='css/datatables.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+Past Transcriptions
+{% endblock %}
+
+{% block content %}
+<h1>Past Transcriptions</h1>
+<div class="container table-responsive">
+
+    <table id="transcriptionsTable" class="table table-hover table-striped table-light">
+        <thead>
+            <tr>
+                <th>Timestamp</th>
+                <th>Text</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for transcription in transcriptions %}
+            <tr>
+                <td>{{ transcription.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ transcription.text }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{url_for('static', filename='js/datatables.js')}}"></script>
+<script src="https://cdn.datatables.net/1.10.20/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.10.20/js/dataTables.bootstrap4.min.js"></script>
+<script>
+    $(document).ready( function () {
+        $('#transcriptionsTable').DataTable({
+            "scrollX": true,
+            "aaSorting": [[ 0, "desc" ]] // Sort by first column descending https://stackoverflow.com/a/7878267/13301284
+        });
+    });
+</script>
+{% endblock %}

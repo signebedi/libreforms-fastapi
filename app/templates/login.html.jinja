@@ -1,0 +1,42 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+Login
+{% endblock %}
+
+{% block content %}
+<h1>Login</h1>
+<form method="POST" action="{{ url_for('login') }}">
+
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label for="username" class="form-check-label">Username</label>
+        <input type="text" class="form-control" id="username" name="username" required>
+    </fieldset>
+
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label for="password" class="form-check-label">Password</label>
+        <input type="password" class="form-control" id="password" name="password" required>
+    </fieldset>
+
+
+    {% if config['HCAPTCHA_ENABLED'] %}
+    <fieldset style="padding-top: 10px;" class="form-check" title="captcha">
+        <div class="h-captcha" data-theme="dark" id="captcha" data-error-callback="onError" data-sitekey="{{ config['HCAPTCHA_SITE_KEY'] }}"></div>
+    </fieldset>
+    {% endif %}
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="submit" class="btn btn-primary" onClick="this.form.submit(); this.disabled=true; this.value='Loading...';">Login</button>
+    </fieldset>
+
+
+    {% if not config['DISABLE_NEW_USERS'] %}
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <p style="padding-top: 10px;">Don't have an account? Create one <a href="{{url_for('create_user')}}">here</a>.</p>
+    </fieldset>
+    {% endif %}
+
+</form>
+{% endblock %}

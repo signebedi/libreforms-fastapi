@@ -1,0 +1,89 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+{% endblock %}
+
+{% block title %}
+Admin - Site Configuration
+{% endblock %}
+
+{% block content %}
+<h1>Site Configuration - ({{ app_config.ENVIRONMENT }} environment)</h1>
+<p>This page allows adminsitrators to modify the  {{ app_config.ENVIRONMENT }} environment site configuration. Please note that these  configs will only be set for the  {{ app_config.ENVIRONMENT }} environment, and will not change behavior for any other environments that administrators have set.</p>
+
+<form action="{{ url_for('admin_config_site') }}" method="post">
+
+    <div class="container" style="overflow:scroll; height:450px;">
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="SITE_NAME">Site Name</label>
+            <input type="text" class="form-control" id="SITE_NAME" name="SITE_NAME" value="{{ app_config.SITE_NAME }}">
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="DOMAIN">Domain</label>
+            <input type="text" class="form-control" id="DOMAIN" name="DOMAIN" value="{{ app_config.DOMAIN }}">
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="HOMEPAGE_CONTENT">Homepage Content</label>
+            <textarea class="form-control" rows="5" id="HOMEPAGE_CONTENT" name="HOMEPAGE_CONTENT">{{ app_config.HOMEPAGE_CONTENT }}</textarea>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="PRIVACY_MESSAGE">Privacy Message</label>
+            <textarea class="form-control" rows="5" id="PRIVACY_MESSAGE" name="PRIVACY_MESSAGE">{{ app_config.PRIVACY_MESSAGE }}</textarea>
+        </div>
+
+        <!-- Rate Limits Configurations -->
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="RATE_LIMITS_ENABLED">Rate Limits Enabled</label>
+            <input type="checkbox" class="form-check-input" id="RATE_LIMITS_ENABLED" name="RATE_LIMITS_ENABLED" {{ 'checked' if app_config.RATE_LIMITS_ENABLED }}>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="RATE_LIMITS_PERIOD">Rate Limits Period (minutes)</label>
+            <input type="number" class="form-control" id="RATE_LIMITS_PERIOD" name="RATE_LIMITS_PERIOD" value="{{ app_config.RATE_LIMITS_PERIOD.total_seconds() // 60 | int }}" required>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="RATE_LIMITS_MAX_REQUESTS">Rate Limits Max Requests</label>
+            <input type="number" class="form-control" id="RATE_LIMITS_MAX_REQUESTS" name="RATE_LIMITS_MAX_REQUESTS" value="{{ app_config.RATE_LIMITS_MAX_REQUESTS }}">
+        </div>
+
+        <!-- Other configurations like MAX_LOGIN_ATTEMPTS, REQUIRE_EMAIL_VERIFICATION, PERMANENT_SESSION_LIFETIME, COLLECT_USAGE_STATISTICS, DISABLE_NEW_USERS -->
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="MAX_LOGIN_ATTEMPTS">Max Login Attempts</label>
+            <input type="number" class="form-control" id="MAX_LOGIN_ATTEMPTS" name="MAX_LOGIN_ATTEMPTS" value="{{ app_config.MAX_LOGIN_ATTEMPTS }}">
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="REQUIRE_EMAIL_VERIFICATION">Require Email Verification</label>
+            <input type="checkbox" class="form-check-input" id="REQUIRE_EMAIL_VERIFICATION" name="REQUIRE_EMAIL_VERIFICATION" {{ 'checked' if app_config.REQUIRE_EMAIL_VERIFICATION }}>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="PERMANENT_SESSION_LIFETIME">Permanent Session Lifetime (minutes)</label>
+            <input type="number" class="form-control" id="PERMANENT_SESSION_LIFETIME" min="30" name="PERMANENT_SESSION_LIFETIME" value="{{ app_config.PERMANENT_SESSION_LIFETIME.total_seconds() // 60 | int }}" required>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="COLLECT_USAGE_STATISTICS">Collect Usage Statistics</label>
+            <input type="checkbox" class="form-check-input" id="COLLECT_USAGE_STATISTICS" name="COLLECT_USAGE_STATISTICS" {{ 'checked' if app_config.COLLECT_USAGE_STATISTICS }}>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="DISABLE_NEW_USERS">Disable New Users</label>
+            <input type="checkbox" class="form-check-input" id="DISABLE_NEW_USERS" name="DISABLE_NEW_USERS" {{ 'checked' if app_config.DISABLE_NEW_USERS }}>
+        </div>
+    </div>
+
+    <div class="form-group" style="padding-top: 10px;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

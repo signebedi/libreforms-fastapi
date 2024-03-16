@@ -1,0 +1,34 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+{% endblock %}
+
+{% block title %}
+Admin - Database Configuration
+{% endblock %}
+
+{% block content %}
+<h1>Database Configuration - ({{ app_config.ENVIRONMENT }} environment)</h1>
+<p>This page allows adminsitrators to modify the  {{ app_config.ENVIRONMENT }} environment database configuration. Please note that these  configs will only be set for the  {{ app_config.ENVIRONMENT }} environment, and will not change behavior for any other environments that administrators have set.</p>
+
+<form action="{{ url_for('admin_config_database') }}" method="post">
+
+    <div class="container" style="overflow:scroll; height:400px;">
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="SQLALCHEMY_DATABASE_URI">Database URI</label>
+            <input type="text" class="form-control" id="SQLALCHEMY_DATABASE_URI" name="SQLALCHEMY_DATABASE_URI" value="{{ app_config.SQLALCHEMY_DATABASE_URI }}">
+        </div>
+
+
+    </div>
+
+    <div class="form-group" style="padding-top: 10px;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

@@ -1,0 +1,48 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+{% endblock %}
+
+{% block title %}
+Admin - Celery Configuration
+{% endblock %}
+
+{% block content %}
+<h1>Celery Configuration - ({{ app_config.ENVIRONMENT }} environment)</h1>
+<p>This page allows adminsitrators to modify the  {{ app_config.ENVIRONMENT }} environment celery configuration. Please note that these  configs will only be set for the  {{ app_config.ENVIRONMENT }} environment, and will not change behavior for any other environments that administrators have set.</p>
+
+<form action="{{ url_for('admin_config_celery') }}" method="post">
+
+    <div class="container" style="overflow:scroll; height:400px;">
+
+
+        <!-- Celery Configurations -->
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="CELERY_ENABLED">Celery Enabled</label>
+            <input type="checkbox" class="form-check-input" id="CELERY_ENABLED" name="CELERY_ENABLED" {{ 'checked' if app_config.CELERY_ENABLED }}>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="CELERY_BROKER_URL">Celery Broker URL</label>
+            <input type="text" class="form-control" id="CELERY_BROKER_URL" name="CELERY_BROKER_URL" value="{{ app_config.CELERY_CONFIG.broker_url }}">
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="CELERY_RESULT_BACKEND">Celery Result Backend</label>
+            <input type="text" class="form-control" id="CELERY_RESULT_BACKEND" name="CELERY_RESULT_BACKEND" value="{{ app_config.CELERY_CONFIG.result_backend }}">
+        </div>
+
+
+
+
+    </div>
+
+    <div class="form-group" style="padding-top: 10px;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

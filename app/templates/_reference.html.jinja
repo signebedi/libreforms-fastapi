@@ -1,0 +1,203 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+Reference Search
+{% endblock %}
+
+
+{% block content %}
+
+<h1>Reference Search</h1>
+<p>Select an author below and search for a specific reference. Valid references might include full chapters (1), individual verses (1.1), or continuous verse ranges within a single chapter (1.1-4). This will return references that match your query, with a reference number to the left that, when clicked, will copy the text to your clipboard.</p>
+
+<form id="gitaForm">
+
+    <fieldset class="form-group">
+        <label for="corpus" class="form-label mt-5">Select Corpus:</label>
+        <select onchange="fetchAuthors(this)" name="corpus" id="corpus" class="form-select">
+            {% for name, shorthand in corpora %}
+                <option value="{{ shorthand }}"{% if shorthand == 'gita' %} selected=""{% endif %}>{{ name }}</option>
+            {% endfor %}
+        </select>
+    </fieldset>
+
+    <fieldset class="form-group">
+        <label for="author" class="form-label mt-5">Select Author:</label>
+        <select name="author" id="author" class="form-select">
+            <!-- Options will be populated dynamically -->
+        </select>
+    </fieldset>
+
+    <fieldset class="form-group">
+        <label for="reference" class="form-label mt-5">Reference (Chapter.Verse):</label>
+        <input type="text" onchange="validateReference(this.value);" id="reference" name="reference" class="form-control" placeholder="e.g., 1.5" required>
+        <div class="valid-feedback" id="reference-is-valid">This field is valid!</div>
+        <div class="invalid-feedback" id="reference-is-invalid">This field is invalid!</div>    
+
+    </fieldset>
+
+    <fieldset style="padding-top: 20px;" class="form-group">
+        <button type="submit" class="btn btn-primary" id="form-button-submit">Submit</button>
+        <div class="spinner-border spinner-border-sm loading-circle" role="status" style="display: none;"></div>
+    </fieldset>
+</form>
+
+<div id="resultContainer" class="container mt-5 results-div"></div>
+
+{% endblock %}
+
+
+
+{% block scripts %}
+<script>
+    document.getElementById('gitaForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+
+        const submitButton = document.getElementById('form-button-submit');
+        const spinner = document.querySelector('.loading-circle');
+    
+        submitButton.disabled = true;  // Disable the submit button
+        submitButton.innerText = 'Loading...';  // Change submit button text to 'Loading...'
+        spinner.style.display = ''; // Show the spinner
+
+        const corpusName = document.getElementById('corpus').value;
+        const authorId = document.getElementById('author').value;
+        const reference = document.getElementById('reference').value;
+        const container = document.getElementById('resultContainer');
+
+        // Add headers to the fetch request
+        const headers = new Headers({
+            'X-API-KEY': '{{ current_user.api_key }}'
+        });
+
+        fetch(`/api/${corpusName}/reference?reference=${reference}&author_id=${authorId}`, { headers: headers })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    container.innerHTML = `<p class="text-danger mb-3">${data.error}</p>`;
+                } else if (data.content && data.content.text && data.content.ref_list) {
+                    // Check if ref_list and text are of the same length
+                    if (data.content.text.length === data.content.ref_list.length) {
+                        const combinedHtml = data.content.text.map((text, index) => {
+                            const ref = data.content.ref_list[index];
+                            return `<p class="lead mb-3"><span class="badge bg-secondary" id="text-entry" onclick="copyToClipboard(this.parentNode)">${ref}</span> ${text}</p>`;
+                        }).join('');
+                        container.innerHTML = combinedHtml;
+                    } else {
+                        container.innerHTML = `<p class="text-muted mb-3">Mismatch in text and reference data.</p>`;
+                    }
+                } else {
+                    container.innerHTML = `<p class="text-muted mb-3">No content available.</p>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                container.innerHTML = `<p>An error occurred: ${error}</p>`;
+            })
+            .finally(() => {
+                submitButton.disabled = false;  // Re-enable the button
+                submitButton.innerText = 'Submit';  // Change button text back to 'Submit'
+                spinner.style.display = 'none'; // Hide the spinner
+            });
+    });
+
+    async function validateReference(val) {
+
+        const foo = document.getElementById("reference")
+
+        let payload = {
+            value: val
+        };
+
+        let response = await fetch('{{ url_for ('validate_reference') }}', {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json;charset=utf-8'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        let result = await response.json();
+        var submit = document.getElementById("form-button-submit");
+
+        if (result['status'] == 'success') {
+            foo.classList.remove("is-invalid")
+            foo.classList.add("is-valid")
+            submit.classList.remove("disabled")
+
+        } else {
+            document.getElementById("reference-is-invalid").innerHTML = "This field is invalid! " + result['msg']
+            foo.classList.add("is-invalid")
+            foo.classList.remove("is-valid")
+            submit.classList.add("disabled")
+        }
+    }
+
+
+    async function fetchAuthors(selectObject) {
+
+        val = selectObject.value
+
+        let payload = {
+            value: val
+        };
+
+        let response = await fetch('{{ url_for ('get_authors') }}', {
+            method: 'POST',
+            headers: {
+            'Content-Type': 'application/json;charset=utf-8'
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        let authors = await response.json();
+
+        // Clear existing options
+        let authorsSelect = document.getElementById('author');
+        authorsSelect.innerHTML = '';
+
+        // Populate new options
+        authors['content'].forEach(author => {
+            let option = document.createElement('option');
+            option.value = author[0];
+            option.textContent = author[1];
+            authorsSelect.appendChild(option);
+        });
+    }
+
+    // Call fetchAuthors on page load for 'gita'
+    document.addEventListener('DOMContentLoaded', function() {
+        fetchAuthors(document.getElementById('corpus'));
+    });
+
+
+    function copyToClipboard(element) {
+        // Copying to clipboard
+        var text = element.innerText; // Get the text of the entire paragraph
+        var elem = document.createElement("textarea");
+        document.body.appendChild(elem);
+        elem.value = text;
+        elem.select();
+        document.execCommand("copy");
+        document.body.removeChild(elem);
+
+        // Find the badge element (reference ID) within the paragraph
+        var badge = element.querySelector('.badge');
+
+        // Tooltip activation
+        var tooltip = new bootstrap.Tooltip(badge, {
+            title: "Copied!",
+            trigger: "manual" 
+        });
+
+        tooltip.show(); // Show the tooltip
+
+        // Hide tooltip after 2 seconds
+        setTimeout(function() {
+            tooltip.hide();
+        }, 2000);
+    }
+
+
+</script>
+{% endblock %}

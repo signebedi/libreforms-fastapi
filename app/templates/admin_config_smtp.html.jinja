@@ -1,0 +1,60 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+{% endblock %}
+
+{% block title %}
+Admin - SMTP Configuration
+{% endblock %}
+
+{% block content %}
+<h1>SMTP Configuration - ({{ app_config.ENVIRONMENT }} environment)</h1>
+<p>This page allows adminsitrators to modify the  {{ app_config.ENVIRONMENT }} environment SMTP configuration. Please note that these  configs will only be set for the  {{ app_config.ENVIRONMENT }} environment, and will not change behavior for any other environments that administrators have set.</p>
+
+<form action="{{ url_for('admin_config_smtp') }}" method="post">
+
+    <div class="container" style="overflow:scroll; height:400px;">
+
+        <!-- SMTP Configurations -->
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="SMTP_ENABLED">SMTP Enabled</label>
+            <input type="checkbox" class="form-check-input" id="SMTP_ENABLED" name="SMTP_ENABLED" {{ 'checked' if app_config.SMTP_ENABLED }}>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="SMTP_MAIL_SERVER">SMTP Mail Server</label>
+            <input type="text" class="form-control" id="SMTP_MAIL_SERVER" name="SMTP_MAIL_SERVER" value="{{ app_config.SMTP_MAIL_SERVER }}">
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="SMTP_PORT">SMTP Port</label>
+            <input type="number" class="form-control" id="SMTP_PORT" name="SMTP_PORT" value="{{ app_config.SMTP_PORT }}">
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="SMTP_USERNAME">SMTP Username</label>
+            <input type="text" class="form-control" id="SMTP_USERNAME" name="SMTP_USERNAME" value="{{ app_config.SMTP_USERNAME }}">
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="SMTP_PASSWORD">SMTP Password</label>
+            <input type="password" class="form-control" id="SMTP_PASSWORD" name="SMTP_PASSWORD" value="">
+            <small class="form-text text-muted">Enter new password to change or leave blank to keep existing.</small>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="SMTP_FROM_ADDRESS">SMTP From Address</label>
+            <input type="text" class="form-control" id="SMTP_FROM_ADDRESS" name="SMTP_FROM_ADDRESS" value="{{ app_config.SMTP_FROM_ADDRESS }}">
+        </div>
+
+    </div>
+
+    <div class="form-group" style="padding-top: 10px;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

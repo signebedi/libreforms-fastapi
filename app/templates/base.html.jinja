@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %}</title>
+
+    <!-- Favicon -->
+    <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
+
+    <!-- Bootstrap 5 CSS -->
+    <link id="light-theme" href="{{ url_for('static', filename='css/bootstrap-flatly-5.3.1.css') }}" rel="stylesheet">
+
+    <!-- Dark theme (initially disabled) -->
+    <link id="dark-theme" rel="stylesheet" href="{{ url_for('static', filename='css/bootstrap-darkly-5.3.1.css') }}" disabled>
+
+    <!-- Stylesheet -->
+    <link href="{{ url_for('static', filename='css/style.css') }}" rel="stylesheet">
+
+    {% block header %}{% endblock %}
+
+</head>
+<body>
+
+    <!-- Navbar -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('home') }}">{{ config['SITE_NAME'] }}<small> v.{{ version }}</small></a>
+
+            <!-- Navbar toggler button -->
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+
+            <div class="collapse navbar-collapse" id="navbarNav">
+
+                <ul class="navbar-nav">
+
+                    {% if current_user.is_authenticated %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('record') }}">Record Audio</a>
+                    </li> 
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('upload') }}">Upload Audio</a>
+                    </li> 
+
+                    {% if show_transcriptions_history_link %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('history') }}">History</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+                    </li>
+
+                    {% if show_help_page_link %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('help') }}">Help</a>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.site_admin %}
+                    <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Admin</a>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item" href="{{ url_for( 'admin_stats' ) }}">Usage Statistics</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_users' ) }}">Manage Users</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_site' ) }}">Site Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_smtp' ) }}">SMTP Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_celery' ) }}">Celery Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_hcaptcha' ) }}">hCaptcha Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_database' ) }}">Database Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_trigger_reload' ) }}">Reload Server</a>
+                    </div>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+
+
+
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                    </li>
+
+
+                    {% if not config['DISABLE_NEW_USERS'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('create_user') }}">Create Account</a>
+                    </li>
+                    {% endif %}
+
+                    {% endif %}
+
+                    {% if reload_warning_banner %}
+                    <li class="nav-item">
+                        <a class="nav-link text-danger">Please Note: Site Reload Scheduled, Site May Become Unavailable</a>
+                    </li>
+                    {% endif %}
+
+                    
+                </ul>
+            </div>
+        </div>
+    </nav>
+    <!-- End of Navbar -->
+
+
+    <div class="alerts-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+
+                {# This sets the flask-login "message" category to something that plays nicely with Bootstrap
+                See https://flask.palletsprojects.com/en/latest/api/#flask.flash and  
+                https://github.com/maxcountryman/flask-login/blob/main/src/flask_login/config.py #}
+                {% if category == "message" %}
+                    {% set category = "warning" %}
+                {% endif %}
+                                
+                <div role="status" class="alert alert-dismissible alert-{{category}}"{% if category == "info" %} aria-live="polite" {%else%}aria-atomic="true" {% endif %}>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" title="dismiss-alert"></button>
+                    <strong>{{ message }}</strong>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+    
+    <main class="container mt-5 content">
+    {% block content %}{% endblock %}
+    </main>
+
+    <footer class="bg-dark text-light fixed-bottom">
+        <div class="container py-1">
+            <div class="row">
+                <div class="col-12 d-flex flex-column flex-md-row justify-content-between align-items-center"> <!-- Possibly align-left -->
+                    <p class="mb-0 mb-md-0">
+                        &copy; {{ current_year }} Sig Janoska-Bedi
+
+                        <button title="Toggle theme" id="theme-toggle" class="theme-button">
+                            <!-- Moon SVG -->
+                            <svg class="icon" id="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                            </svg>
+
+                            <!-- Sun SVG -->
+                            <svg class="icon" style="display: none;" id="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <circle cx="12" cy="12" r="5"></circle>
+                                <line x1="12" y1="1" x2="12" y2="3"></line>
+                                <line x1="12" y1="21" x2="12" y2="23"></line>
+                                <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                                <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                                <line x1="1" y1="12" x2="3" y2="12"></line>
+                                <line x1="21" y1="12" x2="23" y2="12"></line>
+                                <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                                <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                            </svg>
+                        </button>
+
+                    </p>
+
+                    <div>
+                        <a href="{{config['SITE_SOURCE_URL']}}" class="text-light">Source</a> |
+                        <a href="{{ url_for('privacy') }}" class="text-light">Privacy</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </footer>
+
+
+    <!-- Bootstrap 5 JS  -->
+    <script src="{{ url_for('static', filename='js/bootstrap.bundle.min.js') }}"></script>
+
+    <!-- Jquery -->
+    <script src="{{ url_for('static', filename='js/jquery-3.7.1.min.js') }}"></script>
+
+
+    {% if config['HCAPTCHA_ENABLED'] %}
+    <!-- hCaptcha -->
+    <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+    {% endif %}
+
+    <script>
+        function setTheme(theme) {
+            let lightTheme = document.getElementById('light-theme');
+            let darkTheme = document.getElementById('dark-theme');
+            let moonIcon = document.getElementById('moon-icon');
+            let sunIcon = document.getElementById('sun-icon');
+
+            if (theme === 'dark') {
+                darkTheme.removeAttribute('disabled');
+                lightTheme.setAttribute('disabled', 'true');
+                moonIcon.style.display = 'none';
+                sunIcon.style.display = 'block';
+                document.body.setAttribute('data-theme', 'dark'); 
+                updateCaptchaTheme('dark');
+            } else {
+                lightTheme.removeAttribute('disabled');
+                darkTheme.setAttribute('disabled', 'true');
+                moonIcon.style.display = 'block';
+                sunIcon.style.display = 'none';
+                document.body.removeAttribute('data-theme'); 
+                updateCaptchaTheme('light');
+            }
+        }
+
+        // Check system preference if no user preference exists
+        function initializeTheme() {
+            let storedPreference = localStorage.getItem('theme');
+            let userPrefersDark = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)').matches : false;
+            
+            if (storedPreference) {
+                setTheme(storedPreference);
+            } else if (userPrefersDark) {
+                setTheme('dark');
+            } else {
+                setTheme('light');
+            }
+        }
+
+        document.getElementById('theme-toggle').addEventListener('click', function() {
+            let lightTheme = document.getElementById('light-theme');
+            let darkTheme = document.getElementById('dark-theme');
+
+            if (darkTheme.disabled) {
+                setTheme('dark');
+                localStorage.setItem('theme', 'dark');
+            } else {
+                setTheme('light');
+                localStorage.setItem('theme', 'light');
+            }
+        });
+
+        function updateCaptchaTheme(theme) {
+            // Find the existing hCaptcha container and its parent
+            let captchaContainer = document.querySelector('.h-captcha');
+            if (captchaContainer) {
+
+                let parentElement = captchaContainer.parentNode;
+
+                // Remove the existing hCaptcha container
+                parentElement.removeChild(captchaContainer);
+
+                // Create a new hCaptcha container with the updated theme
+                let newCaptchaContainer = document.createElement('div');
+                newCaptchaContainer.className = 'h-captcha';
+                newCaptchaContainer.setAttribute('data-theme', theme);
+                newCaptchaContainer.setAttribute('data-sitekey', '{{ config['HCAPTCHA_SITE_KEY'] }}'); 
+
+                // Append the new container to the parent element
+                parentElement.appendChild(newCaptchaContainer);
+
+                // Reinitialize hCaptcha on the new container
+                if (window.hcaptcha) {
+                    hcaptcha.render(newCaptchaContainer);
+                }
+            }
+        }
+
+
+        window.addEventListener('DOMContentLoaded', initializeTheme);
+
+    </script>
+
+
+    {% block scripts %}{% endblock %}
+
+
+</body>
+</html>
+

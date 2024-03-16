@@ -1,0 +1,46 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+Help Request
+{% endblock %}
+
+{% block content %}
+<h1>Submit Help Request</h1>
+<p>When you experience issues with the application or want to request features, you can use this form to submit these requests to the application administrators.</p>
+
+<form id="helpRequestForm" method="POST" action="{{ url_for('help') }}">
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label for="subject" class="form-check-label">Subject</label>
+         <span id="subjectHelpInline" class="form-text">
+        | Please enter the subject of your request (50 Chars Max).
+        </span>
+        <input type="text" id="subject" maxlength="50" name="subject" class="form-control" required>
+    </fieldset>
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label for="category" class="form-check-label">Category</label>
+         <span id="categoryHelpInline" class="form-text">
+        | Choose the appropriate category for your request.
+        </span>
+        <select id="category" name="category" class="form-select" required>
+            <option value="Bug Report">Bug Report</option>
+            <option value="Feature Request">Feature Request</option>
+            <option value="Other">Other</option>
+        </select>
+    </fieldset>
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label for="message" class="form-check-label">Message</label>
+        <span id="messageHelpInline" class="form-text">
+        | Please describe your issue or question in detail.
+        </span>
+        <textarea id="message" name="message" class="form-control" rows="4" required></textarea>
+    </fieldset>
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="submit" class="btn btn-primary">Submit Request</button>
+    </fieldset>
+
+</form>
+{% endblock %}

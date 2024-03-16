@@ -1,0 +1,46 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+{% endblock %}
+
+{% block title %}
+Admin - hCaptcha Configuration
+{% endblock %}
+
+{% block content %}
+<h1>hCaptcha Configuration - ({{ app_config.ENVIRONMENT }} environment)</h1>
+<p>This page allows adminsitrators to modify the  {{ app_config.ENVIRONMENT }} environment hCaptcha configuration. Please note that these  configs will only be set for the  {{ app_config.ENVIRONMENT }} environment, and will not change behavior for any other environments that administrators have set.</p>
+
+<form action="{{ url_for('admin_config_hcaptcha') }}" method="post">
+
+    <div class="container" style="overflow:scroll; height:400px;">
+
+        <!-- HCAPTCHA Configurations -->
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="HCAPTCHA_ENABLED">hCaptcha Enabled</label>
+            <input type="checkbox" class="form-check-input" id="HCAPTCHA_ENABLED" name="HCAPTCHA_ENABLED" {{ 'checked' if app_config.HCAPTCHA_ENABLED == True }}>
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="HCAPTCHA_SITE_KEY">hCaptcha Site Key</label>
+            <input type="text" class="form-control" id="HCAPTCHA_SITE_KEY" name="HCAPTCHA_SITE_KEY" value="{{ app_config.HCAPTCHA_SITE_KEY }}">
+        </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="HCAPTCHA_SECRET_KEY">hCaptcha Secret Key</label>
+            <input type="password" class="form-control" id="HCAPTCHA_SECRET_KEY" name="HCAPTCHA_SECRET_KEY" value="">
+            <small class="form-text text-muted">Enter new secret key to change or leave blank to keep existing.</small>
+        </div>
+
+
+    </div>
+
+    <div class="form-group" style="padding-top: 10px;">
+        <button type="submit" class="btn btn-primary">Save Changes</button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}
