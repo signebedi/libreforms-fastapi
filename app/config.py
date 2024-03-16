@@ -13,6 +13,7 @@ from dotenv import (
 from datetime import timedelta, datetime
 from markupsafe import Markup
 from pydantic_settings import BaseSettings
+from pydantic import validator
 
 from utils.scripts import check_configuration_assumptions
 
@@ -66,13 +67,26 @@ class Config(BaseSettings):
 
     RATE_LIMITS_ENABLED:bool = os.getenv('RATE_LIMITS_ENABLED', 'False') == 'True'
     # Rate limiting period should be an int corresponding to the number of minutes
-    RATE_LIMITS_PERIOD:timedelta = timedelta(minutes=int(os.getenv('RATE_LIMITS_PERIOD', 1)))
-    RATE_LIMITS_MAX_REQUESTS:int = int(os.getenv('RATE_LIMITS_MAX_REQUESTS', 3))
+    RATE_LIMITS_MAX_REQUESTS:int = int(os.getenv('RATE_LIMITS_MAX_REQUESTS', 15))
+    RATE_LIMITS_PERIOD: timedelta = timedelta(minutes=1)  # First we set a default value
+
+    @validator('RATE_LIMITS_PERIOD', pre=True, always=True)
+    def set_rate_limits_period(cls, v):
+        # Next we dectorate
+        minutes = int(os.getenv('RATE_LIMITS_PERIOD', '1'))
+        return timedelta(minutes=minutes)
 
     MAX_LOGIN_ATTEMPTS:int = int(os.getenv('MAX_LOGIN_ATTEMPTS', "0"))
     REQUIRE_EMAIL_VERIFICATION:bool = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'False') == 'True'
+
     # Permanent session lifetime should be an int corresponding to the number of minutes
-    PERMANENT_SESSION_LIFETIME:timedelta = timedelta(minutes=int(os.getenv('PERMANENT_SESSION_LIFETIME', 1440)))
+    PERMANENT_SESSION_LIFETIME: timedelta = timedelta(hours=6)  # Again we set a default value
+
+    @validator('PERMANENT_SESSION_LIFETIME', pre=True, always=True)
+    def set_permanent_session_lifetime(cls, v):
+        hours = int(os.getenv('PERMANENT_SESSION_LIFETIME', '6'))
+        return timedelta(hours=hours)
+
     COLLECT_USAGE_STATISTICS:bool = os.getenv('COLLECT_USAGE_STATISTICS', 'False') == 'True'
     DISABLE_NEW_USERS:bool = os.getenv('DISABLE_NEW_USERS', 'False') == 'True'
 
@@ -93,8 +107,8 @@ class ProductionConfig(Config):
 
     # Defaults to True / Enabled in production, with more stringent default settings
     RATE_LIMITS_ENABLED:bool = os.getenv('RATE_LIMITS_ENABLED', 'True') == 'True'
-    RATE_LIMITS_PERIOD:timedelta = timedelta(minutes=int(os.getenv('RATE_LIMITS_PERIOD', 60)))
-    RATE_LIMITS_MAX_REQUESTS:int = int(os.getenv('RATE_LIMITS_MAX_REQUESTS', 20))
+    # RATE_LIMITS_PERIOD:timedelta = timedelta(minutes=int(os.getenv('RATE_LIMITS_PERIOD', 60)))
+    # RATE_LIMITS_MAX_REQUESTS:int = int(os.getenv('RATE_LIMITS_MAX_REQUESTS', 20))
 
     MAX_LOGIN_ATTEMPTS:int = int(os.getenv('MAX_LOGIN_ATTEMPTS', "5")) 
     REQUIRE_EMAIL_VERIFICATION:bool = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'True') == 'True'
@@ -117,7 +131,7 @@ class TestingConfig(Config):
     
     SMTP_ENABLED:bool = False
 
-    RATE_LIMITS_ENABLED:bool = True
+    RATE_LIMITS_ENABLED:bool = False
     MAX_LOGIN_ATTEMPTS:int = 0
     REQUIRE_EMAIL_VERIFICATION:bool = False
     PERMANENT_SESSION_LIFETIME:timedelta = timedelta(hours=int(os.getenv('PERMANENT_SESSION_LIFETIME', 6)))

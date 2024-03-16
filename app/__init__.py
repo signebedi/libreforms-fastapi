@@ -83,7 +83,11 @@ mailer = Mailer(
 # Create the database engine, see
 # https://fastapi.tiangolo.com/tutorial/sql-databases/#create-the-sqlalchemy-parts
 engine = create_engine(
-    config.SQLALCHEMY_DATABASE_URI, connect_args={"check_same_thread": False}
+    config.SQLALCHEMY_DATABASE_URI,
+    connect_args={"check_same_thread": False},
+    # The following prevents caching from breaking our rate limitings system, 
+    # see https://stackoverflow.com/a/18225372/13301284 
+    isolation_level="READ UNCOMMITTED", 
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
@@ -123,3 +127,20 @@ async def create_key():
 async def get_key_details(key: str):
     key_details = signatures.get_key(key)
     return {"key": key_details}
+
+@app.get("/verify")
+async def verify_key_details(key: str):
+
+    try:
+        verify = signatures.verify_key(key, scope=[])
+
+    except RateLimitExceeded:
+        return {'error': 'Rate limit exceeded'}, 429
+
+    except KeyDoesNotExist:
+        return {'error': 'Invalid API key'}, 401
+
+    except KeyExpired:
+        return {'error': 'API key expired'}, 401
+
+    return {"valid": verify}
