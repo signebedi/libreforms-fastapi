@@ -1,0 +1,138 @@
+.alerts-container {
+    position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 1050;
+    width: auto;
+    margin: 20px;
+}
+
+.theme-button {
+    margin-top: 3px;
+    background-color: transparent;
+    border: none;
+    cursor: pointer;
+}
+
+
+.icon {
+    width: 10px;
+    height: 10px;
+}
+
+
+@media (max-width: 1000px) {
+    .navbar-collapse {
+        text-align: right;
+    }
+    .navbar-nav {
+        justify-content: flex-end;
+    }
+    .nav-item {
+        display: block;
+    }
+}
+
+/* Default light theme styles for text inputs and text areas */
+input, select, textarea {
+    background-color: #ffffff;
+    color: #000000;
+    border: 1px solid #ccc;
+}
+
+/* Dark theme styles for text inputs and text areas */
+[data-theme="dark"] input, [data-theme="dark"] select, [data-theme="dark"] textarea {
+    /* background-color: #333333; */
+    background-color: rgba(0, 0, 0, 0.25);
+    color: #ffffff;
+    border: 1px solid #555;
+}
+
+[data-theme="dark"] input:focus, [data-theme="dark"] select:focus, [data-theme="dark"] textarea:focus {
+    background-color: rgba(0, 0, 0, 0.25);
+    color: #ffffff;
+    border: 1px solid #555;
+}
+
+
+.results-div {
+    overflow: auto;
+}
+
+#resultContainer p {
+    font-family: 'Arial', sans-serif;
+    line-height: 1.6;
+    letter-spacing: 0.5px;
+}
+
+
+#text-entry {
+    transition: filter 0.3s ease;
+}
+
+#text-entry:hover {
+    filter: brightness(125%);
+}
+
+
+.loading-circle {
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+
+.score-circle {
+    display: inline-block;
+    width: 15px; /* Circle size */
+    height: 15px;
+    /* border-radius: 50%; */
+    margin-left: 10px;
+    vertical-align: middle;
+}
+
+.score-circle:hover {
+    filter: brightness(125%);
+}
+
+
+
+.badge-outline {
+    color: black;
+    border: 1px solid #999;
+    background-color: transparent;
+}
+
+
+.profile-icon{
+    padding-bottom: 5px;
+    padding-left:5px;
+}
+
+html, body {
+    height: 100%;
+    margin: 0;
+}
+
+body {
+    display: flex;
+    flex-direction: column;
+}
+
+.content {
+    flex: 1;
+}
+
+
+.msg {
+    border-radius: 10px;
+  }
+  
+  .msg.right {
+    background-color:#CCC;
+    float: right;
+  }
+  
+  .msg.left {
+    background-color:#555;
+    color: white;
+  }
