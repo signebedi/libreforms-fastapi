@@ -4,4 +4,6 @@ passlib[bcrypt]<2.0.0
 pydantic-settings<3.0.0
 pymongo<5.0.0
 SQLAlchemy<3.0.0
+sqlalchemy-signing<1.0.0
+tinydb<5.0.0
 uvicorn<1.0.0

@@ -5,4 +5,5 @@ pydantic-settings
 pymongo
 SQLAlchemy
 sqlalchemy-signing
+tinydb
 uvicorn
