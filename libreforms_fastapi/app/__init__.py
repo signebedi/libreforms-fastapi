@@ -20,34 +20,25 @@ from sqlalchemy_signing import (
     KeyExpired,
 )
 
-from .config import (
+from libreforms_fastapi.utils.config import (
     DevelopmentConfig, 
     ProductionConfig, 
     TestingConfig,
     validate_and_write_configs,
 )
-from .models import (
+
+from libreforms_fastapi.utils.sqlalchemy_models import (
     Base,
     User,
     UsageLog,
 )
 
-from utils.smtp import Mailer
-from utils.scripts import (
+from libreforms_fastapi.utils.smtp import Mailer
+from libreforms_fastapi.utils.scripts import (
     check_configuration_assumptions,
     generate_password_hash,
     check_password_hash,
 )
-
-
-__version__ = "1.0.0"
-__name__ = "app"
-__author__ = "Sig Janoska-Bedi"
-__credits__ = ["Sig Janoska-Bedi"]
-__license__ = "AGPL-3.0"
-__maintainer__ = "Sig Janoska-Bedi"
-__email__ = "signe@atreeus.com"
-
 
 app = FastAPI()
 # app.mount("/static", StaticFiles(directory="static"), name="static")

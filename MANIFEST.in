@@ -1,0 +1,4 @@
+include requirements/base.txt
+include README.md
+recursive-include libreforms_fastapi/app/static *
+recursive-include libreforms_fastapi/app/templates *.jinja

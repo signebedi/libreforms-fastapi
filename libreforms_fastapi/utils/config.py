@@ -1,5 +1,5 @@
 """ 
-app/config.py: sets the general configs for an app with REST and UI
+app/utils/config.py: sets the general configs for an app with REST and UI
 Note: application-specific logic and configurations SHOULD come from a 
 separate source to help preserve the generalizability of this logic.
 """
@@ -16,7 +16,7 @@ from pydantic_settings import BaseSettings
 from pydantic import validator, ValidationError
 from pydantic.networks import MongoDsn
 
-from utils.scripts import check_configuration_assumptions
+from libreforms_fastapi.utils.scripts import check_configuration_assumptions
 
 # Determine environment
 env = os.getenv('ENVIRONMENT', 'development')

@@ -8,8 +8,7 @@ from pydantic import (
     ConfigDict,
 )
 
-
-# Updated form configuration with default values
+# Example form configuration with default values set
 example_form_config = {
     "example_form": {
         "text_input": {
