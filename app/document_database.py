@@ -121,3 +121,6 @@ class ManageTinyDB:
 
         # Reinitialize the databse instances
         self._initialize_database_instances()
+
+class ManageMongoDB:
+    pass
