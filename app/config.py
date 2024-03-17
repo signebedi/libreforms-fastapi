@@ -13,7 +13,8 @@ from dotenv import (
 from datetime import timedelta, datetime
 from markupsafe import Markup
 from pydantic_settings import BaseSettings
-from pydantic import validator
+from pydantic import validator, ValidationError
+from pydantic.networks import MongoDsn
 
 from utils.scripts import check_configuration_assumptions
 
@@ -98,12 +99,24 @@ class Config(BaseSettings):
     SESSION_COOKIE_SECURE:bool = os.getenv('SESSION_COOKIE_SECURE', 'False') == 'True'
     SESSION_COOKIE_SAMESITE:str = os.getenv('SESSION_COOKIE_SAMESITE', "None")
 
+    MONGODB_ENABLED:bool = os.getenv('MONGODB_ENABLED:', 'False') == 'True'
+    MONGODB_URI: str = "" # Default to empty string
+
+    @validator('MONGODB_URI', pre=True, always=True)
+    def validate_mongodb_uri(cls, v):
+        # Attempt to read from environment variable if not set
+        uri = os.getenv('MONGODB_URI', '')
+        if uri == '':
+            return uri  # Allow empty strings
+        # Utilize MongoDsn for validation if not empty
+        return MongoDsn.validate(uri)
+
 class ProductionConfig(Config):
     # The DOMAIN is meant to fail in production if you have not set it
     DOMAIN:str = os.getenv('DOMAIN', None)
     
     # Defaults to True in production
-    SMTP_ENABLED:bool = os.getenv('SMTP_ENABLED', 'False') == 'True'
+    SMTP_ENABLED:bool = os.getenv('SMTP_ENABLED', 'True') == 'True'
 
     # Defaults to True / Enabled in production, inheriting the other default settings
     RATE_LIMITS_ENABLED:bool = os.getenv('RATE_LIMITS_ENABLED', 'True') == 'True'

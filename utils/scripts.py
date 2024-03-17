@@ -34,12 +34,19 @@ def validate_help_smtp_enabled(config):
     if config.HELP_PAGE_ENABLED and not config.SMTP_ENABLED:
         raise ConfigurationError("SMTP must be enabled ('SMTP_ENABLED' = True) when enabling the user help page ('HELP_PAGE_ENABLED' = True).")
 
+def validate_mongodb_configuration(config):
+    # If MongoDB is enabled, ensure the URI is not an empty string
+    if config.MONGODB_ENABLED and config.MONGODB_URI == '':
+        raise ConfigurationError("MongoDB URI cannot be an empty string ('MONGODB_URI') when MongoDB is enabled ('MONGODB_ENABLED' = True).")
+
 # Main function to check all configurations
 def check_configuration_assumptions(config):
-    validations = [validate_domain, 
-                    validate_email_verification, 
-                    validate_help_emails_set,
-                    validate_help_smtp_enabled,                    
+    validations = [
+        validate_domain, 
+        validate_email_verification, 
+        validate_help_emails_set,
+        validate_help_smtp_enabled,
+        validate_mongodb_configuration,                
     ]
 
     for validation in validations:
