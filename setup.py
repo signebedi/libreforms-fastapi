@@ -27,7 +27,7 @@ with open(requirements_file, encoding="utf-8") as f:
 setup(
     name='libreforms_fastapi',
     version=version,
-    url='https://github.com/signebedi/libreforms_fastapi',
+    url='https://github.com/signebedi/libreforms-fastapi',
     author='Sig Janoska-Bedi',
     author_email='signe@atreeus.com',
     description='FastAPI implementation of the libreForms spec',
