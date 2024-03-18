@@ -1,4 +1,5 @@
-"""libreForms Click Interface - if you pip install this library, you can run this using `libreformsctl`."""
+"""libreForms Click Interface - if you pip install this library, you can run this using `libreformsctl`.
+This is where we will create an entrypoint for our CLI, see setup.py for more details"""
 
 import re, os, json, tempfile, clickfile
 from datetime import datetime, timedelta
@@ -38,7 +39,17 @@ from libreforms_fastapi.utils.scripts import (
 )
 
 
+# Main command group
+@click.group()
+def main():
+    """A group of commands for managing libreforms-fastapi."""
+    pass
+
+
+
 # Config
+# @main.command()
+# def config():
 
 # Uvicorn
 
