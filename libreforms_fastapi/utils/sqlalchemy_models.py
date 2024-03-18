@@ -32,12 +32,12 @@ class User(Base):
     opt_out = Column(Boolean, nullable=False, default=True)
     site_admin = Column(Boolean, nullable=False, default=False)
 
-    usage_log = relationship("UsageLog", order_by="UsageLog.id", back_populates="user")
+    usage_log = relationship("TransactionLog", order_by="TransactionLog.id", back_populates="user")
 
     
 # Many to one relationship with User table
-class UsageLog(Base):
-    __tablename__ = 'usage_log'
+class TransactionLog(Base):
+    __tablename__ = 'transaction_log'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=True)
     timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
@@ -46,4 +46,4 @@ class UsageLog(Base):
     remote_addr = Column(String(50), nullable=True)
     query_params = Column(String(1000), nullable=True)  # Can we find a way to make this a JSON string or similar format?
 
-    user = relationship("User", back_populates="usage_log")
+    user = relationship("User", back_populates="transaction_log")
