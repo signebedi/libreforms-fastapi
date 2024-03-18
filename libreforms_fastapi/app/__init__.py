@@ -2,7 +2,11 @@ import re, os, json, tempfile
 from datetime import datetime, timedelta
 from markupsafe import escape
 
-from fastapi import FastAPI, Request
+from fastapi import (
+    FastAPI, 
+    Request,
+    HTTPException,
+)
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
@@ -20,6 +24,8 @@ from sqlalchemy_signing import (
     KeyExpired,
 )
 
+from libreforms_fastapi.utils.smtp import Mailer
+
 from libreforms_fastapi.utils.config import (
     DevelopmentConfig, 
     ProductionConfig, 
@@ -33,7 +39,6 @@ from libreforms_fastapi.utils.sqlalchemy_models import (
     UsageLog,
 )
 
-from libreforms_fastapi.utils.smtp import Mailer
 from libreforms_fastapi.utils.scripts import (
     check_configuration_assumptions,
     generate_password_hash,
@@ -41,17 +46,18 @@ from libreforms_fastapi.utils.scripts import (
 )
 
 app = FastAPI()
+
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 # templates = Jinja2Templates(directory="templates")
 
 # Here we set the application config
-env = os.environ.get('ENVIRONMENT', 'development')
-if env == 'production':
-    config = ProductionConfig()
-elif env == 'testing':
-    config = TestingConfig()
-else:
-    config = DevelopmentConfig()
+with os.environ.get('ENVIRONMENT', 'development') as env:
+    if env == 'production':
+        config = ProductionConfig()
+    elif env == 'testing':
+        config = TestingConfig()
+    else:
+        config = DevelopmentConfig()
 
 if config.DEBUG:
     print(config)
@@ -102,13 +108,14 @@ def get_db():
         db.close()
 
 
+### This is a dummy route to validate jinja2 templates
 @app.get("/items/{id}", response_class=HTMLResponse)
 async def read_item(request: Request, id: str):
     return templates.TemplateResponse(
         request=request, name="item.html", context={"id": id}
     )
 
-
+### These are dummy routes to validate the sqlalchemy-signing library in development
 @app.get("/create")
 async def create_key():
     key = signatures.write_key()
@@ -135,3 +142,106 @@ async def verify_key_details(key: str):
         return {'error': 'API key expired'}, 401
 
     return {"valid": verify}
+
+
+##########################
+### API Routes - Form
+##########################
+
+# Create form
+
+# Read one form
+
+# Read many forms
+
+# Update form
+
+# Delete form
+
+# Approve form
+
+
+##########################
+### API Routes - Auth
+##########################
+
+# Create user
+
+# Change user password
+
+# Rotate user API key
+
+##########################
+### API Routes - Validators
+##########################
+
+# Validate form field
+
+##########################
+### UI Routes - Forms
+##########################
+
+# Create form
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+# Read one form
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+# Read many forms
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+# Update form
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+# Delete form
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+# Approve form
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+##########################
+### UI Routes - Auth
+##########################
+
+# Create user
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+# Forgot password
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+# Verify email
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+# Login
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+##########################
+### UI Routes - Admin
+##########################
+    # if not config.UI_ENABLED:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+    # This logic requires us to implement current_user logic, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/19.
+    # if current_user.group != "admin":
+    #     raise HTTPException(status_code=404, detail="This page does not exist")

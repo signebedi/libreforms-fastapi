@@ -59,6 +59,10 @@ class Config(BaseSettings):
     SQLALCHEMY_DATABASE_URI:str = os.getenv('SQLALCHEMY_DATABASE_URI', f'sqlite:///{os.path.join(os.getcwd(), "instance", "app.sqlite")}')
     SQLALCHEMY_TRACK_MODIFICATIONS:bool = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False') == 'True'
     
+    # Here we allow the application to be run headlessly, but default to an enabled UI,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/18.
+    UI_ENABLED:bool = os.getenv('UI_ENABLED', 'True') == 'True'
+
     SMTP_ENABLED:bool = os.getenv('SMTP_ENABLED', 'False') == 'True'
     SMTP_MAIL_SERVER:str = os.getenv('SMTP_MAIL_SERVER', "")
     SMTP_PORT:int = int(os.getenv('SMTP_PORT', 25))    
