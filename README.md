@@ -23,6 +23,10 @@ To run in production, you need to set up a unvicorn daemon, see [this issue](htt
 
 #### Running in Docker
 
-We are working on a docker image, [see this issue](https://github.com/signebedi/libreforms-fastapi/issues/12) for more details. Stay tuned for more.
-
+```bash
+git clone https://github.com/signebedi/libreforms-fastapi.git
+cd libreforms-fastapi/
+sudo docker build -t libreforms-fastapi . # Please note this can take several minutes
+sudo docker run -d -p 8000:8000 libreforms-fastapi
+```
 

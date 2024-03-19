@@ -214,7 +214,8 @@ Group={group}
 WorkingDirectory={working_directory}
 Environment='ENVIRONMENT={environment}'
 Environment='PATH={environment_path}'
-ExecStart={environment_path}/uvicorn --config {uvicorn_config} 'libreforms_fastapi.app:app'
+#ExecStart={environment_path}/uvicorn --config {uvicorn_config} 'libreforms_fastapi.app:app'
+ExecStart={environment_path}/uvicorn --host 0.0.0.0 --port 8000 --workers 3 'libreforms_fastapi.app:app'
 
 [Install]
 WantedBy=multi-user.target
