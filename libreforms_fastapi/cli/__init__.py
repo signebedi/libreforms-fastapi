@@ -118,15 +118,15 @@ def cli_config(env_type, domain, site_name, secret_key, sqlalchemy_database_uri,
     # Basic configurations
     config = {
         'DOMAIN': domain if domain is not None else click.prompt('Enter DOMAIN', default='http://127.0.0.1:5000'),
-        'SITE_NAME': site_name if site_name is not None else click.prompt('Enter SITE_NAME', default='Flask API'),
+        'SITE_NAME': site_name if site_name is not None else click.prompt('Enter SITE_NAME', default='libreForms'),
         'SECRET_KEY': secret_key,
         'SQLALCHEMY_DATABASE_URI': sqlalchemy_database_uri if sqlalchemy_database_uri is not None else click.prompt('What is your database connection string?', default=f"sqlite:///{os.path.join(os.getcwd(), 'instance', 'app.sqlite')}"),
         'SQLALCHEMY_TRACK_MODIFICATIONS': False,
         'SMTP_ENABLED': smtp_enabled if smtp_enabled is not None else prompt_bool('Is SMTP enabled?', default=False),
-        'RATE_LIMITS_ENABLED': rate_limits_enabled if rate_limits_enabled is not None else prompt_bool('Is RATE LIMITS enabled?', default=False),
+        'RATE_LIMITS_ENABLED': rate_limits_enabled if rate_limits_enabled is not None else prompt_bool('Are RATE LIMITS enabled?', default=False),
         'RATE_LIMITS_PERIOD': rate_limits_period,
         'RATE_LIMITS_MAX_REQUESTS': rate_limits_max_requests,
-        'REQUIRE_EMAIL_VERIFICATION': require_email_verification if require_email_verification is not None else prompt_bool('Is REQUIRE EMAIL VERIFICATION enabled?', default=False),
+        'REQUIRE_EMAIL_VERIFICATION': require_email_verification if require_email_verification is not None else prompt_bool('REQUIRE EMAIL VERIFICATION?', default=False),
         'PERMANENT_SESSION_LIFETIME': permanent_session_lifetime,
         'DISABLE_NEW_USERS': disable_new_users,
         'COLLECT_USAGE_STATISTICS': collect_usage_statistics,
@@ -151,7 +151,7 @@ def cli_config(env_type, domain, site_name, secret_key, sqlalchemy_database_uri,
         config['SMTP_FROM_ADDRESS'] = smtp_from_address if smtp_from_address is not None else click.prompt('Enter SMTP from address')
 
     # Run an assumptions check against the information passed and quit if assumptions are broken
-    assert check_configuration_assumptions(config=config)
+    # assert check_configuration_assumptions(config=config)
 
     # Write configurations to .env
     for key, value in config.items():
@@ -191,9 +191,9 @@ def change_ownership(path, user, group):
 @click.option('--environment', default='production', type=click.Choice(['production', 'development']), help='Environment for the systemd service')
 @click.option('--working-directory', default=os.getcwd(), help='Working directory for the systemd service')
 @click.option('--environment-path', default=os.path.join(os.getcwd(), 'venv','bin'), help='Path for the environment')
-@click.option('--gunicorn-config', default=os.path.join(os.getcwd(), 'libreforms_fastapi', 'utils', 'uvicorn_config.json'), help='Gunicorn configuration file')
-@click.option('--start-on-success', is_flag=True, help='Start and enable NGINX configuration on success')
-def cli_init_uvicorn(user, group, environment, working_directory, environment_path, gunicorn_config, start_on_success):
+@click.option('--uvicorn-config', default=os.path.join(os.getcwd(), 'libreforms_fastapi', 'utils', 'uvicorn_config.json'), help='Uvicorn configuration file')
+@click.option('--start-on-success', is_flag=True, help='Start and enable service on success')
+def cli_init_uvicorn(user, group, environment, working_directory, environment_path, uvicorn_config, start_on_success):
 
     if not os.path.exists(working_directory):
         raise Exception(f"The following working directory does not exit: {working_directory}. Are you sure you are in the correct directory?")

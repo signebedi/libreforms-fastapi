@@ -6,7 +6,6 @@ FastAPI implementation of the libreForms spec
 Follow the steps below to install the system on your computer. Please note, you need to install MongoDB, Python3, and Python3-Venv through your package manager. See your distribution's specific instructions for these steps or [install using Docker](#running-in-docker).
 
 ```bash
-cd /opt
 git clone https://github.com/signebedi/libreforms-fastapi.git
 cd libreforms-fastapi
 python3 -m venv venv
@@ -15,11 +14,15 @@ pip install -e .
 uvicorn libreforms_fastapi.app:app --reload # this will run the development server
 ```
 
-This application runs out of `/opt`. At this time, it's hard-coded to that working directory but future implementations might make the application installable and general with respect to the installation directory, [see this issue](https://github.com/signebedi/libreforms-fastapi/issues/13). Stay tuned for more.
-
 #### Running in Production
 
-To run in production, you need to set up a unvicorn daemon, see [this issue](https://github.com/signebedi/libreforms-fastapi/issues/3). We are preparing a CLI to configure and set up a persistent runtime using systemd, [see this issue](https://github.com/signebedi/libreforms-fastapi/issues/10). Stay tuned for more.
+To run in production, you need to generate an app configuration and daemonize uvicorn. If this sounds too daunting, consider [runnning the Docker container](#running-in-docker). If you're not dissuaded, you can use the CLI. After pip installing the package, you can use the `libreformsctl` command to get the application running in production. Here's an example:
+
+```bash
+libreformsctl config production
+libreformsctl uvicorn production 
+libreformsctl nginx production # Optional if you want a reverse proxy 
+```
 
 #### Running in Docker
 
