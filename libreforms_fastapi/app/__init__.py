@@ -1,9 +1,11 @@
 import re, os, json, tempfile
 from datetime import datetime, timedelta
 from markupsafe import escape
+from typing import Dict
 
 from fastapi import (
     FastAPI,
+    Body,
     Request,
     HTTPException,
     BackgroundTasks,
@@ -47,6 +49,18 @@ from libreforms_fastapi.utils.scripts import (
     check_configuration_assumptions,
     generate_password_hash,
     check_password_hash,
+)
+
+from libreforms_fastapi.utils.document_database import (
+    ManageTinyDB,
+    ManageMongoDB,
+    CollectionDoesNotExist,
+)
+
+from libreforms_fastapi.utils.pydantic_models import (
+    example_form_config,
+    generate_html_form,
+    generate_pydantic_models,
 )
 
 app = FastAPI()
@@ -103,6 +117,15 @@ signatures = Signatures(config.SQLALCHEMY_DATABASE_URI, byte_len=32,
     rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
 )
 
+# Yield the pydantic form model
+form_config = example_form_config
+FormModels = generate_pydantic_models(form_config)
+
+# Initialize the document database
+if config.MONGODB_ENABLED:
+    DocumentDatabase = ManageMongoDB(config=form_config)
+else: 
+    DocumentDatabase = ManageTinyDB(config=form_config)
 
 # Here we define an API key header for the api view functions.
 X_API_KEY = APIKeyHeader(name="X-API-Key")
@@ -112,7 +135,7 @@ X_API_KEY = APIKeyHeader(name="X-API-Key")
 def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
     """ takes the X-API-Key header and validates it"""
     try:
-        verify = signatures.verify_key(key, scope=['api_key'])
+        verify = signatures.verify_key(x_api_key, scope=['api_key'])
 
     except RateLimitExceeded:
         raise HTTPException(
@@ -147,61 +170,58 @@ def get_db():
     finally:
         db.close()
 
-
-### This is a dummy route to validate jinja2 templates
-@app.get("/items/{id}", response_class=HTMLResponse)
-async def read_item(request: Request, id: str):
-    return templates.TemplateResponse(
-        request=request, 
-        name="item.html", 
-        context={"id": id}
-    )
-
-### These are dummy routes to validate the sqlalchemy-signing library in development
-@app.get("/create")
-async def create_key():
-    key = signatures.write_key()
-    return {"key": key}
-
-@app.get("/get")
-async def get_key_details(key: str):
-    key_details = signatures.get_key(key)
-    return {"key": key_details}
-
-@app.get("/verify")
-async def verify_key_details(key: str = Depends(header_scheme)):
-
-    try:
-        verify = signatures.verify_key(key, scope=[])
-
-    except RateLimitExceeded:
-        raise HTTPException(
-            status_code=429,
-            detail="Rate limit exceeded"
+if config.DEBUG:
+    ### This is a dummy route to validate jinja2 templates
+    @app.get("/debug/items/{id}", response_class=HTMLResponse)
+    async def read_item(request: Request, id: str):
+        return templates.TemplateResponse(
+            request=request, 
+            name="item.html", 
+            context={"id": id}
         )
 
-    except KeyDoesNotExist:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid API key"
-        )
+    ### These are dummy routes to validate the sqlalchemy-signing library in development
+    @app.get("/debug/create")
+    async def create_key():
+        key = signatures.write_key()
+        return {"key": key}
 
-    except ScopeMismatch:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid API key"
-        )
+    @app.get("/debug/get")
+    async def get_key_details(key: str):
+        key_details = signatures.get_key(key)
+        return {"key": key_details}
 
-    except KeyExpired:
-        raise HTTPException(
-            status_code=401,
-            detail="API key expired"
-        )
+    @app.get("/debug/verify")
+    async def verify_key_details(key: str = Depends(X_API_KEY)):
 
+        try:
+            verify = signatures.verify_key(key, scope=[])
 
+        except RateLimitExceeded:
+            raise HTTPException(
+                status_code=429,
+                detail="Rate limit exceeded"
+            )
 
+        except KeyDoesNotExist:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid API key"
+            )
 
-    return {"valid": verify}
+        except ScopeMismatch:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid API key"
+            )
+
+        except KeyExpired:
+            raise HTTPException(
+                status_code=401,
+                detail="API key expired"
+            )
+
+        return {"valid": verify}
 
 
 ##########################
@@ -209,9 +229,44 @@ async def verify_key_details(key: str = Depends(header_scheme)):
 ##########################
 
 # Create form
-@app.post("/api/form/create", dependencies=[Depends(api_key_auth)])
-async def api_form_create(key: str = Depends(X_API_KEY)):
-    pass
+@app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth)])
+async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: Dict = Body(...)):
+
+    if form_name not in form_config:
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    FormModel = FormModels[form_name]
+
+    # form_submission = FormModel(**body)
+
+    # try:
+    #     form_submission = FormModel(**body)
+    # except ValidationError as e:
+    #     raise HTTPException(status_code=400, detail={"error": e.errors(), "message": "Validation failed for the submitted data"})
+
+
+
+    # parsed_content = reconstruct_form_data(body, example_form_config[form_name])
+
+    # # Here we validate and coerce data into its proper type
+    form_data = FormModel.parse_obj(body)
+    # form_data = FormModel.parse_obj(parsed_content)
+
+    # return jsonify({
+    #     "result": "success", 
+    #     "uncoerced_content": parsed_content,
+    #     "type_safe_content": form_data.model_dump_json(),
+    #     "data_model_repr": str(form_data),
+    #     "type_safe_content_dict": form_data.model_dump(),
+    # }), 200
+
+
+    print (form_data.model_dump_json())
+
+    # Process the validated form submission as needed
+    document_id = DocumentDatabase.create_document(form_name=form_name, json_data=form_data.model_dump_json())
+
+    return {"message": "Form submission received and validated", "data": form_data.model_dump_json()}
 
 # Read one form
     # @app.get("/api/form/read_one")

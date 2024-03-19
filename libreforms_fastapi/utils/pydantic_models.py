@@ -77,7 +77,7 @@ example_form_config = {
         },
         "file_input": {
             "input_type": "file",
-            "output_type": Optional,
+            "output_type": Optional[bytes],
             "field_name": "file_input",
             "options": None,
             "validators": [],
@@ -128,8 +128,74 @@ def generate_html_form(fields: dict) -> List[str]:
 
 
 
+def generate_pydantic_models(form_config: dict):
+    """
+    Dynamically generates Pydantic models based on a specified form configuration. Each form is represented as a model, 
+    with fields defined according to the configuration provided in `form_config`. This allows for the dynamic validation 
+    of data according to administratively defined forms. Each field's type, default value, and optionality are considered 
+    in the model creation process.
 
-def generate_pydantic_models(form_config):
+    Parameters
+    ----------
+    form_config : dict
+        A dictionary containing the form configurations, where each key is a form name and its value is another dictionary
+        mapping field names to their specifications. Each field specification must at least include 'output_type' for the 
+        field's data type, and may optionally include a 'default' value. If a 'default' value is not provided, the field 
+        is treated as optional.
+
+        Example:
+        {
+            "form_name": {
+                "field_name": {
+                    "output_type": Type,
+                    "default": Any,  # Optional
+                },
+                ...
+            },
+            ...
+        }
+
+    Returns
+    -------
+    dict
+        A dictionary where each key is a form name and its value is a dynamically created Pydantic model class. These models
+        can then be used to validate data according to the defined form configurations.
+
+    Raises
+    ------
+    TypeError
+        If an unrecognized type is provided in the form configuration, though this is primarily handled through Pydantic's
+        own type validation mechanisms.
+
+    Example Usage
+    -------------
+    form_config = {
+        "contact_form": {
+            "name": {
+                "output_type": str,
+                "default": "John Doe"
+            },
+            "age": {
+                "output_type": int,
+                # No default implies optional
+            },
+            ...
+        }
+    }
+    models = generate_pydantic_models(form_config)
+    ContactFormModel = models["contact_form"]
+    form_data = {"name": "Jane Doe", "age": 30}
+    validated_data = ContactFormModel(**form_data)
+
+    A quick note
+    -----
+    The function dynamically sets fields as optional if no default value is provided, unless the field is explicitly
+    marked as `Optional[Type]`. It also allows for arbitrary types to be used within the models through the
+    `arbitrary_types_allowed` configuration.
+
+    This function is designed for use in applications where form fields and validation rules are configurable and 
+    not known until runtime, providing flexibility in handling user submissions.
+    """
     models = {}
 
     for form_name, fields in form_config.items():
@@ -140,19 +206,21 @@ def generate_pydantic_models(form_config):
             default = field_info.get("default", ...)
             
             # Ensure Optional is always used with a specific type
-            if default is ... and python_type != Optional:  # Check if there's no default and it's not already Optional
+            if default is ... and python_type != Optional:
                 python_type = Optional[python_type]
             
             field_definitions[field_name] = (python_type, default)
             
-        # Creating the model dynamically with arbitrary types allowed
-        model_config = ConfigDict(arbitrary_types_allowed=True)
-        model = create_model(form_name, __config__=model_config, **field_definitions)
+        # Creating the model dynamically, allowing arbitrary types
+        class Config:
+            arbitrary_types_allowed = True
+        
+        model = create_model(form_name, __config__=Config, **field_definitions)
         models[form_name] = model
     
     return models
 
-def reconstruct_form_data(request, form_fields):
+def __reconstruct_form_data(request, form_fields):
     """
     This repackages request data into a format that pydantic will be able to understand.
 
@@ -170,14 +238,14 @@ def reconstruct_form_data(request, form_fields):
 
     reconstructed_form_data = {}
 
-    for field in list(request.form):
+    for field in list(request):
 
         # Skip field if it's not supposed to be here
         if not field in form_fields:
             continue
 
         field_config = form_fields[field]
-        reconstructed_form_data[field] = request.form.getlist(field)
+        reconstructed_form_data[field] = request[field]
 
         target_type = form_fields[field]['output_type']
 

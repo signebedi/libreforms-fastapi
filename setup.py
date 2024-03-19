@@ -36,11 +36,11 @@ setup(
     packages=find_packages(),
     install_requires=install_requires,
     classifiers=[
-        'Programming Language :: Python :: 3.8',
+        'Programming Language :: Python :: 3.10',
         'License :: OSI Approved :: GNU Affero General Public License v3',
         'Operating System :: OS Independent',
     ],
-    python_requires='>=3.8',
+    python_requires='>=3.10',
     entry_points={
         'console_scripts': [
             'libreformsctl=libreforms_fastapi.cli.__init__:cli',
