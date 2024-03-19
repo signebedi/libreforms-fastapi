@@ -3,13 +3,16 @@ from datetime import datetime, timedelta
 from markupsafe import escape
 
 from fastapi import (
-    FastAPI, 
+    FastAPI,
     Request,
     HTTPException,
+    BackgroundTasks,
+    Depends,
 )
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from fastapi.security import APIKeyHeader
 
 from sqlalchemy import (
     create_engine, 
@@ -22,6 +25,7 @@ from sqlalchemy_signing import (
     RateLimitExceeded, 
     KeyDoesNotExist, 
     KeyExpired,
+    ScopeMismatch,
 )
 
 from libreforms_fastapi.utils.smtp import Mailer
@@ -100,6 +104,42 @@ signatures = Signatures(config.SQLALCHEMY_DATABASE_URI, byte_len=32,
 )
 
 
+# Here we define an API key header for the api view functions.
+X_API_KEY = APIKeyHeader(name="X-API-Key")
+
+# See https://stackoverflow.com/a/72829690/13301284 and
+# https://fastapi.tiangolo.com/reference/security/?h=apikeyheader
+def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
+    """ takes the X-API-Key header and validates it"""
+    try:
+        verify = signatures.verify_key(key, scope=['api_key'])
+
+    except RateLimitExceeded:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded"
+        )
+
+    except KeyDoesNotExist:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
+
+    except ScopeMismatch:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
+
+    except KeyExpired:
+        raise HTTPException(
+            status_code=401,
+            detail="API key expired"
+        )
+
+
+
 def get_db():
     db = SessionLocal()
     try:
@@ -129,19 +169,37 @@ async def get_key_details(key: str):
     return {"key": key_details}
 
 @app.get("/verify")
-async def verify_key_details(key: str):
+async def verify_key_details(key: str = Depends(header_scheme)):
 
     try:
         verify = signatures.verify_key(key, scope=[])
 
     except RateLimitExceeded:
-        return {'error': 'Rate limit exceeded'}, 429
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded"
+        )
 
     except KeyDoesNotExist:
-        return {'error': 'Invalid API key'}, 401
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
+
+    except ScopeMismatch:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
 
     except KeyExpired:
-        return {'error': 'API key expired'}, 401
+        raise HTTPException(
+            status_code=401,
+            detail="API key expired"
+        )
+
+
+
 
     return {"valid": verify}
 
@@ -151,8 +209,9 @@ async def verify_key_details(key: str):
 ##########################
 
 # Create form
-    # @app.post("/api/form/create")
-    # async def api_form_create():
+@app.post("/api/form/create", dependencies=[Depends(api_key_auth)])
+async def api_form_create(key: str = Depends(X_API_KEY)):
+    pass
 
 # Read one form
     # @app.get("/api/form/read_one")
@@ -164,9 +223,9 @@ async def verify_key_details(key: str):
     # async def api_form_read_many():
 
 # Update form
-# # *** Should we use PATCH instead of PUT? In libreForms-flask, we 
-# only pass the changed details ... But maybe pydantic can handle 
-# the journaling and metadata.
+# # *** Should we use PATCH instead of PUT? In libreForms-flask, we only pass 
+# the changed details ... But maybe pydantic can handle  the journaling and 
+# metadata. See https://github.com/signebedi/libreforms-fastapi/issues/20.
     # @app.put("/api/form/update") 
     # async def api_form_update():
 
