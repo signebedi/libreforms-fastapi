@@ -1,0 +1,9 @@
+# Project-specific files
+exclude/
+.env
+.venv
+env/
+venv/
+ENV/
+venv
+__pycache__/
