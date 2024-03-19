@@ -36,7 +36,7 @@ from libreforms_fastapi.utils.config import (
 from libreforms_fastapi.utils.sqlalchemy_models import (
     Base,
     User,
-    UsageLog,
+    TransactionLog,
 )
 
 from libreforms_fastapi.utils.scripts import (
@@ -51,13 +51,13 @@ app = FastAPI()
 # templates = Jinja2Templates(directory="templates")
 
 # Here we set the application config
-with os.environ.get('ENVIRONMENT', 'development') as env:
-    if env == 'production':
-        config = ProductionConfig()
-    elif env == 'testing':
-        config = TestingConfig()
-    else:
-        config = DevelopmentConfig()
+_env = os.environ.get('ENVIRONMENT', 'development')
+if _env == 'production':
+    config = ProductionConfig()
+elif _env == 'testing':
+    config = TestingConfig()
+else:
+    config = DevelopmentConfig()
 
 if config.DEBUG:
     print(config)
@@ -112,7 +112,9 @@ def get_db():
 @app.get("/items/{id}", response_class=HTMLResponse)
 async def read_item(request: Request, id: str):
     return templates.TemplateResponse(
-        request=request, name="item.html", context={"id": id}
+        request=request, 
+        name="item.html", 
+        context={"id": id}
     )
 
 ### These are dummy routes to validate the sqlalchemy-signing library in development
@@ -149,16 +151,32 @@ async def verify_key_details(key: str):
 ##########################
 
 # Create form
+    # @app.post("/api/form/create")
+    # async def api_form_create():
 
 # Read one form
+    # @app.get("/api/form/read_one")
+    # async def api_form_read_one():
+
 
 # Read many forms
+    # @app.get("/api/form/read_many")
+    # async def api_form_read_many():
 
 # Update form
+# # *** Should we use PATCH instead of PUT? In libreForms-flask, we 
+# only pass the changed details ... But maybe pydantic can handle 
+# the journaling and metadata.
+    # @app.put("/api/form/update") 
+    # async def api_form_update():
 
 # Delete form
+    # @app.delete("/api/form/delete")
+    # async def api_form_delete():
 
 # Approve form
+    # @app.patch("/api/form/approve")
+    # async def api_form_approve():
 
 
 ##########################
@@ -166,48 +184,67 @@ async def verify_key_details(key: str):
 ##########################
 
 # Create user
+    # @app.post("/api/auth/create")
+    # async def api_user_create():
 
-# Change user password
+# Change user password / usermod
+    # @app.patch("/api/auth/update")
+    # async def api_user_update():
 
 # Rotate user API key
+    # @app.patch("/api/auth/rotate_key")
+    # async def api_user_rotate_key():
 
 ##########################
 ### API Routes - Validators
 ##########################
 
 # Validate form field
+    # @app.get("/api/validate/field")
+    # async def api_validate_field():
 
 ##########################
 ### UI Routes - Forms
 ##########################
 
 # Create form
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
+    # @app.get("/ui/form/create")
+    # async def ui_form_create():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
+
 
 # Read one form
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
+    # @app.get("/ui/form/read_one")
+    # async def ui_form_read_one():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
 # Read many forms
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
-
+    # @app.get("/ui/form/read_many")
+    # async def ui_form_read_many():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 # Update form
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
-
+    # @app.get("/ui/form/update")
+    # async def ui_form_update():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 # Delete form
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
-
+    # @app.get("/ui/form/delete")
+    # async def ui_form_delete():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 # Approve form
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
+    # @app.get("/ui/form/approve")
+    # async def ui_form_approve():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
+
 
 
 ##########################
@@ -215,33 +252,60 @@ async def verify_key_details(key: str):
 ##########################
 
 # Create user
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
+    # @app.get("/ui/auth/create")
+    # async def ui_auth_create():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
+
 
 
 # Forgot password
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
+    # @app.get("/ui/auth/forgot_password")
+    # async def ui_auth_forgot_password():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
 # Verify email
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
+    # @app.get("/ui/auth/verify_email")
+    # async def ui_auth_verify_email():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
 # Login
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
+    # @app.get("/ui/auth/login")
+    # async def ui_auth_login():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
 ##########################
 ### UI Routes - Admin
 ##########################
-    # if not config.UI_ENABLED:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+# Admin logic requires us to implement current_user logic, see
+# https://github.com/signebedi/libreforms-fastapi/issues/19.
+# if current_user.group != "admin":
+#     raise HTTPException(status_code=404, detail="This page does not exist")
 
 
-    # This logic requires us to implement current_user logic, see
-    # https://github.com/signebedi/libreforms-fastapi/issues/19.
-    # if current_user.group != "admin":
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
+# Manage users
+    # @app.get("/ui/admin/manage_users")
+    # async def ui_admin_manage_users():
+    #     if not config.UI_ENABLED:
+    #         raise HTTPException(status_code=404, detail="This page does not exist")
+
+# Transaction Statistics
+# *** We would pull this from the TransactionLog. This can also be the basis 
+# for a "recent activity" UI route.
+
+# Toggle user active status
+
+# Site Config
+
+# SMTP Config
+
+# Database Config
+
+# Site Reload

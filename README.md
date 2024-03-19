@@ -11,7 +11,7 @@ git clone https://github.com/signebedi/libreforms-fastapi.git
 cd libreforms-fastapi
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements/base.txt
+pip install -e .
 uvicorn libreforms_fastapi.app:app --reload # this will run the development server
 ```
 
