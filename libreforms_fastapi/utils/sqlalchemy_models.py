@@ -32,7 +32,7 @@ class User(Base):
     opt_out = Column(Boolean, nullable=False, default=True)
     site_admin = Column(Boolean, nullable=False, default=False)
 
-    usage_log = relationship("TransactionLog", order_by="TransactionLog.id", back_populates="user")
+    transaction_log = relationship("TransactionLog", order_by="TransactionLog.id", back_populates="user")
 
     
 # Many to one relationship with User table

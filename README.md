@@ -12,7 +12,7 @@ cd libreforms-fastapi
 python3 -m venv venv
 source venv/bin/activate
 pip install -e .
-uvicorn libreforms_fastapi.app:app --reload # this will run the development server
+uvicorn --config libreforms_fastapi/utils/uvicorn_config.json libreforms_fastapi.app:app --reload # this will run the development server
 ```
 
 This application runs out of `/opt`. At this time, it's hard-coded to that working directory but future implementations might make the application installable and general with respect to the installation directory, [see this issue](https://github.com/signebedi/libreforms-fastapi/issues/13). Stay tuned for more.

@@ -43,7 +43,7 @@ setup(
     python_requires='>=3.8',
     entry_points={
         'console_scripts': [
-            'libreformsctl=libreforms_fastapit.cli.__init__:main',
+            'libreformsctl=libreforms_fastapi.cli.__init__:cli',
         ],
     },
 )
