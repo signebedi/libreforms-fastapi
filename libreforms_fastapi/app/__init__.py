@@ -1,4 +1,4 @@
-import re, os, json, tempfile
+import re, os, json, tempfile, logging, sys
 from datetime import datetime, timedelta
 from markupsafe import escape
 from typing import Dict, Optional
@@ -103,6 +103,20 @@ app = FastAPI(
 )
 
 
+# Set up logger, see https://github.com/signebedi/libreforms-fastapi/issues/26,
+# based on https://stackoverflow.com/a/77007723/13301284. See also:
+# https://github.com/tiangolo/fastapi/issues/1508.
+
+# logger = logging.getLogger(__name__)
+# logger.setLevel(logging.DEBUG)
+# stream_handler = logging.StreamHandler(sys.stdout)
+# log_formatter = logging.Formatter("%(asctime)s [%(processName)s: %(process)d] [%(threadName)s: %(thread)d] [%(levelname)s] %(name)s: %(message)s")
+# stream_handler.setFormatter(log_formatter)
+# logger.addHandler(stream_handler)
+logger = logging.getLogger('uvicorn.error')
+# logger.info('API is starting up')
+
+
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 # templates = Jinja2Templates(directory="templates")
 
@@ -115,6 +129,8 @@ mailer = Mailer(
     password = config.SMTP_PASSWORD,
     from_address = config.SMTP_FROM_ADDRESS,
 )
+if config.SMTP_ENABLED:
+    logger.info('SMTP has been initialized')
 
 # Create the database engine, see
 # https://fastapi.tiangolo.com/tutorial/sql-databases/#create-the-sqlalchemy-parts
@@ -129,7 +145,6 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 Base.metadata.create_all(bind=engine)
 
-
 # Initialize the signing table
 signatures = Signatures(config.SQLALCHEMY_DATABASE_URI, byte_len=32, 
     # Pass the rate limiting settings from the app config
@@ -138,6 +153,9 @@ signatures = Signatures(config.SQLALCHEMY_DATABASE_URI, byte_len=32,
     rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
 )
 
+logger.info('Relational database has been initialized')
+
+
 # Yield the pydantic form model
 form_config = example_form_config
 FormModels = generate_pydantic_models(form_config)
@@ -145,8 +163,10 @@ FormModels = generate_pydantic_models(form_config)
 # Initialize the document database
 if config.MONGODB_ENABLED:
     DocumentDatabase = ManageMongoDB(config=form_config, timezone=config.TIMEZONE)
+    logger.info('MongoDB has been initialized')
 else: 
     DocumentDatabase = ManageTinyDB(config=form_config, timezone=config.TIMEZONE)
+    logger.info('TinyDB has been initialized')
 
 # Here we define an API key header for the api view functions.
 X_API_KEY = APIKeyHeader(name="X-API-Key")
@@ -182,8 +202,6 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
             detail="API key expired"
         )
 
-
-
 def get_db():
     db = SessionLocal()
     try:
@@ -193,7 +211,7 @@ def get_db():
 
 if config.DEBUG:
     ### This is a dummy route to validate jinja2 templates
-    @app.get("/debug/items/{id}", response_class=HTMLResponse)
+    @app.get("/debug/items/{id}", response_class=HTMLResponse, include_in_schema=False)
     async def read_item(request: Request, id: str):
         return templates.TemplateResponse(
             request=request, 
@@ -202,17 +220,17 @@ if config.DEBUG:
         )
 
     ### These are dummy routes to validate the sqlalchemy-signing library in development
-    @app.get("/debug/create")
+    @app.get("/debug/create", include_in_schema=False)
     async def create_key():
         key = signatures.write_key()
         return {"key": key}
 
-    @app.get("/debug/get")
+    @app.get("/debug/get", include_in_schema=False)
     async def get_key_details(key: str):
         key_details = signatures.get_key(key)
         return {"key": key_details}
 
-    @app.get("/debug/verify")
+    @app.get("/debug/verify", include_in_schema=False)
     async def verify_key_details(key: str = Depends(X_API_KEY)):
 
         try:
@@ -315,14 +333,19 @@ async def api_auth_create(user_request: CreateUserRequest, session: SessionLocal
     # Check if user or email already exists
     # See https://stackoverflow.com/a/9270432/13301284 for HTTP Response
     existing_user = session.query(User).filter(User.username.ilike(user_request.username)).first()
-    # if existing_user:
+    if existing_user:
+        # Consider adding IP tracking to failed attempt
+        logger.warning(f'Attempt to register user {user_request.username} but user already exists')
     #     raise HTTPException(status_code=409, detail=f"Username {user_request.username} is already registered")
 
+        raise HTTPException(status_code=409, detail="Registration failed. The provided information cannot be used.")
+
     existing_email = session.query(User).filter(User.email.ilike(user_request.email)).first()
-    # if existing_email:
+    if existing_email:
+        # Consider adding IP tracking to failed attempt
+        logger.warning(f'Attempt to register email {user_request.email} but email is already registered')
     #     raise HTTPException(status_code=409, detail=f"Email {user_request.email} is already registered")
 
-    if existing_user or existing_email:
         if config.SMTP_ENABLED:
 
             _subject=f"{config.SITE_NAME} Suspicious Activity"
