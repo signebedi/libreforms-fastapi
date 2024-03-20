@@ -1,5 +1,6 @@
 import os
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
@@ -21,7 +22,7 @@ Base = declarative_base()
 
 
 def tz_aware_datetime():
-    return datetime.now(ZoneInfo(config.TIMEZONE))
+    return datetime.now(config.TIMEZONE)
 
 class User(Base):
     __tablename__ = 'user'

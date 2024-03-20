@@ -4,6 +4,7 @@ from typing import List, Optional, Dict, Type
 
 from pydantic import (
     BaseModel,
+    Field,
     ValidationError,
     validator,
     create_model,
@@ -17,20 +18,20 @@ from libreforms_fastapi.utils.config import yield_config
 _env = os.environ.get('ENVIRONMENT', 'development')
 config = yield_config(_env)
 
-class UserBase(BaseModel):
+class CreateUserRequest(BaseModel):
     # username: constr(pattern=config.USERNAME_REGEX)
     # password: constr(pattern=config.PASSWORD_REGEX)
 
-    username: str
+    username: str = Field(..., min_length=2, max_length=100)
 
     @validator('username')
     def username_pattern(cls, value):
         pattern = re.compile(config.USERNAME_REGEX)
         if not pattern.match(value):
             raise ValueError(config.USERNAME_HELPER_TEXT)
-        return value
+        return value.lower()
 
-    password: str
+    password: str = Field(..., min_length=8)
 
     @validator('password')
     def password_pattern(cls, value):
@@ -39,8 +40,23 @@ class UserBase(BaseModel):
             raise ValueError(config.PASSWORD_HELPER_TEXT)
         return value
 
+    verify_password: str = Field(..., min_length=8)
+
+    # Custom method to validate that the two passwords match
+    @validator('verify_password')
+    def passwords_match(cls, v, values, **kwargs):
+        if 'password' in values and v != values['password']:
+            raise ValueError('Passwords do not match')
+        return v
+        
     email: EmailStr
     opt_out: bool = False
+
+    # def _passwords_match(self):
+    #     if password == verify_password:
+    #         # raise ValueError("Passwords do not match")
+    #         return True
+    #     return False 
 
 # Example form configuration with default values set
 example_form_config = {

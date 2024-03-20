@@ -1,7 +1,7 @@
 import re, os, json, tempfile
 from datetime import datetime, timedelta
 from markupsafe import escape
-from typing import Dict
+from typing import Dict, Optional
 
 from fastapi import (
     FastAPI,
@@ -15,6 +15,7 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import APIKeyHeader
+
 
 from sqlalchemy import (
     create_engine, 
@@ -59,7 +60,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     example_form_config,
     generate_html_form,
     generate_pydantic_models,
-    UserBase,
+    CreateUserRequest,
 )
 
 app = FastAPI()
@@ -271,8 +272,63 @@ async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: D
 ##########################
 
 # Create user
-    # @app.post("/api/auth/create")
-    # async def api_user_create():
+@app.post("/api/auth/create")
+# async def api_user_create(username: str, password: str, verify_password: str, email: str, opt_out: Optional[bool]):
+async def api_user_create(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+
+    if config.DISABLE_NEW_USERS:
+        raise HTTPException(status_code=404)
+
+    # user_request = UserBase(username, password, email, opt_out)
+
+    # if not user_request._passwords_match():
+    #     # See https://stackoverflow.com/a/1364545/13301284 for HTTP Response    
+    #     raise HTTPException(status_code=400, detail=f"Passwords do not match")
+
+    # with SessionLocal() as session:
+    # Check if user or email already exists
+    # See https://stackoverflow.com/a/9270432/13301284 for HTTP Response
+    existing_user = session.query(User).filter(User.username.ilike(user_request.username)).first()
+    if existing_user:
+        raise HTTPException(status_code=409, detail=f"Username {user_request.username} is already registered")
+
+    existing_email = session.query(User).filter(User.email.ilike(user_request.email)).first()
+    if existing_email:
+        raise HTTPException(status_code=409, detail=f"Email {user_request.email} is already registered")
+
+    new_user = User(
+        email=user_request.email, 
+        username=user_request.username, 
+        password=generate_password_hash(user_request.password),
+        active=config.REQUIRE_EMAIL_VERIFICATION == False,
+        opt_out=opt_out if config.COLLECT_USAGE_STATISTICS else True,
+    ) 
+
+    # Create the users API key. If Celery disabled, never expire keys 
+    expiration = 8760
+    api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=user_request.email)
+    new_user.api_key = api_key
+
+    session.add(new_user)
+    session.commit()
+
+    # Email notification
+    subject=f"{config.SITE_NAME} User Registered"
+
+    if config.REQUIRE_EMAIL_VERIFICATION:
+
+        key = signatures.write_key(scope=['email_verification'], expiration=48, active=True, email=email)
+        content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}. Please verify your email by clicking the following link: {config.DOMAIN}/verify/{key}. Please note this link will expire after 48 hours."
+
+    else:
+        content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}."
+
+    if config.SMTP_ENABLED:
+        # Eventually, wrap this in an async function, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/25
+        mailer.send_mail(subject=subject, content=content, to_address=email)
+
+    return {"status": "success", "message": f"Successfully created new user {user_request.username}"}
 
 # Change user password / usermod
     # @app.patch("/api/auth/update")
