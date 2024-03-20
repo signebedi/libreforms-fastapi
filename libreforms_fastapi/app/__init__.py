@@ -298,9 +298,9 @@ async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: D
 ##########################
 
 # Create user
-@app.post("/api/auth/create")
-# async def api_user_create(username: str, password: str, verify_password: str, email: str, opt_out: Optional[bool]):
-async def api_user_create(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+@app.post("/api/auth/create", include_in_schema=config.DISABLE_NEW_USERS==False)
+# async def api_auth_create(username: str, password: str, verify_password: str, email: str, opt_out: Optional[bool]):
+async def api_auth_create(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
 
     if config.DISABLE_NEW_USERS:
         raise HTTPException(status_code=404)
@@ -369,11 +369,11 @@ async def api_user_create(user_request: CreateUserRequest, session: SessionLocal
 
 # Change user password / usermod
     # @app.patch("/api/auth/update")
-    # async def api_user_update():
+    # async def api_auth_update():
 
 # Rotate user API key
     # @app.patch("/api/auth/rotate_key")
-    # async def api_user_rotate_key():
+    # async def api_auth_rotate_key():
 
 ##########################
 ### API Routes - Validators
@@ -382,6 +382,27 @@ async def api_user_create(user_request: CreateUserRequest, session: SessionLocal
 # Validate form field
     # @app.get("/api/validate/field/{form_name}")
     # async def api_validate_field():
+
+
+##########################
+### API Routes - Admin
+##########################
+
+# Get all users
+    # > paired with manage users admin UI route
+
+# Add new user
+    # > paired with add newadmin UI route
+
+
+# Get Transaction Statistics
+    # Paired with the Transaction Statistics
+
+# Toggle user active status
+
+# Update application config
+
+# Trigger site reload
 
 ##########################
 ### UI Routes - Forms
@@ -475,6 +496,8 @@ async def api_user_create(user_request: CreateUserRequest, session: SessionLocal
     # async def ui_admin_manage_users():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
+
+# Add new user
 
 # Transaction Statistics
 # *** We would pull this from the TransactionLog. This can also be the basis 
