@@ -63,8 +63,8 @@ def yield_config(_env=env):
 class Config(BaseSettings):
     ENVIRONMENT:str = env
     CONFIG_FILE_PATH:str = env_file_path
-    SITE_NAME:str = os.getenv('SITE_NAME', '')
-    SITE_SOURCE_URL:str = os.getenv('SITE_SOURCE_URL', '')
+    SITE_NAME:str = os.getenv('SITE_NAME', 'libreforms_fastapi')
+    SITE_SOURCE_URL:str = os.getenv('SITE_SOURCE_URL', 'https://github.com/signebedi/libreforms-fastapi')
     HOMEPAGE_CONTENT:str = Markup(os.getenv('HOMEPAGE_CONTENT', ''))
     PRIVACY_MESSAGE:str = Markup(os.getenv('PRIVACY_MESSAGE', ''))
     DOMAIN:str = os.getenv('DOMAIN', 'http://127.0.0.1:5000')

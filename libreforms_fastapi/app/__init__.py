@@ -31,6 +31,15 @@ from sqlalchemy_signing import (
     ScopeMismatch,
 )
 
+from libreforms_fastapi.__metadata__ import (
+    __version__,
+    __name__,
+    __license__,
+    __maintainer__,
+    __email__,
+    __url__,
+)
+
 from libreforms_fastapi.utils.smtp import Mailer
 
 from libreforms_fastapi.utils.config import (
@@ -63,11 +72,6 @@ from libreforms_fastapi.utils.pydantic_models import (
     CreateUserRequest,
 )
 
-app = FastAPI()
-
-# app.mount("/static", StaticFiles(directory="static"), name="static")
-# templates = Jinja2Templates(directory="templates")
-
 # Here we set the application config
 _env = os.environ.get('ENVIRONMENT', 'development')
 config = yield_config(_env)
@@ -79,6 +83,28 @@ if config.DEBUG:
 # Run our assumptions check
 assert check_configuration_assumptions(config=config)
 
+# Built using instructions at https://fastapi.tiangolo.com/tutorial/metadata/,
+# see https://github.com/signebedi/libreforms-fastapi/issues/31.
+app = FastAPI(
+    title=config.SITE_NAME,
+    # description=description,
+    summary="FastAPI implementation of the libreForms spec",
+    version=__version__,
+    # terms_of_service="http://example.com/terms/",
+    contact={
+        "name": __maintainer__,
+        "url": __url__,
+        "email": __email__,
+    },
+    license_info={
+        "name": __license__,
+        "url": "https://github.com/signebedi/libreforms-fastapi/blob/master/LICENSE",
+    },
+)
+
+
+# app.mount("/static", StaticFiles(directory="static"), name="static")
+# templates = Jinja2Templates(directory="templates")
 
 # Instantiate the Mailer object
 mailer = Mailer(
