@@ -289,12 +289,23 @@ async def api_user_create(user_request: CreateUserRequest, session: SessionLocal
     # Check if user or email already exists
     # See https://stackoverflow.com/a/9270432/13301284 for HTTP Response
     existing_user = session.query(User).filter(User.username.ilike(user_request.username)).first()
-    if existing_user:
-        raise HTTPException(status_code=409, detail=f"Username {user_request.username} is already registered")
+    # if existing_user:
+    #     raise HTTPException(status_code=409, detail=f"Username {user_request.username} is already registered")
 
     existing_email = session.query(User).filter(User.email.ilike(user_request.email)).first()
-    if existing_email:
-        raise HTTPException(status_code=409, detail=f"Email {user_request.email} is already registered")
+    # if existing_email:
+    #     raise HTTPException(status_code=409, detail=f"Email {user_request.email} is already registered")
+
+    if existing_user or existing_email:
+        if config.SMTP_ENABLED:
+
+            _subject=f"{config.SITE_NAME} Suspicious Activity"
+            _content=f"This email serves to notify you that there was an attempt to register a user with the same username or email as the account registered to you at {config.DOMAIN}. If this was you, you may safely disregard this email. If it was not you, you should consider contacting your system administrator and changing your password."
+            # Eventually, wrap this in an async function, see
+            # https://github.com/signebedi/libreforms-fastapi/issues/25
+            mailer.send_mail(subject=_subject, content=_content, to_address=user_request.email)
+
+        raise HTTPException(status_code=409, detail="Registration failed. The provided information cannot be used.")
 
     new_user = User(
         email=user_request.email, 
@@ -326,7 +337,7 @@ async def api_user_create(user_request: CreateUserRequest, session: SessionLocal
     if config.SMTP_ENABLED:
         # Eventually, wrap this in an async function, see
         # https://github.com/signebedi/libreforms-fastapi/issues/25
-        mailer.send_mail(subject=subject, content=content, to_address=email)
+        mailer.send_mail(subject=subject, content=content, to_address=user_request.email)
 
     return {"status": "success", "message": f"Successfully created new user {user_request.username}"}
 
