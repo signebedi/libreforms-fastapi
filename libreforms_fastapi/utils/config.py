@@ -5,15 +5,18 @@ separate source to help preserve the generalizability of this logic.
 """
 
 import os, shutil
+from markupsafe import Markup
 from dotenv import (
     load_dotenv, 
     dotenv_values, 
     set_key
 )
+
 from datetime import timedelta, datetime
-from markupsafe import Markup
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
 from pydantic_settings import BaseSettings
-from pydantic import validator, ValidationError
+from pydantic import validator, ValidationError, constr
 from pydantic.networks import MongoDsn
 
 from libreforms_fastapi.utils.scripts import check_configuration_assumptions
@@ -60,6 +63,20 @@ class Config(BaseSettings):
     DOMAIN:str = os.getenv('DOMAIN', 'http://127.0.0.1:5000')
     DEBUG:bool = os.getenv('DEBUG', 'False') == 'True'
     SECRET_KEY:str = os.getenv('SECRET_KEY', 'supersecret_dev_key')
+
+    TIMEZONE: constr(strip_whitespace=True) = os.getenv('TIMEZONE', 'America/New_York')
+
+    @validator('TIMEZONE')
+    def validate_timezone(cls, v):
+        try:
+            # Attempt to create a ZoneInfo object to validate the timezone
+            tz = ZoneInfo(v)
+        except ZoneInfoNotFoundError:
+            # If the timezone is not found, raise a ValueError
+            raise ValueError(f'Invalid timezone: {v}')
+        # Return the original string value, or you could return ZoneInfo(v) to store the object
+        return tz
+
     SQLALCHEMY_DATABASE_URI:str = os.getenv('SQLALCHEMY_DATABASE_URI', f'sqlite:///{os.path.join(os.getcwd(), "instance", "app.sqlite")}')
     SQLALCHEMY_TRACK_MODIFICATIONS:bool = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False') == 'True'
     

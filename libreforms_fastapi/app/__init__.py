@@ -123,9 +123,9 @@ FormModels = generate_pydantic_models(form_config)
 
 # Initialize the document database
 if config.MONGODB_ENABLED:
-    DocumentDatabase = ManageMongoDB(config=form_config)
+    DocumentDatabase = ManageMongoDB(config=form_config, timezone=config.TIMEZONE)
 else: 
-    DocumentDatabase = ManageTinyDB(config=form_config)
+    DocumentDatabase = ManageTinyDB(config=form_config, timezone=config.TIMEZONE)
 
 # Here we define an API key header for the api view functions.
 X_API_KEY = APIKeyHeader(name="X-API-Key")
@@ -237,31 +237,10 @@ async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: D
 
     FormModel = FormModels[form_name]
 
-    # form_submission = FormModel(**body)
-
-    # try:
-    #     form_submission = FormModel(**body)
-    # except ValidationError as e:
-    #     raise HTTPException(status_code=400, detail={"error": e.errors(), "message": "Validation failed for the submitted data"})
-
-
-
-    # parsed_content = reconstruct_form_data(body, example_form_config[form_name])
-
     # # Here we validate and coerce data into its proper type
     form_data = FormModel.parse_obj(body)
-    # form_data = FormModel.parse_obj(parsed_content)
 
-    # return jsonify({
-    #     "result": "success", 
-    #     "uncoerced_content": parsed_content,
-    #     "type_safe_content": form_data.model_dump_json(),
-    #     "data_model_repr": str(form_data),
-    #     "type_safe_content_dict": form_data.model_dump(),
-    # }), 200
-
-
-    print (form_data.model_dump_json())
+    # print(form_data.model_dump_json())
 
     # Process the validated form submission as needed
     document_id = DocumentDatabase.create_document(form_name=form_name, json_data=form_data.model_dump_json())
@@ -269,27 +248,27 @@ async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: D
     return {"message": "Form submission received and validated", "data": form_data.model_dump_json()}
 
 # Read one form
-    # @app.get("/api/form/read_one")
+    # @app.get("/api/form/read_one/{form_name}")
     # async def api_form_read_one():
 
 
 # Read many forms
-    # @app.get("/api/form/read_many")
+    # @app.get("/api/form/read_many/{form_name}")
     # async def api_form_read_many():
 
 # Update form
 # # *** Should we use PATCH instead of PUT? In libreForms-flask, we only pass 
 # the changed details ... But maybe pydantic can handle  the journaling and 
 # metadata. See https://github.com/signebedi/libreforms-fastapi/issues/20.
-    # @app.put("/api/form/update") 
+    # @app.put("/api/form/update/{form_name}") 
     # async def api_form_update():
 
 # Delete form
-    # @app.delete("/api/form/delete")
+    # @app.delete("/api/form/delete/{form_name}")
     # async def api_form_delete():
 
 # Approve form
-    # @app.patch("/api/form/approve")
+    # @app.patch("/api/form/approve/{form_name}")
     # async def api_form_approve():
 
 
@@ -314,7 +293,7 @@ async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: D
 ##########################
 
 # Validate form field
-    # @app.get("/api/validate/field")
+    # @app.get("/api/validate/field/{form_name}")
     # async def api_validate_field():
 
 ##########################
@@ -322,39 +301,39 @@ async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: D
 ##########################
 
 # Create form
-    # @app.get("/ui/form/create")
+    # @app.get("/ui/form/create/{form_name}")
     # async def ui_form_create():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
 # Read one form
-    # @app.get("/ui/form/read_one")
+    # @app.get("/ui/form/read_one/{form_name}")
     # async def ui_form_read_one():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
 # Read many forms
-    # @app.get("/ui/form/read_many")
+    # @app.get("/ui/form/read_many/{form_name}")
     # async def ui_form_read_many():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 # Update form
-    # @app.get("/ui/form/update")
+    # @app.get("/ui/form/update/{form_name}")
     # async def ui_form_update():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 # Delete form
-    # @app.get("/ui/form/delete")
+    # @app.get("/ui/form/delete/{form_name}")
     # async def ui_form_delete():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 # Approve form
-    # @app.get("/ui/form/approve")
+    # @app.get("/ui/form/approve/{form_name}")
     # async def ui_form_approve():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")

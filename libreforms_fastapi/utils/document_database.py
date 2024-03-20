@@ -1,5 +1,6 @@
 import os, shutil, json
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from tinydb import TinyDB, Query
 from abc import ABC, abstractmethod
 
@@ -10,11 +11,12 @@ class CollectionDoesNotExist(Exception):
         super().__init__(message)
 
 class ManageDocumentDB(ABC):
-    def __init__(self, config: dict):
+    def __init__(self, config: dict, timezone: ZoneInfo):
         self.config = config
 
         # Here we'll set metadata field names
         self.is_deleted_field = "_is_deleted"
+        self.timezone_field= "_timezone"
         self.created_at_field = "_created_at"
         self.last_modified_field = "_last_modified"
         self.ip_address_field = "_ip_address"
@@ -24,6 +26,9 @@ class ManageDocumentDB(ABC):
         self.approved_field = "_approved"
         self.approved_by_field = "_approved_by"
         self.approval_signature_field = "_approval_signature"
+
+        # These configs will be helpful later for managing time consistently
+        self.timezone = timezone
 
         # Finally we'll initialize the database instances
         self._initialize_database_collections()
@@ -95,11 +100,11 @@ class ManageDocumentDB(ABC):
 
 
 class ManageTinyDB(ManageDocumentDB):
-    def __init__(self, config: dict, db_path: str = "instance/"):
+    def __init__(self, config: dict, timezone: ZoneInfo, db_path: str = "instance/"):
         self.db_path = db_path
         os.makedirs(self.db_path, exist_ok=True)
 
-        super().__init__(config)
+        super().__init__(config, timezone)
 
         # Here we create a Query object to ship with the class
         self.Form = Query()
@@ -125,13 +130,14 @@ class ManageTinyDB(ManageDocumentDB):
         """Adds json data to the specified form's database."""
         self._check_form_exists(form_name)
 
-        current_timestamp = datetime.now()
+        current_timestamp = datetime.now(self.timezone)
 
         # data_dict = json.loads(json_data)
         data_dict = {
             "data": json_data,
             "metadata": {
                 self.is_deleted_field: metadata.get(self.is_deleted_field, False),
+                self.timezone_field: metadata.get(self.timezone_field, self.timezone.key),
                 self.created_at_field: metadata.get(self.created_at_field, current_timestamp.isoformat()),
                 self.last_modified_field: metadata.get(self.last_modified_field, current_timestamp.isoformat()),
                 self.ip_address_field: metadata.get(self.ip_address_field, None),

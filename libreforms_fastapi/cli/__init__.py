@@ -83,13 +83,14 @@ def prompt_bool(message, default=None):
 @click.option('--smtp-from-address', default=None, help='SMTP From Address')
 @click.option('--permanent-session-lifetime', default=360, type=int, help='Length of user sessions in minutes')
 @click.option('--disable-new-users', default=False, type=bool, help='Prevent new users from registering accounts')
+@click.option('--timezone', default="America/New_York", help='Set the application timezone')
 @click.option('--collect-usage-statistics', default=False, type=bool, help='Collect API usage statistics')
 @click.option('--ui-enabled', default=True, type=bool, help='Enable the user interface for the API')
 def cli_config(env_type, domain, site_name, secret_key, sqlalchemy_database_uri, smtp_enabled, 
                         rate_limits_enabled, rate_limits_period, rate_limits_max_requests, 
                         max_login_attempts, require_email_verification, smtp_mail_server, 
                         smtp_port, smtp_username, smtp_password, smtp_from_address, 
-                        permanent_session_lifetime, disable_new_users, 
+                        permanent_session_lifetime, disable_new_users, timezone, 
                         collect_usage_statistics, ui_enabled):
 
     if env_type.lower() == 'production':
@@ -131,6 +132,7 @@ def cli_config(env_type, domain, site_name, secret_key, sqlalchemy_database_uri,
         'DISABLE_NEW_USERS': disable_new_users,
         'COLLECT_USAGE_STATISTICS': collect_usage_statistics,
         'UI_ENABLED': ui_enabled,
+        'TIMEZONE': timezone,
     }
 
     if max_login_attempts is None:
