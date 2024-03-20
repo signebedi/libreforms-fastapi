@@ -196,7 +196,7 @@ def validate_and_write_configs(app_config, **kwargs):
         print(f"The file at {config_file_path} does not exist. Creating a new one.")
         with open(config_file_path, 'w'): pass
     else:
-        datetime_format = datetime.now().strftime("%Y%m%d%H%M%S") # This can be adjusted as needed
+        datetime_format = datetime.now(app_config.TIMEZONE).strftime("%Y%m%d%H%M%S") # This can be adjusted as needed
         backup_file_path = f"{config_file_path}.{datetime_format}"
         shutil.copy(config_file_path, backup_file_path)
         print(f"Backup of the current config file created at {backup_file_path}")

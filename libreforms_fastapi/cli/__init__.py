@@ -2,7 +2,6 @@
 This is where we will create an entrypoint for our CLI, see setup.py for more details"""
 
 import re, os, sys, json, tempfile, click, secrets, subprocess
-from datetime import datetime, timedelta
 from typing import Union
 from dotenv import set_key
 

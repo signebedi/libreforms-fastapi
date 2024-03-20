@@ -215,7 +215,7 @@ class ManageTinyDB(ManageDocumentDB):
         # Ensure the backup directory exists
         os.makedirs(backup_dir, exist_ok=True) 
 
-        timestamp = datetime.now().strftime("%Y%m%d%H%M%S")
+        timestamp = datetime.now(self.timezone).strftime("%Y%m%d%H%M%S")
         backup_filename = f"{timestamp}_{form_name}.json"
         backup_path = os.path.join(backup_dir, backup_filename)
 

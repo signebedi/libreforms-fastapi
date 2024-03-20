@@ -1,3 +1,4 @@
+import os
 from datetime import datetime
 
 from sqlalchemy.ext.declarative import declarative_base
@@ -11,7 +12,25 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
+from libreforms_fastapi.utils.config import (
+    DevelopmentConfig, 
+    ProductionConfig, 
+    TestingConfig,
+)
+
 Base = declarative_base()
+
+# Here we set the application config
+_env = os.environ.get('ENVIRONMENT', 'development')
+if _env == 'production':
+    config = ProductionConfig()
+elif _env == 'testing':
+    config = TestingConfig()
+else:
+    config = DevelopmentConfig()
+
+def tz_aware_datetime():
+    return datetime.now(ZoneInfo(config.TIMEZONE))
 
 class User(Base):
     __tablename__ = 'user'
@@ -20,10 +39,10 @@ class User(Base):
     password = Column(String(1000))
     username = Column(String(1000), unique=True)
     active = Column(Boolean)
-    created_date = Column(DateTime, nullable=False, default=datetime.utcnow)
-    last_login = Column(DateTime, nullable=True, default=datetime.utcnow)
-    locked_until = Column(DateTime, nullable=True, default=datetime.utcnow)
-    last_password_change = Column(DateTime, nullable=True, default=datetime.utcnow)
+    created_date = Column(DateTime, nullable=False, default=tz_aware_datetime)
+    last_login = Column(DateTime, nullable=True, default=tz_aware_datetime)
+    locked_until = Column(DateTime, nullable=True, default=tz_aware_datetime)
+    last_password_change = Column(DateTime, nullable=True, default=tz_aware_datetime)
     failed_login_attempts = Column(Integer, default=0)
     # api_key_id = Column(Integer, ForeignKey('signing.id'), nullable=True)
     api_key = Column(String(1000), nullable=True, unique=True)
@@ -34,13 +53,13 @@ class User(Base):
 
     transaction_log = relationship("TransactionLog", order_by="TransactionLog.id", back_populates="user")
 
-    
+
 # Many to one relationship with User table
 class TransactionLog(Base):
     __tablename__ = 'transaction_log'
     id = Column(Integer, primary_key=True)
     user_id = Column(Integer, ForeignKey('user.id'), nullable=True)
-    timestamp = Column(DateTime, nullable=False, default=datetime.utcnow)
+    timestamp = Column(DateTime, nullable=False, default=tz_aware_datetime)
     # date = Column(Date, nullable=False, default=lambda: datetime.utcnow().date())
     endpoint = Column(String(1000))
     remote_addr = Column(String(50), nullable=True)
