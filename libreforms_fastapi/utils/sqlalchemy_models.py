@@ -12,22 +12,13 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 
-from libreforms_fastapi.utils.config import (
-    DevelopmentConfig, 
-    ProductionConfig, 
-    TestingConfig,
-)
+from libreforms_fastapi.utils.config import yield_config
+
+_env = os.environ.get('ENVIRONMENT', 'development')
+config = yield_config(_env)
 
 Base = declarative_base()
 
-# Here we set the application config
-_env = os.environ.get('ENVIRONMENT', 'development')
-if _env == 'production':
-    config = ProductionConfig()
-elif _env == 'testing':
-    config = TestingConfig()
-else:
-    config = DevelopmentConfig()
 
 def tz_aware_datetime():
     return datetime.now(ZoneInfo(config.TIMEZONE))

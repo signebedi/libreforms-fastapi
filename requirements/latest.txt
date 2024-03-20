@@ -1,3 +1,4 @@
+email_validator
 fastapi
 Jinja2
 passlib[bcrypt]

@@ -1,12 +1,46 @@
+import re, os
 from datetime import datetime, date
 from typing import List, Optional, Dict, Type
 
 from pydantic import (
     BaseModel,
     ValidationError,
+    validator,
     create_model,
     ConfigDict,
+    EmailStr,
+    constr,
 )
+
+from libreforms_fastapi.utils.config import yield_config
+
+_env = os.environ.get('ENVIRONMENT', 'development')
+config = yield_config(_env)
+
+class UserBase(BaseModel):
+    # username: constr(pattern=config.USERNAME_REGEX)
+    # password: constr(pattern=config.PASSWORD_REGEX)
+
+    username: str
+
+    @validator('username')
+    def username_pattern(cls, value):
+        pattern = re.compile(config.USERNAME_REGEX)
+        if not pattern.match(value):
+            raise ValueError(config.USERNAME_HELPER_TEXT)
+        return value
+
+    password: str
+
+    @validator('password')
+    def password_pattern(cls, value):
+        pattern = re.compile(config.PASSWORD_REGEX)
+        if not pattern.match(value):
+            raise ValueError(config.PASSWORD_HELPER_TEXT)
+        return value
+
+    email: EmailStr
+    opt_out: bool = False
 
 # Example form configuration with default values set
 example_form_config = {

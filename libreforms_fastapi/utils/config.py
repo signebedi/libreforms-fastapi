@@ -50,6 +50,13 @@ if not env == 'testing':
 
 else: env_file_path=""
 
+def yield_config(_env=env):
+    if _env == 'production':
+        return ProductionConfig()
+    elif _env == 'testing':
+        return TestingConfig()
+    return DevelopmentConfig()
+
 # We employ a pydantic settings class to manage dotenv settings, see 
 # https://fastapi.tiangolo.com/advanced/settings/#create-the-settings-object.
 # class Config(BaseSettings):
@@ -79,7 +86,12 @@ class Config(BaseSettings):
 
     SQLALCHEMY_DATABASE_URI:str = os.getenv('SQLALCHEMY_DATABASE_URI', f'sqlite:///{os.path.join(os.getcwd(), "instance", "app.sqlite")}')
     SQLALCHEMY_TRACK_MODIFICATIONS:bool = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False') == 'True'
-    
+
+    USERNAME_REGEX: str = os.getenv('USERNAME_REGEX', r"^\w\w\w\w+$")
+    USERNAME_HELPER_TEXT: str = os.getenv('USERNAME_HELPER_TEXT', "Username must be 4-36 alphanumeric characters")
+    PASSWORD_REGEX: str = os.getenv('PASSWORD_REGEX', r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+[\]{};\'\\:"|,.<>/?])[A-Za-z\d!@#$%^&*()_+[\]{};\'\\:"|,.<>/?]{8,}$')
+    PASSWORD_HELPER_TEXT: str = os.getenv('PASSWORD_HELPER_TEXT', "Password must be 8+ characters, must include uppercase, lowercase, digit, and special character")
+
     # Here we allow the application to be run headlessly, but default to an enabled UI,
     # see https://github.com/signebedi/libreforms-fastapi/issues/18.
     UI_ENABLED:bool = os.getenv('UI_ENABLED', 'True') == 'True'

@@ -33,9 +33,7 @@ from sqlalchemy_signing import (
 from libreforms_fastapi.utils.smtp import Mailer
 
 from libreforms_fastapi.utils.config import (
-    DevelopmentConfig, 
-    ProductionConfig, 
-    TestingConfig,
+    yield_config,
     validate_and_write_configs,
 )
 
@@ -61,6 +59,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     example_form_config,
     generate_html_form,
     generate_pydantic_models,
+    UserBase,
 )
 
 app = FastAPI()
@@ -70,12 +69,7 @@ app = FastAPI()
 
 # Here we set the application config
 _env = os.environ.get('ENVIRONMENT', 'development')
-if _env == 'production':
-    config = ProductionConfig()
-elif _env == 'testing':
-    config = TestingConfig()
-else:
-    config = DevelopmentConfig()
+config = yield_config(_env)
 
 if config.DEBUG:
     print(config)
