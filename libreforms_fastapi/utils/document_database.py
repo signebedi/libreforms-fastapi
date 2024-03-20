@@ -132,9 +132,12 @@ class ManageTinyDB(ManageDocumentDB):
 
         current_timestamp = datetime.now(self.timezone)
 
+        # This is a little hackish but TinyDB write data to file as Python dictionaries, not JSON.
+        convert_data_to_dict = json.loads(json_data)
+
         # data_dict = json.loads(json_data)
         data_dict = {
-            "data": json_data,
+            "data": convert_data_to_dict,
             "metadata": {
                 self.is_deleted_field: metadata.get(self.is_deleted_field, False),
                 self.timezone_field: metadata.get(self.timezone_field, self.timezone.key),
