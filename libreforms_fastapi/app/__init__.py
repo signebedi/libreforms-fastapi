@@ -211,6 +211,43 @@ def get_db():
     finally:
         db.close()
 
+def get_column_length(model, column_name):
+    column = getattr(model, column_name, None)
+    if column is not None and hasattr(column.type, 'length'):
+        return column.type.length
+    return None
+
+def write_api_call_to_transaction_log(api_key, endpoint, remote_addr=None, query_params:Optional[str]=None):
+    """This function writes an API call to the TransactionLog"""
+
+    if query_params is not None:
+
+        # Get the max length of the query_params column
+        max_length = get_column_length(TransactionLog, 'query_params')
+
+        # Super hackish but I want to make sure we don't run into an issue where 
+        if len(query_params) >= max_length:
+            logger.error(f"Query params for {endpoint} exceeded max length of {max_length} characters")
+            # Truncate to avoid unpredictable behavior
+            query_params = query_params[:max_length]
+
+    with SessionLocal() as session:
+        user = session.query(User).filter_by(api_key=api_key).first()
+        if user:
+            new_log = TransactionLog(
+                user_id=user.id if not user.opt_out else None,
+                timestamp=datetime.now(config.TIMEZONE),
+                endpoint=endpoint,
+                query_params=query_params,
+                remote_addr=remote_addr if not user.opt_out else None,
+            )
+            session.add(new_log)
+            try:
+                session.commit()
+            except Exception as e:
+                session.rollback()
+
+
 if config.DEBUG:
     ### This is a dummy route to validate jinja2 templates
     @app.get("/debug/items/{id}", response_class=HTMLResponse, include_in_schema=False)
@@ -271,7 +308,7 @@ if config.DEBUG:
 
 # Create form
 @app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth)])
-async def api_form_create(form_name: str, background_tasks: BackgroundTasks, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), body: Dict = Body(...)):
+async def api_form_create(form_name: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), body: Dict = Body(...)):
 
     if form_name not in form_config:
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -286,6 +323,10 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, ses
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
+    
+    # Get request details
+    endpoint = request.url.path
+    remote_addr = request.client.host
 
     # Process the validated form submission as needed
     # document_id = DocumentDatabase.create_document(form_name=form_name, json_data=form_data.model_dump_json())
@@ -298,6 +339,7 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, ses
             DocumentDatabase.document_id_field: document_id,
             DocumentDatabase.created_by_field: user.username,
             DocumentDatabase.last_editor_field: user.username,
+            DocumentDatabase.ip_address_field: remote_addr,
         },
     )
 
@@ -310,6 +352,16 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, ses
             to_address=user.email,
         )
 
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params=json_data,
+        )
 
     return {
         "message": "Form submission received and validated", 
@@ -349,7 +401,7 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, ses
 # Create user
 @app.post("/api/auth/create", include_in_schema=config.DISABLE_NEW_USERS==False)
 # async def api_auth_create(username: str, password: str, verify_password: str, email: str, opt_out: Optional[bool]):
-async def api_auth_create(user_request: CreateUserRequest, background_tasks: BackgroundTasks, session: SessionLocal = Depends(get_db)):
+async def api_auth_create(user_request: CreateUserRequest, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db)):
 
     if config.DISABLE_NEW_USERS:
         raise HTTPException(status_code=404)

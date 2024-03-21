@@ -121,7 +121,7 @@ class Config(BaseSettings):
         hours = int(os.getenv('PERMANENT_SESSION_LIFETIME', '6'))
         return timedelta(hours=hours)
 
-    COLLECT_USAGE_STATISTICS:bool = os.getenv('COLLECT_USAGE_STATISTICS', 'False') == 'True'
+    COLLECT_USAGE_STATISTICS:bool = os.getenv('COLLECT_USAGE_STATISTICS', 'True') == 'True'
     DISABLE_NEW_USERS:bool = os.getenv('DISABLE_NEW_USERS', 'False') == 'True'
 
     # Set help page information

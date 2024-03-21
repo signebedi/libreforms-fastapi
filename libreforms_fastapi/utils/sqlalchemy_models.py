@@ -40,7 +40,7 @@ class User(Base):
     api_key = Column(String(1000), nullable=True, unique=True)
     # This opt out, if true, will exclude this user's ID and IP from the statistics
     # gathered from their usage, see https://github.com/signebedi/gita-api/issues/59.
-    opt_out = Column(Boolean, nullable=False, default=True)
+    opt_out = Column(Boolean, nullable=False, default=False)
     site_admin = Column(Boolean, nullable=False, default=False)
 
     transaction_log = relationship("TransactionLog", order_by="TransactionLog.id", back_populates="user")
@@ -55,6 +55,6 @@ class TransactionLog(Base):
     # date = Column(Date, nullable=False, default=lambda: datetime.utcnow().date())
     endpoint = Column(String(1000))
     remote_addr = Column(String(50), nullable=True)
-    query_params = Column(String(1000), nullable=True)  # Can we find a way to make this a JSON string or similar format?
+    query_params = Column(String(2000), nullable=True)  # Can we find a way to make this a JSON string or similar format?
 
     user = relationship("User", back_populates="transaction_log")
