@@ -106,15 +106,25 @@ app = FastAPI(
 # Set up logger, see https://github.com/signebedi/libreforms-fastapi/issues/26,
 # based on https://stackoverflow.com/a/77007723/13301284. See also:
 # https://github.com/tiangolo/fastapi/issues/1508.
-
-# logger = logging.getLogger(__name__)
-# logger.setLevel(logging.DEBUG)
-# stream_handler = logging.StreamHandler(sys.stdout)
-# log_formatter = logging.Formatter("%(asctime)s [%(processName)s: %(process)d] [%(threadName)s: %(thread)d] [%(levelname)s] %(name)s: %(message)s")
-# stream_handler.setFormatter(log_formatter)
-# logger.addHandler(stream_handler)
 logger = logging.getLogger('uvicorn.error')
-# logger.info('API is starting up')
+
+if config.ENVIRONMENT == "production":
+    log_directory = os.path.join(os.getcwd(), 'instance', 'log')
+    os.makedirs(log_directory, exist_ok=True)
+    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+
+    uvicorn_log_file = os.path.join(log_directory, 'uvicorn.log')
+    uvicorn_file_handler = logging.FileHandler(uvicorn_log_file, 'a', 'utf-8')
+    uvicorn_file_handler.setFormatter(formatter)
+    logger.addHandler(uvicorn_file_handler)
+
+    # Attaching file handler to the SQLAlchemy logger
+    sqlalchemy_logger = logging.getLogger('sqlalchemy.engine')
+    sqlalchemy_log_file = os.path.join(log_directory, 'sqlalchemy.log')
+    sqlalchemy_file_handler = logging.FileHandler(sqlalchemy_log_file, 'a', 'utf-8')
+    sqlalchemy_file_handler.setFormatter(formatter)
+    sqlalchemy_logger.addHandler(sqlalchemy_file_handler)
+
 
 
 # app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -274,17 +284,20 @@ async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: D
     if form_name not in form_config:
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
+    # Pull this form model from the list of available models
     FormModel = FormModels[form_name]
 
     # # Here we validate and coerce data into its proper type
     form_data = FormModel.parse_obj(body)
 
-    # print(form_data.model_dump_json())
-
     # Process the validated form submission as needed
     document_id = DocumentDatabase.create_document(form_name=form_name, json_data=form_data.model_dump_json())
 
-    return {"message": "Form submission received and validated", "data": form_data.model_dump_json()}
+    return {
+        "message": "Form submission received and validated", 
+        "document_id": document_id, 
+        "data": form_data.model_dump_json(),
+    }
 
 # Read one form
     # @app.get("/api/form/read_one/{form_name}")
@@ -323,20 +336,12 @@ async def api_auth_create(user_request: CreateUserRequest, session: SessionLocal
     if config.DISABLE_NEW_USERS:
         raise HTTPException(status_code=404)
 
-    # user_request = UserBase(username, password, email, opt_out)
-
-    # if not user_request._passwords_match():
-    #     # See https://stackoverflow.com/a/1364545/13301284 for HTTP Response    
-    #     raise HTTPException(status_code=400, detail=f"Passwords do not match")
-
-    # with SessionLocal() as session:
     # Check if user or email already exists
     # See https://stackoverflow.com/a/9270432/13301284 for HTTP Response
     existing_user = session.query(User).filter(User.username.ilike(user_request.username)).first()
     if existing_user:
         # Consider adding IP tracking to failed attempt
         logger.warning(f'Attempt to register user {user_request.username} but user already exists')
-    #     raise HTTPException(status_code=409, detail=f"Username {user_request.username} is already registered")
 
         raise HTTPException(status_code=409, detail="Registration failed. The provided information cannot be used.")
 
@@ -344,12 +349,11 @@ async def api_auth_create(user_request: CreateUserRequest, session: SessionLocal
     if existing_email:
         # Consider adding IP tracking to failed attempt
         logger.warning(f'Attempt to register email {user_request.email} but email is already registered')
-    #     raise HTTPException(status_code=409, detail=f"Email {user_request.email} is already registered")
 
         if config.SMTP_ENABLED:
 
             _subject=f"{config.SITE_NAME} Suspicious Activity"
-            _content=f"This email serves to notify you that there was an attempt to register a user with the same username or email as the account registered to you at {config.DOMAIN}. If this was you, you may safely disregard this email. If it was not you, you should consider contacting your system administrator and changing your password."
+            _content=f"This email serves to notify you that there was an attempt to register a user with the same email as the account registered to you at {config.DOMAIN}. If this was you, you may safely disregard this email. If it was not you, you should consider contacting your system administrator and changing your password."
             # Eventually, wrap this in an async function, see
             # https://github.com/signebedi/libreforms-fastapi/issues/25
             mailer.send_mail(subject=_subject, content=_content, to_address=user_request.email)
@@ -364,7 +368,7 @@ async def api_auth_create(user_request: CreateUserRequest, session: SessionLocal
         opt_out=opt_out if config.COLLECT_USAGE_STATISTICS else True,
     ) 
 
-    # Create the users API key. If Celery disabled, never expire keys 
+    # Create the users API key with a 365 day expiry
     expiration = 8760
     api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=user_request.email)
     new_user.api_key = api_key
@@ -392,7 +396,7 @@ async def api_auth_create(user_request: CreateUserRequest, session: SessionLocal
 
 # Change user password / usermod
     # @app.patch("/api/auth/update")
-    # async def api_auth_update():
+    # async def api_auth_update(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
 
 # Rotate user API key
     # @app.patch("/api/auth/rotate_key")

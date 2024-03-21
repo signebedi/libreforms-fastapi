@@ -27,13 +27,9 @@ env = os.getenv('ENVIRONMENT', 'development')
 if not env == 'testing':
     env_file = 'prod.env' if env == 'production' else 'dev.env'
     instance_directory = os.path.join(os.getcwd(), 'instance')
-    log_directory = os.path.join(os.getcwd(), 'instance', 'log')
     
     # Ensure the instance directory exists
     os.makedirs(instance_directory, exist_ok=True)
-
-    # Ensure the log directory exists
-    os.makedirs(log_directory, exist_ok=True)
 
     env_file_path = os.path.join(instance_directory, env_file)
 
