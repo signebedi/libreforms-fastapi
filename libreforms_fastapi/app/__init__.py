@@ -41,6 +41,7 @@ from libreforms_fastapi.__metadata__ import (
 )
 
 from libreforms_fastapi.utils.smtp import Mailer
+from libreforms_fastapi.utils.logging import set_logger
 
 from libreforms_fastapi.utils.config import (
     yield_config,
@@ -104,27 +105,17 @@ app = FastAPI(
 
 
 # Set up logger, see https://github.com/signebedi/libreforms-fastapi/issues/26,
-# based on https://stackoverflow.com/a/77007723/13301284. See also:
-# https://github.com/tiangolo/fastapi/issues/1508.
-logger = logging.getLogger('uvicorn.error')
+logger = set_logger(
+    environment=config.ENVIRONMENT, 
+    log_file_name='uvicorn.log', 
+    namespace='uvicorn.error'
+)
 
-if config.ENVIRONMENT == "production":
-    log_directory = os.path.join(os.getcwd(), 'instance', 'log')
-    os.makedirs(log_directory, exist_ok=True)
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-
-    uvicorn_log_file = os.path.join(log_directory, 'uvicorn.log')
-    uvicorn_file_handler = logging.FileHandler(uvicorn_log_file, 'a', 'utf-8')
-    uvicorn_file_handler.setFormatter(formatter)
-    logger.addHandler(uvicorn_file_handler)
-
-    # Attaching file handler to the SQLAlchemy logger
-    sqlalchemy_logger = logging.getLogger('sqlalchemy.engine')
-    sqlalchemy_log_file = os.path.join(log_directory, 'sqlalchemy.log')
-    sqlalchemy_file_handler = logging.FileHandler(sqlalchemy_log_file, 'a', 'utf-8')
-    sqlalchemy_file_handler.setFormatter(formatter)
-    sqlalchemy_logger.addHandler(sqlalchemy_file_handler)
-
+sqlalchemy_logger = set_logger(
+    environment=config.ENVIRONMENT, 
+    log_file_name='sqlalchemy.log', 
+    namespace='sqlalchemy.engine'
+)
 
 
 # app.mount("/static", StaticFiles(directory="static"), name="static")
