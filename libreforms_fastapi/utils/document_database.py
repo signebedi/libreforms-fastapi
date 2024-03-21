@@ -1,4 +1,5 @@
 import os, shutil, json
+from bson import ObjectId
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from tinydb import TinyDB, Query
@@ -15,6 +16,7 @@ class ManageDocumentDB(ABC):
         self.config = config
 
         # Here we'll set metadata field names
+        self.document_id_field = "_document_id"
         self.is_deleted_field = "_is_deleted"
         self.timezone_field= "_timezone"
         self.created_at_field = "_created_at"
@@ -136,9 +138,13 @@ class ManageTinyDB(ManageDocumentDB):
         convert_data_to_dict = json.loads(json_data)
 
         # data_dict = json.loads(json_data)
+
+        document_id = metadata.get(self.document_id_field, str(ObjectId()))
+
         data_dict = {
             "data": convert_data_to_dict,
             "metadata": {
+                self.document_id_field: document_id,
                 self.is_deleted_field: metadata.get(self.is_deleted_field, False),
                 self.timezone_field: metadata.get(self.timezone_field, self.timezone.key),
                 self.created_at_field: metadata.get(self.created_at_field, current_timestamp.isoformat()),
@@ -153,7 +159,8 @@ class ManageTinyDB(ManageDocumentDB):
             }
         }
 
-        document_id = self.databases[form_name].insert(data_dict)
+        # document_id = self.databases[form_name].insert(data_dict)
+        _ = self.databases[form_name].insert(data_dict)
 
         return document_id
 

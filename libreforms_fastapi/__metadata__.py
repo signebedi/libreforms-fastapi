@@ -5,4 +5,4 @@ __credits__ = ["Sig Janoska-Bedi"]
 __license__ = "AGPL-3.0"
 __maintainer__ = "Sig Janoska-Bedi"
 __email__ = "signe@atreeus.com"
-__url__="https://github.com/signbebedi"
+__url__="https://github.com/signebedi"
