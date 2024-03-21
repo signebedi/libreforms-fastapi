@@ -1,7 +1,8 @@
 import re, os, json, tempfile, logging, sys
 from datetime import datetime, timedelta
-from markupsafe import escape
 from typing import Dict, Optional
+from markupsafe import escape
+from bson import ObjectId
 
 from fastapi import (
     FastAPI,
@@ -270,7 +271,7 @@ if config.DEBUG:
 
 # Create form
 @app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth)])
-async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: Dict = Body(...)):
+async def api_form_create(form_name: str, background_tasks: BackgroundTasks, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), body: Dict = Body(...)):
 
     if form_name not in form_config:
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -280,14 +281,40 @@ async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: D
 
     # # Here we validate and coerce data into its proper type
     form_data = FormModel.parse_obj(body)
+    json_data = form_data.model_dump_json()
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
 
     # Process the validated form submission as needed
-    document_id = DocumentDatabase.create_document(form_name=form_name, json_data=form_data.model_dump_json())
+    # document_id = DocumentDatabase.create_document(form_name=form_name, json_data=form_data.model_dump_json())
+    document_id = str(ObjectId())
+    background_tasks.add_task(
+        DocumentDatabase.create_document, 
+        form_name=form_name, 
+        json_data=json_data, 
+        metadata={
+            DocumentDatabase.document_id_field: document_id,
+            DocumentDatabase.created_by_field: user.username,
+            DocumentDatabase.last_editor_field: user.username,
+        },
+    )
+
+    # Send email
+    if config.SMTP_ENABLED:
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject="Form Submitted", 
+            content=document_id, 
+            to_address=user.email,
+        )
+
 
     return {
         "message": "Form submission received and validated", 
         "document_id": document_id, 
-        "data": form_data.model_dump_json(),
+        "data": json_data,
     }
 
 # Read one form
@@ -322,7 +349,7 @@ async def api_form_create(form_name: str, key: str = Depends(X_API_KEY), body: D
 # Create user
 @app.post("/api/auth/create", include_in_schema=config.DISABLE_NEW_USERS==False)
 # async def api_auth_create(username: str, password: str, verify_password: str, email: str, opt_out: Optional[bool]):
-async def api_auth_create(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+async def api_auth_create(user_request: CreateUserRequest, background_tasks: BackgroundTasks, session: SessionLocal = Depends(get_db)):
 
     if config.DISABLE_NEW_USERS:
         raise HTTPException(status_code=404)
@@ -347,7 +374,14 @@ async def api_auth_create(user_request: CreateUserRequest, session: SessionLocal
             _content=f"This email serves to notify you that there was an attempt to register a user with the same email as the account registered to you at {config.DOMAIN}. If this was you, you may safely disregard this email. If it was not you, you should consider contacting your system administrator and changing your password."
             # Eventually, wrap this in an async function, see
             # https://github.com/signebedi/libreforms-fastapi/issues/25
-            mailer.send_mail(subject=_subject, content=_content, to_address=user_request.email)
+            # mailer.send_mail(subject=_subject, content=_content, to_address=user_request.email)
+            background_tasks.add_task(
+                mailer.send_mail, 
+                subject=_subject, 
+                content=_content, 
+                to_address=user_request.email,
+            )
+
 
         raise HTTPException(status_code=409, detail="Registration failed. The provided information cannot be used.")
 
@@ -381,9 +415,21 @@ async def api_auth_create(user_request: CreateUserRequest, session: SessionLocal
     if config.SMTP_ENABLED:
         # Eventually, wrap this in an async function, see
         # https://github.com/signebedi/libreforms-fastapi/issues/25
-        mailer.send_mail(subject=subject, content=content, to_address=user_request.email)
+        # mailer.send_mail(subject=subject, content=content, to_address=user_request.email)
 
-    return {"status": "success", "message": f"Successfully created new user {user_request.username}"}
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject=subject, 
+            content=content, 
+            to_address=user_request.email,
+        )
+
+
+    return {
+        "status": "success", 
+        "api_key": api_key,
+        "message": f"Successfully created new user {user_request.username}"
+    }
 
 # Change user password / usermod
     # @app.patch("/api/auth/update")
