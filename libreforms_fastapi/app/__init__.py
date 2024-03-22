@@ -17,13 +17,11 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import APIKeyHeader
 
-
 from sqlalchemy import (
     create_engine, 
     desc,
 )
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 from sqlalchemy_signing import (
     Signatures,
     RateLimitExceeded, 
@@ -53,6 +51,7 @@ from libreforms_fastapi.utils.sqlalchemy_models import (
     Base,
     User,
     TransactionLog,
+    Signing,
 )
 
 from libreforms_fastapi.utils.scripts import (
@@ -145,15 +144,17 @@ engine = create_engine(
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-Base.metadata.create_all(bind=engine)
-
 # Initialize the signing table
 signatures = Signatures(config.SQLALCHEMY_DATABASE_URI, byte_len=32, 
     # Pass the rate limiting settings from the app config
     rate_limiting=config.RATE_LIMITS_ENABLED,
     rate_limiting_period=config.RATE_LIMITS_PERIOD, 
     rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
+    Base=Base, # Here we pass the base
+    Signing=Signing, # And Signing object we've overwritten
 )
+
+Base.metadata.create_all(bind=engine)
 
 logger.info('Relational database has been initialized')
 
@@ -317,7 +318,7 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
     FormModel = FormModels[form_name]
 
     # # Here we validate and coerce data into its proper type
-    form_data = FormModel.parse_obj(body)
+    form_data = FormModel.model_validate(body)
     json_data = form_data.model_dump_json()
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -325,8 +326,9 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
     user = session.query(User).filter_by(api_key=key).first()
     
     # Get request details
-    endpoint = request.url.path
-    remote_addr = request.client.host
+    if config.COLLECT_USAGE_STATISTICS:
+        endpoint = request.url.path
+        remote_addr = request.client.host
 
     # Process the validated form submission as needed
     # document_id = DocumentDatabase.create_document(form_name=form_name, json_data=form_data.model_dump_json())
@@ -339,7 +341,7 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
             DocumentDatabase.document_id_field: document_id,
             DocumentDatabase.created_by_field: user.username,
             DocumentDatabase.last_editor_field: user.username,
-            DocumentDatabase.ip_address_field: remote_addr,
+            # DocumentDatabase.ip_address_field: remote_addr,
         },
     )
 
@@ -442,7 +444,7 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
         username=user_request.username, 
         password=generate_password_hash(user_request.password),
         active=config.REQUIRE_EMAIL_VERIFICATION == False,
-        opt_out=opt_out if config.COLLECT_USAGE_STATISTICS else True,
+        opt_out=user_request.opt_out if config.COLLECT_USAGE_STATISTICS else True,
     ) 
 
     # Create the users API key with a 365 day expiry
@@ -454,20 +456,17 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
     session.commit()
 
     # Email notification
-    subject=f"{config.SITE_NAME} User Registered"
-
-    if config.REQUIRE_EMAIL_VERIFICATION:
-
-        key = signatures.write_key(scope=['email_verification'], expiration=48, active=True, email=email)
-        content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}. Please verify your email by clicking the following link: {config.DOMAIN}/verify/{key}. Please note this link will expire after 48 hours."
-
-    else:
-        content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}."
-
     if config.SMTP_ENABLED:
-        # Eventually, wrap this in an async function, see
-        # https://github.com/signebedi/libreforms-fastapi/issues/25
-        # mailer.send_mail(subject=subject, content=content, to_address=user_request.email)
+        
+        subject=f"{config.SITE_NAME} User Registered"
+
+        if config.REQUIRE_EMAIL_VERIFICATION:
+
+            key = signatures.write_key(scope=['email_verification'], expiration=48, active=True, email=email)
+            content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}. Please verify your email by clicking the following link: {config.DOMAIN}/verify/{key}. Please note this link will expire after 48 hours."
+
+        else:
+            content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}."
 
         background_tasks.add_task(
             mailer.send_mail, 

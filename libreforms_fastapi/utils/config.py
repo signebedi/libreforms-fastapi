@@ -16,8 +16,13 @@ from datetime import timedelta, datetime
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from pydantic_settings import BaseSettings
-from pydantic import validator, ValidationError, constr
+from pydantic import (
+    validator, 
+    ValidationError, 
+    constr
+)
 from pydantic.networks import MongoDsn
+from pydantic.functional_validators import field_validator
 
 from libreforms_fastapi.utils.scripts import check_configuration_assumptions
 
@@ -69,7 +74,7 @@ class Config(BaseSettings):
 
     TIMEZONE: constr(strip_whitespace=True) = os.getenv('TIMEZONE', 'America/New_York')
 
-    @validator('TIMEZONE')
+    @field_validator('TIMEZONE')
     def validate_timezone(cls, v):
         try:
             # Attempt to create a ZoneInfo object to validate the timezone
@@ -104,11 +109,12 @@ class Config(BaseSettings):
     RATE_LIMITS_MAX_REQUESTS:int = int(os.getenv('RATE_LIMITS_MAX_REQUESTS', 15))
     RATE_LIMITS_PERIOD: timedelta = timedelta(minutes=1)  # First we set a default value
 
-    @validator('RATE_LIMITS_PERIOD', pre=True, always=True)
+    @field_validator('RATE_LIMITS_PERIOD')
     def set_rate_limits_period(cls, v):
         # Next we dectorate
         minutes = int(os.getenv('RATE_LIMITS_PERIOD', '1'))
         return timedelta(minutes=minutes)
+
 
     MAX_LOGIN_ATTEMPTS:int = int(os.getenv('MAX_LOGIN_ATTEMPTS', "0"))
     REQUIRE_EMAIL_VERIFICATION:bool = os.getenv('REQUIRE_EMAIL_VERIFICATION', 'False') == 'True'
@@ -116,12 +122,12 @@ class Config(BaseSettings):
     # Permanent session lifetime should be an int corresponding to the number of minutes
     PERMANENT_SESSION_LIFETIME: timedelta = timedelta(hours=6)  # Again we set a default value
 
-    @validator('PERMANENT_SESSION_LIFETIME', pre=True, always=True)
+    @field_validator('PERMANENT_SESSION_LIFETIME')
     def set_permanent_session_lifetime(cls, v):
         hours = int(os.getenv('PERMANENT_SESSION_LIFETIME', '6'))
         return timedelta(hours=hours)
 
-    COLLECT_USAGE_STATISTICS:bool = os.getenv('COLLECT_USAGE_STATISTICS', 'True') == 'True'
+    COLLECT_USAGE_STATISTICS:bool = os.getenv('COLLECT_USAGE_STATISTICS', 'False') == 'True'
     DISABLE_NEW_USERS:bool = os.getenv('DISABLE_NEW_USERS', 'False') == 'True'
 
     # Set help page information
@@ -135,7 +141,7 @@ class Config(BaseSettings):
     MONGODB_ENABLED:bool = os.getenv('MONGODB_ENABLED:', 'False') == 'True'
     MONGODB_URI: str = "" # Default to empty string
 
-    @validator('MONGODB_URI', pre=True, always=True)
+    @field_validator('MONGODB_URI')
     def validate_mongodb_uri(cls, v):
         # Attempt to read from environment variable if not set
         uri = os.getenv('MONGODB_URI', '')
@@ -143,6 +149,7 @@ class Config(BaseSettings):
             return uri  # Allow empty strings
         # Utilize MongoDsn for validation if not empty
         return MongoDsn.validate(uri)
+
 
 class ProductionConfig(Config):
     # The DOMAIN is meant to fail in production if you have not set it
@@ -170,7 +177,8 @@ class TestingConfig(Config):
     TESTING:bool = True
     DOMAIN:str = 'http://127.0.0.1:5000'
     SECRET_KEY:str = 'supersecret_test_key'
-    SQLALCHEMY_DATABASE_URI:str = "sqlite:///:memory:"
+    # SQLALCHEMY_DATABASE_URI:str = "sqlite:///:memory:"
+    SQLALCHEMY_DATABASE_URI:str = f'sqlite:///{os.path.join(os.getcwd(), "instance", "TEST_app.sqlite")}'
     SQLALCHEMY_TRACK_MODIFICATIONS:bool = False
     
     SMTP_ENABLED:bool = False
@@ -178,7 +186,7 @@ class TestingConfig(Config):
     RATE_LIMITS_ENABLED:bool = False
     MAX_LOGIN_ATTEMPTS:int = 0
     REQUIRE_EMAIL_VERIFICATION:bool = False
-
+    COLLECT_USAGE_STATISTICS:bool = False
 
 
 # View functions should pass config changes as kwargs to the function below

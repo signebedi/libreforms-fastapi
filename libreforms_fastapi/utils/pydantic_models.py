@@ -1,6 +1,6 @@
 import re, os
 from datetime import datetime, date
-from typing import List, Optional, Dict, Type
+from typing import List, Optional, Dict, Type, Any
 
 from pydantic import (
     BaseModel,
@@ -13,44 +13,56 @@ from pydantic import (
     constr,
 )
 
+from pydantic.functional_validators import field_validator, model_validator
+
 from libreforms_fastapi.utils.config import yield_config
 
 _env = os.environ.get('ENVIRONMENT', 'development')
 config = yield_config(_env)
+
+class ImproperUsernameFormat(Exception):
+    """Raised when the username does not meet the regular expression defined in the app config"""
+    pass
+
+class ImproperPasswordFormat(Exception):
+    """Raised when the password does not meet the regular expression defined in the app config"""
+    pass
+
+class PasswordMatchException(Exception):
+    """Raised when the passwords provided do not match each other"""
+    pass
+
 
 class CreateUserRequest(BaseModel):
     # username: constr(pattern=config.USERNAME_REGEX)
     # password: constr(pattern=config.PASSWORD_REGEX)
 
     username: str = Field(..., min_length=2, max_length=100)
+    password: str = Field(..., min_length=8)
+    verify_password: str = Field(..., min_length=8)
+    email: EmailStr
+    opt_out: bool = False
 
-    @validator('username')
+    @field_validator('username')
     def username_pattern(cls, value):
         pattern = re.compile(config.USERNAME_REGEX)
         if not pattern.match(value):
             raise ValueError(config.USERNAME_HELPER_TEXT)
         return value.lower()
 
-    password: str = Field(..., min_length=8)
-
-    @validator('password')
+    @field_validator('password')
     def password_pattern(cls, value):
         pattern = re.compile(config.PASSWORD_REGEX)
         if not pattern.match(value):
             raise ValueError(config.PASSWORD_HELPER_TEXT)
         return value
 
-    verify_password: str = Field(..., min_length=8)
-
     # Custom method to validate that the two passwords match
-    @validator('verify_password')
-    def passwords_match(cls, v, values, **kwargs):
-        if 'password' in values and v != values['password']:
+    @model_validator(mode='before')
+    def passwords_match(cls, data: Any) -> Any:
+        if data.get('password') != data.get('verify_password'):
             raise ValueError('Passwords do not match')
-        return v
-        
-    email: EmailStr
-    opt_out: bool = False
+        return data
 
     # def _passwords_match(self):
     #     if password == verify_password:

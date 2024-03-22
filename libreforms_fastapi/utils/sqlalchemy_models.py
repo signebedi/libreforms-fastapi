@@ -2,7 +2,6 @@ import os
 from datetime import datetime
 from zoneinfo import ZoneInfo
 
-from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy import (
     Boolean, 
     Column, 
@@ -11,7 +10,9 @@ from sqlalchemy import (
     String, 
     DateTime,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, declarative_base
+
+from sqlalchemy_signing import create_signing_class
 
 from libreforms_fastapi.utils.config import yield_config
 
@@ -58,3 +59,5 @@ class TransactionLog(Base):
     query_params = Column(String(2000), nullable=True)  # Can we find a way to make this a JSON string or similar format?
 
     user = relationship("User", back_populates="transaction_log")
+
+Signing = create_signing_class(Base, tz_aware_datetime)
