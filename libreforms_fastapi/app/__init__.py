@@ -1,4 +1,4 @@
-import re, os, json, tempfile, logging, sys
+import re, os, json, tempfile, logging, sys, asyncio
 from datetime import datetime, timedelta
 from typing import Dict, Optional
 from markupsafe import escape
@@ -117,6 +117,54 @@ sqlalchemy_logger = set_logger(
     namespace='sqlalchemy.engine'
 )
 
+
+async def check_key_rotation(period: int):
+    while True:
+        await asyncio.sleep(period)
+
+        # Query for signatures with scope 'api_key' that expire in the next hour
+        keypairs = signatures.rotate_keys(time_until=1, scope="api_key")
+
+        if len(keypairs) == 0:
+            logger.info(f'Ran key rotation - 0 key/s rotated')
+            continue
+            
+        # For each key that has just been rotated, update the user model with the new key
+        for tup in keypairs:
+
+            old_key, new_key = tup
+
+            with SessionLocal() as session:
+                user = session.query(User).filter_by(api_key=old_key).first()
+
+                if not user:
+                    continue
+
+                user.api_key = new_key
+                db.session.commit()
+
+                if app.config['SMTP_ENABLED']:
+
+                    subject=f"{config.SITE_NAME} API Key Rotated"
+                    content=f"This email serves to notify you that an API key for user {user.username} has just rotated at {config.DOMAIN}. Please note that your past API key will no longer work if you are employing it in applications. Your new key will be active for 365 days. You can see your new key by visiting {config.DOMAIN}/profile."
+
+                    mailer.send_mail(subject=subject, content=content, to_address=user.email)
+
+        logger.info(f'Ran key rotation - {len(keypairs)} key/s rotated')
+
+@app.on_event("startup")
+async def start_check_key_rotation():
+    task = asyncio.create_task(check_key_rotation(3600))
+
+
+async def test_logger(period: int):
+    while True:
+        logger.info('This is a background task heartbeat')
+        await asyncio.sleep(period)
+
+@app.on_event("startup")
+async def start_test_logger():
+    task = asyncio.create_task(test_logger(6000))
 
 # app.mount("/static", StaticFiles(directory="static"), name="static")
 # templates = Jinja2Templates(directory="templates")
@@ -262,7 +310,7 @@ if config.DEBUG:
     ### These are dummy routes to validate the sqlalchemy-signing library in development
     @app.get("/debug/create", include_in_schema=False)
     async def create_key():
-        key = signatures.write_key()
+        key = signatures.write_key(expiration=.5, scope="api_key")
         return {"key": key}
 
     @app.get("/debug/get", include_in_schema=False)
@@ -457,7 +505,7 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
 
     # Email notification
     if config.SMTP_ENABLED:
-        
+
         subject=f"{config.SITE_NAME} User Registered"
 
         if config.REQUIRE_EMAIL_VERIFICATION:
