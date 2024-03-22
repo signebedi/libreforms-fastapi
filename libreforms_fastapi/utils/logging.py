@@ -3,6 +3,7 @@ import os, logging
 
 def set_logger(environment, log_file_name, namespace, log_directory=os.path.join(os.getcwd(), 'instance', 'log')):
     logger = logging.getLogger(namespace)
+    logger.setLevel(logging.INFO)
 
     if environment == "production":
         os.makedirs(log_directory, exist_ok=True)

@@ -213,10 +213,10 @@ FormModels = generate_pydantic_models(form_config)
 
 # Initialize the document database
 if config.MONGODB_ENABLED:
-    DocumentDatabase = ManageMongoDB(config=form_config, timezone=config.TIMEZONE)
+    DocumentDatabase = ManageMongoDB(config=form_config, timezone=config.TIMEZONE, env=config.ENVIRONMENT)
     logger.info('MongoDB has been initialized')
 else: 
-    DocumentDatabase = ManageTinyDB(config=form_config, timezone=config.TIMEZONE)
+    DocumentDatabase = ManageTinyDB(config=form_config, timezone=config.TIMEZONE, env=config.ENVIRONMENT)
     logger.info('TinyDB has been initialized')
 
 # Here we define an API key header for the api view functions.

@@ -5,6 +5,8 @@ from zoneinfo import ZoneInfo
 from tinydb import TinyDB, Query
 from abc import ABC, abstractmethod
 
+from libreforms_fastapi.utils.logging import set_logger
+
 class CollectionDoesNotExist(Exception):
     """Exception raised when attempting to access a collection that does not exist."""
     def __init__(self, form_name):
@@ -14,6 +16,10 @@ class CollectionDoesNotExist(Exception):
 class ManageDocumentDB(ABC):
     def __init__(self, config: dict, timezone: ZoneInfo):
         self.config = config
+
+        # Set default log_name if not already set by a subclass
+        if not hasattr(self, 'log_name'):
+            self.log_name = "document_db.log"
 
         # Here we'll set metadata field names
         self.document_id_field = "_document_id"
@@ -102,9 +108,19 @@ class ManageDocumentDB(ABC):
 
 
 class ManageTinyDB(ManageDocumentDB):
-    def __init__(self, config: dict, timezone: ZoneInfo, db_path: str = "instance/"):
+    def __init__(self, config: dict, timezone: ZoneInfo, db_path: str = "instance/", use_logger=True, env="development"):
         self.db_path = db_path
         os.makedirs(self.db_path, exist_ok=True)
+
+        self.log_name = "tinydb.log"
+        self.use_logger = use_logger
+
+        if self.use_logger:
+            self.logger = set_logger(
+                environment=env, 
+                log_file_name=self.log_name, 
+                namespace=self.log_name
+            )
 
         super().__init__(config, timezone)
 
@@ -162,19 +178,32 @@ class ManageTinyDB(ManageDocumentDB):
         # document_id = self.databases[form_name].insert(data_dict)
         _ = self.databases[form_name].insert(data_dict)
 
+        if self.use_logger:
+            self.logger.info(f"Inserted document for {form_name} with document_id {document_id}")
+
         return document_id
 
     def update_document(self, form_name:str, json_data, metadata={}):
         """Updates existing form in specified form's database."""
+
+        # Placeholder for logger
+
         pass
 
     def sign_document(self, form_name:str, json_data, metadata={}):
         """Manage signatures existing form in specified form's database."""
+
+        # Placeholder for logger
+
+
         pass
 
 
     def approve_document(self, form_name:str, json_data, metadata={}):
         """Manage approval for existing form in specified form's database."""
+
+        # Placeholder for logger
+
         pass
 
 
@@ -190,10 +219,14 @@ class ManageTinyDB(ManageDocumentDB):
         self._check_form_exists(form_name)
         if permanent:
             self.databases[form_name].remove(search_query)
+                # Placeholder for logger
         else:
             # Perform a soft delete
             for doc_id in [d.doc_id for d in self.databases[form_name].search(search_query)]:
                 self.databases[form_name].update({self.is_deleted_field: True}, doc_ids=[doc_id])
+
+                # Placeholder for logger
+
 
     def get_all_documents(self, form_name:str, exclude_deleted=True):
         """Retrieves all entries from the specified form's database."""
@@ -208,6 +241,7 @@ class ManageTinyDB(ManageDocumentDB):
         self._check_form_exists(form_name)
         if exclude_deleted:
             search_query &= Query()[self.is_deleted_field] == False
+
         return self.databases[form_name].get(search_query)
 
     def restore_document(self, form_name:str, search_query):
@@ -215,6 +249,8 @@ class ManageTinyDB(ManageDocumentDB):
         self._check_form_exists(form_name)
         for doc_id in [d.doc_id for d in self.databases[form_name].search(search_query)]:
             self.databases[form_name].update({self.is_deleted_field: False}, doc_ids=[doc_id])
+
+            # Placeholder for logger
 
     def backup_database(self, form_name:str):
         """Creates a backup of the specified form's database."""
@@ -232,6 +268,9 @@ class ManageTinyDB(ManageDocumentDB):
         source_path = self._get_db_path(form_name)
         shutil.copyfile(source_path, backup_path)
 
+        if self.use_logger:
+            self.logger.info(f"Successfully backed up {form_name} collection to {backup_path}")
+
         return backup_path
 
     def restore_database_from_backup(self, form_name:str, backup_filename:str, backup_before_overwriting:bool=True):
@@ -247,7 +286,14 @@ class ManageTinyDB(ManageDocumentDB):
                 self.backup_database(form_name)
 
             shutil.copyfile(backup_path, self._get_db_path(form_name))
+
+            if self.use_logger:
+                self.logger.info(f"Successfully restored {form_name} collection to from backup {backup_path}")
+
         else:
+            if self.use_logger:
+                self.logger.error(f"Failed to restore {form_name} collection from backup - {backup_path} does not exist")
+
             raise FileNotFoundError("Backup file does not exist.")
 
         # Reinitialize the databse instances
