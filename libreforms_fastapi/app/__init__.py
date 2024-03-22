@@ -534,6 +534,11 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
     # @app.patch("/api/auth/update")
     # async def api_auth_update(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
 
+
+# Get User / id
+    # @app.patch("/api/auth/get")
+    # async def api_auth_get(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+
 # Rotate user API key
     # @app.patch("/api/auth/rotate_key")
     # async def api_auth_rotate_key():
@@ -643,6 +648,8 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
+
+# View profile
 
 ##########################
 ### UI Routes - Admin
