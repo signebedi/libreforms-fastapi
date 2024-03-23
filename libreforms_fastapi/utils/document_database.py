@@ -144,8 +144,8 @@ class CollectionDoesNotExist(Exception):
         super().__init__(message)
 
 class ManageDocumentDB(ABC):
-    def __init__(self, config: dict, timezone: ZoneInfo):
-        self.config = config
+    def __init__(self, form_names_callable, timezone: ZoneInfo):
+        self.form_names_callable = form_names_callable
 
         # Set default log_name if not already set by a subclass
         if not hasattr(self, 'log_name'):
@@ -175,6 +175,11 @@ class ManageDocumentDB(ABC):
     def _initialize_database_collections(self):
         """Establishes database instances / collections for each form."""
         pass
+
+    # @abstractmethod
+    # def _update_database_collections(self, form_names_callable):
+    #     """Idempotent method to update available collections."""
+    #     pass
 
     @abstractmethod
     def _check_form_exists(self, form_name:str):
@@ -238,7 +243,7 @@ class ManageDocumentDB(ABC):
 
 
 class ManageTinyDB(ManageDocumentDB):
-    def __init__(self, config: dict, timezone: ZoneInfo, db_path: str = "instance/", use_logger=True, env="development"):
+    def __init__(self, form_names_callable, timezone: ZoneInfo, db_path: str = "instance/", use_logger=True, env="development"):
         self.db_path = db_path
         os.makedirs(self.db_path, exist_ok=True)
 
@@ -252,7 +257,7 @@ class ManageTinyDB(ManageDocumentDB):
                 namespace=self.log_name
             )
 
-        super().__init__(config, timezone)
+        super().__init__(form_names_callable, timezone)
 
         # Here we create a Query object to ship with the class
         self.Form = Query()
@@ -262,7 +267,7 @@ class ManageTinyDB(ManageDocumentDB):
         """Establishes database instances for each form."""
         # Initialize databases
         self.databases = {}
-        for form_name in self.config.keys():
+        for form_name in self.form_names_callable():
             # self.databases[form_name] = TinyDB(self._get_db_path(form_name))
             self.databases[form_name] = CustomTinyDB(self._get_db_path(form_name))
 
@@ -272,8 +277,14 @@ class ManageTinyDB(ManageDocumentDB):
 
     def _check_form_exists(self, form_name:str):
         """Checks if the form exists in the configuration."""
-        if form_name not in self.config:
+        if form_name not in self.form_names_callable():
             raise CollectionDoesNotExist(form_name)
+
+        # If a form name is found in the callable but not in the collections, reinitialize. 
+        # This probably means there has been a change to the form config. This class should
+        # be able to work even when configuration data changes.
+        if form_name not in self.databases.keys():
+            self._initialize_database_collections()
 
     def create_document(self, form_name:str, json_data, metadata={}):
         """Adds json data to the specified form's database."""

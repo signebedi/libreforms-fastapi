@@ -34,9 +34,6 @@ class PasswordMatchException(Exception):
 
 
 class CreateUserRequest(BaseModel):
-    # username: constr(pattern=config.USERNAME_REGEX)
-    # password: constr(pattern=config.PASSWORD_REGEX)
-
     username: str = Field(..., min_length=2, max_length=100)
     password: str = Field(..., min_length=8)
     verify_password: str = Field(..., min_length=8)
@@ -63,12 +60,6 @@ class CreateUserRequest(BaseModel):
         if data.get('password') != data.get('verify_password'):
             raise ValueError('Passwords do not match')
         return data
-
-    # def _passwords_match(self):
-    #     if password == verify_password:
-    #         # raise ValueError("Passwords do not match")
-    #         return True
-    #     return False 
 
 # Example form configuration with default values set
 example_form_config = {
@@ -281,6 +272,69 @@ def generate_pydantic_models(form_config: dict):
         models[form_name] = model
     
     return models
+
+
+
+def get_form_names(config_path=config.FORM_CONFIG_PATH):
+    """
+    Given a form config path, return a list of available forms, defaulting to the example 
+    dictionary provided above.
+    """
+    # Try to open config_path and if not existent or empty, use example config
+    form_config = example_form_config  # Default to example_form_config
+
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as file:
+                form_config = json.load(file)
+        except json.JSONDecodeError:
+            pass
+            # print("Failed to load the JSON file. Falling back to the default configuration.")
+    else:
+        pass
+        # print("Config file does not exist. Using the default configuration.")
+    return form_config.keys()
+
+def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH):
+
+    # Try to open config_path and if not existent or empty, use example config
+    form_config = example_form_config  # Default to example_form_config
+
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as file:
+                form_config = json.load(file)
+        except json.JSONDecodeError:
+            pass
+            # print("Failed to load the JSON file. Falling back to the default configuration.")
+    else:
+        pass
+        # print("Config file does not exist. Using the default configuration.")
+
+    if form_name not in form_config:
+        raise Exception(f"Form '{form_name}' not found in")
+
+    fields = form_config[form_name]
+    field_definitions = {}
+    
+    for field_name, field_info in fields.items():
+        python_type: Type = field_info["output_type"]
+        default = field_info.get("default", ...)
+        
+        # Ensure Optional is always used with a specific type
+        if default is ... and python_type != Optional:
+            python_type = Optional[python_type]
+        
+        field_definitions[field_name] = (python_type, default)
+        
+    # Creating the model dynamically, allowing arbitrary types
+    class Config:
+        arbitrary_types_allowed = True
+    
+    model = create_model(form_name, __config__=Config, **field_definitions)
+    
+    return model
+
 
 def __reconstruct_form_data(request, form_fields):
     """

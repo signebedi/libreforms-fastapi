@@ -67,9 +67,11 @@ from libreforms_fastapi.utils.document_database import (
 )
 
 from libreforms_fastapi.utils.pydantic_models import (
-    example_form_config,
-    generate_html_form,
-    generate_pydantic_models,
+    # example_form_config,
+    # generate_html_form,
+    # generate_pydantic_models,
+    get_form_config,
+    get_form_names,
     CreateUserRequest,
 )
 
@@ -207,16 +209,12 @@ Base.metadata.create_all(bind=engine)
 logger.info('Relational database has been initialized')
 
 
-# Yield the pydantic form model
-form_config = example_form_config
-FormModels = generate_pydantic_models(form_config)
-
 # Initialize the document database
 if config.MONGODB_ENABLED:
-    DocumentDatabase = ManageMongoDB(config=form_config, timezone=config.TIMEZONE, env=config.ENVIRONMENT)
+    DocumentDatabase = ManageMongoDB(form_names_callable=get_form_names, timezone=config.TIMEZONE, env=config.ENVIRONMENT)
     logger.info('MongoDB has been initialized')
 else: 
-    DocumentDatabase = ManageTinyDB(config=form_config, timezone=config.TIMEZONE, env=config.ENVIRONMENT)
+    DocumentDatabase = ManageTinyDB(form_names_callable=get_form_names, timezone=config.TIMEZONE, env=config.ENVIRONMENT)
     logger.info('TinyDB has been initialized')
 
 # Here we define an API key header for the api view functions.
@@ -359,11 +357,11 @@ if config.DEBUG:
 @app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth)])
 async def api_form_create(form_name: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), body: Dict = Body(...)):
 
-    if form_name not in form_config:
+    if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
-    # Pull this form model from the list of available models
-    FormModel = FormModels[form_name]
+    # Yield the pydantic form model
+    FormModel = get_form_config(form_name=form_name)
 
     # # Here we validate and coerce data into its proper type
     form_data = FormModel.model_validate(body)
