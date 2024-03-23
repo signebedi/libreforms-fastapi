@@ -52,6 +52,8 @@ from libreforms_fastapi.utils.sqlalchemy_models import (
     User,
     TransactionLog,
     Signing,
+    Group,
+    ApprovalChains,
 )
 
 from libreforms_fastapi.utils.scripts import (
@@ -207,6 +209,30 @@ signatures = Signatures(config.SQLALCHEMY_DATABASE_URI, byte_len=32,
 Base.metadata.create_all(bind=engine)
 
 logger.info('Relational database has been initialized')
+
+# Create default group if it does not exist
+with SessionLocal() as session:
+    # Check if a group with id 1 exists
+    default_group = session.query(Group).get(1)
+
+    if not default_group:
+        # If not, create and add the new default group
+        default_permissions = [
+            "example_form:create",
+            "example_form:read_own",
+            "example_form:read_all",
+            "example_form:update_own",
+            "example_form:update_all",
+            "example_form:delete_own",
+            "example_form:delete_all"
+        ]
+        default_group = Group(id=1, name="default", permissions=default_permissions)
+        session.add(default_group)
+        session.commit()
+        logger.info("Default group created.")
+    else:
+        print(default_group.get_permissions())
+        logger.info("Default group already exists.")
 
 
 # Initialize the document database
@@ -371,6 +397,12 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
+    try:
+        user.validate_permission(form_name=form_name, required_permission="create")
+        # print("\n\n\nUser has valid permissions\n\n\n")
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
     # Set the document_id here, and pass to the DocumentDatabase
     document_id = str(ObjectId())
 
@@ -503,6 +535,11 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
     api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=user_request.email)
     new_user.api_key = api_key
 
+
+    # Add the user to the default group
+    group = session.query(Group).filter_by(name='default').first()
+    new_user.groups.append(group)
+
     session.add(new_user)
     session.commit()
 
@@ -565,6 +602,7 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
 # Add new user
     # > paired with add newadmin UI route
 
+# Modify user *** including disable user
 
 # Get Transaction Statistics
     # Paired with the Transaction Statistics
@@ -574,6 +612,15 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
 # Update application config
 
 # Trigger site reload
+
+
+# Get all groups
+
+# Add new group
+
+# Update group
+
+# Delete group
 
 ##########################
 ### UI Routes - Forms

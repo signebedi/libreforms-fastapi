@@ -3,6 +3,7 @@ from datetime import datetime
 from zoneinfo import ZoneInfo
 
 from sqlalchemy import (
+    Table,
     Boolean, 
     Column, 
     ForeignKey, 
@@ -23,8 +24,18 @@ config = yield_config(_env)
 Base = declarative_base()
 
 
+# Association table for the many-to-many relationship
+user_group_association = Table('user_group_association', Base.metadata,
+    Column('user_id', Integer, ForeignKey('user.id'), primary_key=True),
+    Column('group_id', Integer, ForeignKey('group.id'), primary_key=True)
+)
+
 def tz_aware_datetime():
     return datetime.now(config.TIMEZONE)
+
+class InsufficientPermissionsError(Exception):
+    """Raised when users lack sufficient permissions"""
+    pass
 
 class User(Base):
     __tablename__ = 'user'
@@ -32,7 +43,8 @@ class User(Base):
     email = Column(String(1000))
     password = Column(String(1000))
     username = Column(String(1000), unique=True)
-    groups = Column(JSON, default=list)
+    # groups = Column(JSON, default=['default'])
+    groups = relationship('Group', secondary=user_group_association, back_populates='users')
     active = Column(Boolean)
     created_date = Column(DateTime, nullable=False, default=tz_aware_datetime)
     last_login = Column(DateTime, nullable=True, default=tz_aware_datetime)
@@ -49,8 +61,67 @@ class User(Base):
     transaction_log = relationship("TransactionLog", order_by="TransactionLog.id", back_populates="user")
 
     def __repr__(self) -> str:
-        return f"User(id={self.id!r}, name={self.username!r}, site_admin={'Yes' if self.site_admin else 'No'}, " \
-            f"active={'Yes' if self.active else 'No'}, groups={self.groups})"
+
+        # Here we join the group names and represent them as a comma-separated string of values
+        groups = ", ".join([x.name for x in self.groups])
+
+        return f"User(id={self.id!r}, name={self.username!r}, email={self.email}, site_admin={'Yes' if self.site_admin else 'No'}, " \
+            f"active={'Yes' if self.active else 'No'}, groups={groups})"
+
+    def validate_permission(self, form_name: str, required_permission: str) -> bool:
+        """
+        Checks if the user has the required permission for a given form across all assigned groups.
+
+        :param form_name: The name of the form.
+        :param required_permission: The specific permission to check for.
+        :returns: True if at least one of the user's groups grants the required permission.
+        :raises InsufficientPermissionsError: If none of the groups grant the required permission.
+        """
+        for group in self.groups:
+            # Utilize Group's method to unpack permissions
+            permissions = group.get_permissions()
+
+            # Check if the group grants the required permission for the form
+            if form_name in permissions and required_permission in permissions[form_name]:
+                return True  # Permission granted by this group
+
+        # If no group grants the permission, raise an error
+        raise InsufficientPermissionsError(f"User does not have the required permission: {required_permission} for form: {form_name}")
+
+# Allow admins to define custom groups, see
+# https://github.com/signebedi/libreforms-fastapi/issues/22
+class Group(Base):
+    __tablename__ = 'group'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(1000), unique=True)
+    permissions = Column(JSON)
+    users = relationship('User', secondary=user_group_association, back_populates='groups')
+
+    def get_permissions(self) -> dict:
+        """We expect permissions to be a list of permissions in the format of form_name:permission_granted - here, we unpack them"""
+        unpack_permissions = {}
+
+        for item in self.permissions:
+            i = item.split(":")
+            form_name = i[0]
+            permission =i[1]
+
+            if form_name not in unpack_permissions.keys():
+                unpack_permissions[form_name] = []
+
+            unpack_permissions[form_name].append(permission)
+
+        return unpack_permissions
+
+    # def validate_permission(self, form_name, permission):
+    #     permission_dict = self.get_permissions()
+    #     if form_name not in permission_dict.keys():
+    #         raise InsufficientPermissionsError("User does not have the required permissions")
+
+    #     if permission not in permission_dict[form_name]:
+    #         raise InsufficientPermissionsError("User does not have the required permissions")
+
+    #     return True
 
 # Many to one relationship with User table
 class TransactionLog(Base):
@@ -64,14 +135,6 @@ class TransactionLog(Base):
     query_params = Column(String(2000), nullable=True) # Can we find a way to make this a JSON string or similar format?
 
     user = relationship("User", back_populates="transaction_log")
-
-# Allow admins to define custom groups, see
-# https://github.com/signebedi/libreforms-fastapi/issues/22
-class Group(Base):
-    __tablename__ = 'group'
-    id = Column(Integer, primary_key=True)
-    name = Column(String(1000), unique=True)
-    permissions = Column(JSON)
 
 # Allow custom approval chains to be defined here
 class ApprovalChains(Base):
