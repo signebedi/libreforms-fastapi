@@ -32,6 +32,7 @@ class User(Base):
     email = Column(String(1000))
     password = Column(String(1000))
     username = Column(String(1000), unique=True)
+    groups = Column(JSON, default=list)
     active = Column(Boolean)
     created_date = Column(DateTime, nullable=False, default=tz_aware_datetime)
     last_login = Column(DateTime, nullable=True, default=tz_aware_datetime)
@@ -47,6 +48,9 @@ class User(Base):
 
     transaction_log = relationship("TransactionLog", order_by="TransactionLog.id", back_populates="user")
 
+    def __repr__(self) -> str:
+        return f"User(id={self.id!r}, name={self.username!r}, site_admin={'Yes' if self.site_admin else 'No'}, " \
+            f"active={'Yes' if self.active else 'No'}, groups={self.groups})"
 
 # Many to one relationship with User table
 class TransactionLog(Base):
