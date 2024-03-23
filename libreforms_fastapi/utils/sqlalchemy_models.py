@@ -9,6 +9,7 @@ from sqlalchemy import (
     Integer,
     String, 
     DateTime,
+    JSON,
 )
 from sqlalchemy.orm import relationship, declarative_base
 
@@ -67,6 +68,14 @@ class Group(Base):
     id = Column(Integer, primary_key=True)
     name = Column(String(1000), unique=True)
     permissions = Column(JSON)
+
+# Allow custom approval chains to be defined here
+class ApprovalChains(Base):
+    __tablename__ = 'approval_chains'
+    id = Column(Integer, primary_key=True)
+    form_name = Column(String(1000))
+    apply_to_single_group = Column(String(100), nullable=True) # Maybe we allow admins to route approvals based on the group of the sender...
+    send_to_users_manager = Column(Boolean) # I think that this is probably going to be difficult to implement ...
 
 
 # Create a custom Signing class from sqlalchemy_signing
