@@ -97,6 +97,10 @@ class Config(BaseSettings):
     # see https://github.com/signebedi/libreforms-fastapi/issues/18.
     UI_ENABLED:bool = os.getenv('UI_ENABLED', 'True') == 'True'
 
+    # Here we specify a path to our JSON form config representation, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/37.
+    FORM_CONFIG_PATH:str = os.getenv('FORM_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "form_config.json")))
+
     SMTP_ENABLED:bool = os.getenv('SMTP_ENABLED', 'False') == 'True'
     SMTP_MAIL_SERVER:str = os.getenv('SMTP_MAIL_SERVER', "")
     SMTP_PORT:int = int(os.getenv('SMTP_PORT', 25))    
