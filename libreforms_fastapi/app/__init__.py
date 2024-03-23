@@ -370,25 +370,26 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
-    
-    # Get request details
+
+    # Set the document_id here, and pass to the DocumentDatabase
+    document_id = str(ObjectId())
+
+    metadata={
+        DocumentDatabase.document_id_field: document_id,
+        DocumentDatabase.created_by_field: user.username,
+        DocumentDatabase.last_editor_field: user.username,
+    }
+
+    # Add the remote addr host if enabled
     if config.COLLECT_USAGE_STATISTICS:
-        endpoint = request.url.path
-        remote_addr = request.client.host
+        metadata[DocumentDatabase.ip_address_field] = request.client.host
 
     # Process the validated form submission as needed
-    # document_id = DocumentDatabase.create_document(form_name=form_name, json_data=form_data.model_dump_json())
-    document_id = str(ObjectId())
     background_tasks.add_task(
         DocumentDatabase.create_document, 
         form_name=form_name, 
         json_data=json_data, 
-        metadata={
-            DocumentDatabase.document_id_field: document_id,
-            DocumentDatabase.created_by_field: user.username,
-            DocumentDatabase.last_editor_field: user.username,
-            # DocumentDatabase.ip_address_field: remote_addr,
-        },
+        metadata=metadata
     )
 
     # Send email
@@ -403,6 +404,10 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
         background_tasks.add_task(
             write_api_call_to_transaction_log, 
             api_key=key, 

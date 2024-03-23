@@ -296,7 +296,7 @@ def get_form_names(config_path=config.FORM_CONFIG_PATH):
     return form_config.keys()
 
 def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH):
-
+    """Yields a single config dict for the form name passed"""
     # Try to open config_path and if not existent or empty, use example config
     form_config = example_form_config  # Default to example_form_config
 
