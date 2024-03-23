@@ -56,8 +56,18 @@ class TransactionLog(Base):
     # date = Column(Date, nullable=False, default=lambda: datetime.utcnow().date())
     endpoint = Column(String(1000))
     remote_addr = Column(String(50), nullable=True)
-    query_params = Column(String(2000), nullable=True)  # Can we find a way to make this a JSON string or similar format?
+    query_params = Column(String(2000), nullable=True) # Can we find a way to make this a JSON string or similar format?
 
     user = relationship("User", back_populates="transaction_log")
 
+# Allow admins to define custom groups, see
+# https://github.com/signebedi/libreforms-fastapi/issues/22
+class Group(Base):
+    __tablename__ = 'group'
+    id = Column(Integer, primary_key=True)
+    name = Column(String(1000), unique=True)
+    permissions = Column(JSON)
+
+
+# Create a custom Signing class from sqlalchemy_signing
 Signing = create_signing_class(Base, tz_aware_datetime)
