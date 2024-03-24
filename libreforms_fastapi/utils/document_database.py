@@ -145,6 +145,25 @@ class CollectionDoesNotExist(Exception):
         message = f"The collection '{form_name}' does not exist."
         super().__init__(message)
 
+class DocumentDoesNotExist(Exception):
+    """Exception raised when attempting to access a document that does not exist."""
+    def __init__(self, form_name, document_id):
+        message = f"The document with ID '{document_id}' collection '{form_name}' does not exist."
+        super().__init__(message)
+
+class DocumentIsDeleted(Exception):
+    """Exception raised when attempting to access a document that has been deleted."""
+    def __init__(self, form_name, document_id):
+        message = f"The document with ID '{document_id}' collection '{form_name}' has been deleted and cannot be edited."
+        super().__init__(message)
+
+class InsufficientPermissions(Exception):
+    """Exception raised when attempting to access a document that user lacks permissions for."""
+    def __init__(self, form_name, document_id, username):
+        message = f"User '{user}' has insufficinet permissions to perform the requested operation on document" \
+            f"with ID '{document_id}' collection '{form_name}'."
+        super().__init__(message)
+
 
 # Pulled from https://github.com/signebedi/gita-api
 def fuzzy_search_normalized(text_string, search_term, segment_length=None):
@@ -358,24 +377,24 @@ class ManageTinyDB(ManageDocumentDB):
         if not document:
             if self.use_logger:
                 self.logger.warning(f"No document for {form_name} with document_id {document_id}")
-            return None
+            raise DocumentDoesNotExist(form_name, document_id)
 
         # If exclude_deleted is set, then we return None if the document is marked as deleted
         if exclude_deleted and document['metadata'][self.is_deleted_field] == True:
             if self.use_logger:
                 self.logger.warning(f"Document for {form_name} with document_id {document_id} is deleted and was not updated")
-            return None
+            raise DocumentIsDeleted(form_name, document_id)
 
         # If we are limiting user access based on group-based access controls, and this user is 
         # not the document creator, then return None
         if isinstance(limit_users, str) and document['metadata'][self.created_by_field] != limit_users:
             if self.use_logger:
                 self.logger.warning(f"Insufficient permissions to update document for {form_name} with document_id {document_id}")
-            return None
+            raise InsufficientPermissions(form_name, document_id, limit_users)
 
         current_timestamp = datetime.now(self.timezone)
 
-        print("\n\n\n\nDocument: ", document)
+        # print("\n\n\n\nDocument: ", document)
 
         # This is a little hackish but TinyDB write data to file as Python dictionaries, not JSON.
         updated_data_dict = json.loads(json_data)
@@ -383,24 +402,28 @@ class ManageTinyDB(ManageDocumentDB):
         # Here we remove data that has not been changed
         dropping_unchanged_data = {}
         for field in updated_data_dict.keys():
-            print(field)
+
+            # print(field)
+
             if all([
                 field in document['data'].keys(),
                 updated_data_dict[field] != document['data'][field],
                 updated_data_dict[field] is not None
             ]):
 
-                print(f"\n\n\n{field} in document data but has different value")
+                # print(f"\n\n\n{field} in document data but has different value")
+
                 dropping_unchanged_data[field] = updated_data_dict[field]
             elif all([
                 field not in document['data'].keys(),
                 updated_data_dict[field] is not None
             ]):
 
-                print(f"\n\n\n{field} not in document data")
+                # print(f"\n\n\n{field} not in document data")
+
                 dropping_unchanged_data[field] = updated_data_dict[field]
 
-        print("\n\n\nDropping Unchanged Fields: ", dropping_unchanged_data)
+        # print("\n\n\nDropping Unchanged Fields: ", dropping_unchanged_data)
 
         # Build the journal
         journal = document['metadata'].get(self.journal_field)
@@ -425,7 +448,7 @@ class ManageTinyDB(ManageDocumentDB):
         document['metadata'][self.journal_field] = journal
 
 
-        print("\n\n\nUpdated Document: ", document)
+        # print("\n\n\nUpdated Document: ", document)
 
         # Update only the fields that are provided in json_data and metadata, not replacing the entire 
         # document. The partial approach will minimize the room for mistakes from overwriting entire documents.

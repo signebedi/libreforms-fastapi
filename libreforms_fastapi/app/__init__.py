@@ -67,6 +67,9 @@ from libreforms_fastapi.utils.document_database import (
     ManageTinyDB,
     ManageMongoDB,
     CollectionDoesNotExist,
+    DocumentDoesNotExist,
+    DocumentIsDeleted,
+    InsufficientPermissions
 )
 
 from libreforms_fastapi.utils.pydantic_models import (
@@ -585,7 +588,7 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
     form_data = FormModel.model_validate(body)
     json_data = form_data.model_dump_json()
 
-    print("\n\n\n", json_data)
+    # print("\n\n\n", json_data)
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
@@ -613,13 +616,26 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
     if config.COLLECT_USAGE_STATISTICS:
         metadata[DocumentDatabase.ip_address_field] = request.client.host
 
-    # Process the validated form submission as needed
-    _ = DocumentDatabase.update_document(
-        form_name=form_name, 
-        document_id=document_id,
-        json_data=json_data, 
-        metadata=metadata
-    )
+    try:
+        # Process the validated form submission as needed
+        success = DocumentDatabase.update_document(
+            form_name=form_name, 
+            document_id=document_id,
+            json_data=json_data, 
+            metadata=metadata
+        )
+
+    # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
+    # it fails to ensure the user knows their operation was not successful.
+    except DocumentDoesNotExist as e:
+        raise HTTPException(status_code=404, detail=f"{e}")
+
+    except DocumentIsDeleted as e:
+        raise HTTPException(status_code=410, detail=f"{e}")
+
+    except InsufficientPermissions as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
 
     # Send email
     if config.SMTP_ENABLED:
