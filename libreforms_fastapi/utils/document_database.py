@@ -334,6 +334,7 @@ class ManageTinyDB(ManageDocumentDB):
                 self.approved_field: metadata.get(self.approved_field, None),
                 self.approved_by_field: metadata.get(self.approved_by_field, None),
                 self.approval_signature_field: metadata.get(self.approval_signature_field, None),
+                self.journal_field: []
             }
         }
 
@@ -345,20 +346,57 @@ class ManageTinyDB(ManageDocumentDB):
 
         return document_id
 
-    def update_document(self, form_name:str, json_data, metadata={}):
+    def update_document(self, form_name:str, document_id:str, json_data, metadata={}, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
         """Updates existing form in specified form's database."""
 
         self._check_form_exists(form_name)
+        if self.use_logger:
+            self.logger.info(f"Starting update for {form_name} with document_id {document_id}")
 
         # Ensure the document exists
-        existing_document = self.databases[form_name].get(document_id=document_id)
-        if not existing_document:
-            raise ValueError(f"No document found with ID {document_id} in form {form_name}")
+        document = self.databases[form_name].get(doc_id=document_id)
+        if not document:
+            if self.use_logger:
+                self.logger.warning(f"No document for {form_name} with document_id {document_id}")
+            return None
+
+        # If exclude_deleted is set, then we return None if the document is marked as deleted
+        if exclude_deleted and document['metadata'][self.is_deleted_field] == True:
+            if self.use_logger:
+                self.logger.warning(f"Document for {form_name} with document_id {document_id} is deleted and was not updated")
+            return None
+
+        # If we are limiting user access based on group-based access controls, and this user is 
+        # not the document creator, then return None
+        if isinstance(limit_users, str) and document['metadata'][self.created_by_field] != limit_users:
+            if self.use_logger:
+                self.logger.warning(f"Insufficient permissions to update document for {form_name} with document_id {document_id}")
+            return None
 
         current_timestamp = datetime.now(self.timezone)
 
         # This is a little hackish but TinyDB write data to file as Python dictionaries, not JSON.
         updated_data_dict = json.loads(json_data)
+
+        # Here we remove data that has not been changed
+        dropping_unchanged_data = {}
+        for field in updated_data_dict.keys():
+            if field in document['data'].keys():
+                if updated_data_dict[field] != document['data'][field]:
+                    dropping_unchanged_data[field] = updated_data_dict[field]
+
+
+        # Build the journal
+
+        journal = document['metadata'].get(self.journal_field)
+        journal.append (
+            {
+                self.last_modified_field: current_timestamp.isoformat(),
+                self.last_editor_field: metadata.get(self.last_editor_field, None),
+                self.ip_address_field: metadata.get(self.ip_address_field, None),
+                **dropping_unchanged_data,
+            }
+        )
 
         # Prepare the updated data and metadata
         update_dict = {
@@ -367,15 +405,27 @@ class ManageTinyDB(ManageDocumentDB):
                 # Here we update only a few metadata fields ... fields like approval and signature should be
                 # handled through separate API calls.
                 self.last_modified_field: current_timestamp.isoformat(),
-                self.last_editor_field: metadata.get(self.last_editor_field, existing_document["metadata"][self.last_editor_field]),
+                self.last_editor_field: metadata.get(self.last_editor_field, None),
+                self.ip_address_field: metadata.get(self.ip_address_field, None),
+                self.journal_field: journal,
+
+                # These fields should all remain the same
+                self.form_name_field: document['metadata'].get(self.form_name_field),
+                self.is_deleted_field: document['metadata'].get(self.is_deleted_field),
+                self.document_id_field: document['metadata'].get(self.document_id_field),
+                self.timezone_field: document['metadata'].get(self.timezone_field),
+                self.created_at_field: document['metadata'].get(self.created_at_field),
+                self.created_by_field: document['metadata'].get(self.created_by_field),
+                self.signature_field: document['metadata'].get(self.signature_field),
+                self.approved_field: document['metadata'].get(self.approved_field),
+                self.approved_by_field: document['metadata'].get(self.approved_by_field),
+                self.approval_signature_field: document['metadata'].get(self.approval_signature_field),
             }
         }
 
-        update_dict['metadata'][self.journal_field] = update_dict.copy()
-
         # Update only the fields that are provided in json_data and metadata, not replacing the entire 
         # document. The partial approach will minimize the room for mistakes from overwriting entire documents.
-        _ = self.databases[form_name].update(update_dict, document_id=document_id)
+        _ = self.databases[form_name].update(update_dict, doc_ids=[document_id])
 
         if self.use_logger:
             self.logger.info(f"Updated document for {form_name} with document_id {document_id}")

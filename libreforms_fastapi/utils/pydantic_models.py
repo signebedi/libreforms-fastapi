@@ -70,6 +70,7 @@ example_form_config = {
             "field_name": "text_input",
             "default": "Default Text",
             "validators": [],
+            "required": False,
             "options": None
         },
         "number_input": {
@@ -78,6 +79,7 @@ example_form_config = {
             "field_name": "number_input",
             "default": 42,
             "validators": [],
+            "required": False,
             "options": None
         },
         "email_input": {
@@ -86,6 +88,7 @@ example_form_config = {
             "field_name": "email_input",
             "default": "user@example.com",
             "validators": [],
+            "required": False,
             "options": None
         },
         "date_input": {
@@ -94,6 +97,7 @@ example_form_config = {
             "field_name": "date_input",
             "default": "2024-01-01",
             "validators": [],
+            "required": False,
             "options": None
         },
         "checkbox_input": {
@@ -102,6 +106,7 @@ example_form_config = {
             "field_name": "checkbox_input",
             "options": ["Option1", "Option2", "Option3"],
             "validators": [],
+            "required": False,
             "default": ["Option1", "Option3"]
         },
         "radio_input": {
@@ -110,6 +115,7 @@ example_form_config = {
             "field_name": "radio_input",
             "options": ["Option1", "Option2"],
             "validators": [],
+            "required": False,
             "default": "Option2"
         },
         "select_input": {
@@ -118,6 +124,7 @@ example_form_config = {
             "field_name": "select_input",
             "options": ["Option1", "Option2", "Option3"],
             "validators": [],
+            "required": False,
             "default": "Option2"
         },
         "textarea_input": {
@@ -126,14 +133,16 @@ example_form_config = {
             "field_name": "textarea_input",
             "default": "Default textarea content.",
             "validators": [],
+            "required": False,
             "options": None
         },
         "file_input": {
             "input_type": "file",
-            "output_type": Optional[bytes],
+            "output_type": bytes,
             "field_name": "file_input",
             "options": None,
             "validators": [],
+            "required": False,
             "default": None  # File inputs can't have default values
         },
     },
@@ -295,8 +304,12 @@ def get_form_names(config_path=config.FORM_CONFIG_PATH):
         # print("Config file does not exist. Using the default configuration.")
     return form_config.keys()
 
-def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH):
-    """Yields a single config dict for the form name passed, following a factory pattern approach"""
+def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False):
+    """
+    Yields a single config dict for the form name passed, following a factory pattern approach.
+
+    If update is set to True, all fields will be set to optional.
+    """
     # Try to open config_path and if not existent or empty, use example config
     form_config = example_form_config  # Default to example_form_config
 
@@ -318,21 +331,40 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH):
     field_definitions = {}
     
     for field_name, field_info in fields.items():
+        
+        # Should we consider making an Enum for fields with a limited set of options... 
+        # essentially requiring that the values passed are in the Enum of acceptable
+        # values? Bit difficult to implement for List and other data types, but may
+        # be worthwhile.
+
         python_type: Type = field_info["output_type"]
         default = field_info.get("default", ...)
-        
+        required = field_info.get("required", False) # Default to not required field
+        validators = field_info.get("validators", [])
+
         # Ensure Optional is always used with a specific type
-        if default is ... and python_type != Optional:
+        if (default is ... and python_type != Optional) or (not required) or (update):
             python_type = Optional[python_type]
         
         field_definitions[field_name] = (python_type, default)
-        
+
+        for validator_func in validators:
+            # This assumes `validator_func` is callable that accepts a single 
+            # value and returns a value or raises an exception
+            pass
+
     # Creating the model dynamically, allowing arbitrary types
     class Config:
         arbitrary_types_allowed = True
     
     model = create_model(form_name, __config__=Config, **field_definitions)
-    
+
+    for field_name, field_info in fields.items():
+        validators = field_info.get("validators", [])
+        for v in validators:
+            # Placeholder for adding the validators to the model here
+            pass
+
     return model
 
 
