@@ -576,8 +576,61 @@ async def api_form_read_all(form_name: str, background_tasks: BackgroundTasks, r
     # async def api_form_delete():
 
 # Search forms
-# @app.get("/api/form/search/{form_name}")
-# async def api_form_search(form_name: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+@app.get("/api/form/search/{form_name}")
+async def api_form_search(form_name: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), search_term: str = Query(None, title="Search Term")):
+
+    if form_name not in get_form_names():
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    if search_term is None:
+        return {"error": "No search term provided"}
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    # Here we are working to unpack permissions across multiple forms.
+    user_group_permissions = user.compile_permissions()
+    form_names = get_form_names()
+    limit_query_to = {}
+
+    for form_name in form_names:
+        if "read_own" in user_group_permissions[form_name]:
+            if "read_all" in user_group_permissions[form_name]:
+                limit_query_to[form_name] = False
+            else:
+                limit_query_to[form_name] = user.username
+
+    documents = DocumentDatabase.fuzzy_search_documents(
+        search_term=search_term,
+        form_name=form_name,
+        limit_users=limit_query_to,
+    )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params="{}",
+        )
+
+    if not documents or len(documents) == 0:
+        raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+    return {
+        "message": "Data successfully retrieved", 
+        "documents": documents, 
+    }
+
+
+
 
 # Search ALL forms
 @app.get("/api/form/search", dependencies=[Depends(api_key_auth)])
