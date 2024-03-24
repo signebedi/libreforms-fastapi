@@ -88,6 +88,24 @@ class User(Base):
         # If no group grants the permission, raise an error
         raise InsufficientPermissionsError(f"User does not have the required permission: {required_permission} for form: {form_name}")
 
+    def compile_permissions(self) -> dict:
+        """The point of this method is to return a dict of user's permissions as a dict based on all their groups"""
+
+        permissions_dict={}
+        for group in self.groups:
+            permissions = group.get_permissions()
+            
+            for form_name in permissions.keys():
+                if form_name not in permissions_dict.keys():
+                    permissions_dict[form_name] = []
+                for permission in permissions[form_name]:
+                    if permission not in permissions_dict[form_name]:
+                        permissions_dict[form_name].append(permission)
+
+        return permissions_dict
+
+
+
 # Allow admins to define custom groups, see
 # https://github.com/signebedi/libreforms-fastapi/issues/22
 class Group(Base):
