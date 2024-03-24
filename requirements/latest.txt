@@ -1,9 +1,11 @@
 email_validator
 fastapi
+fuzzywuzzy
 Jinja2
 passlib[bcrypt]
 pydantic-settings
 pymongo
+python-Levenshtein
 SQLAlchemy
 sqlalchemy-signing
 tinydb
