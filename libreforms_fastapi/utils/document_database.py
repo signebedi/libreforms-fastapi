@@ -183,6 +183,7 @@ class ManageDocumentDB(ABC):
         self.approved_field = "_approved"
         self.approved_by_field = "_approved_by"
         self.approval_signature_field = "_approval_signature"
+        self.journal_field = "_journal"
 
         # These configs will be helpful later for managing time consistently
         self.timezone = timezone
@@ -314,8 +315,6 @@ class ManageTinyDB(ManageDocumentDB):
         # This is a little hackish but TinyDB write data to file as Python dictionaries, not JSON.
         convert_data_to_dict = json.loads(json_data)
 
-        # data_dict = json.loads(json_data)
-
         document_id = metadata.get(self.document_id_field, str(ObjectId()))
 
         data_dict = {
@@ -349,9 +348,39 @@ class ManageTinyDB(ManageDocumentDB):
     def update_document(self, form_name:str, json_data, metadata={}):
         """Updates existing form in specified form's database."""
 
-        # Placeholder for logger
+        self._check_form_exists(form_name)
 
-        pass
+        # Ensure the document exists
+        existing_document = self.databases[form_name].get(document_id=document_id)
+        if not existing_document:
+            raise ValueError(f"No document found with ID {document_id} in form {form_name}")
+
+        current_timestamp = datetime.now(self.timezone)
+
+        # This is a little hackish but TinyDB write data to file as Python dictionaries, not JSON.
+        updated_data_dict = json.loads(json_data)
+
+        # Prepare the updated data and metadata
+        update_dict = {
+            "data": updated_data_dict,
+            "metadata": {
+                # Here we update only a few metadata fields ... fields like approval and signature should be
+                # handled through separate API calls.
+                self.last_modified_field: current_timestamp.isoformat(),
+                self.last_editor_field: metadata.get(self.last_editor_field, existing_document["metadata"][self.last_editor_field]),
+            }
+        }
+
+        update_dict['metadata'][self.journal_field] = update_dict.copy()
+
+        # Update only the fields that are provided in json_data and metadata, not replacing the entire 
+        # document. The partial approach will minimize the room for mistakes from overwriting entire documents.
+        _ = self.databases[form_name].update(update_dict, document_id=document_id)
+
+        if self.use_logger:
+            self.logger.info(f"Updated document for {form_name} with document_id {document_id}")
+
+        return document_id
 
     def sign_document(self, form_name:str, json_data, metadata={}):
         """Manage signatures existing form in specified form's database."""
