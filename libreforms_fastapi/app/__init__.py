@@ -575,12 +575,17 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Yield the pydantic form model, setting update to True, which will mark
-    # all fields as Optional
+    # all fields as Optional. Nb. Maybe we should pass the full data payload,
+    # including unchanged fields. The benefit is simplicity all over the 
+    # application, because we can just pull the data, update fields as appropriate,
+    # and pass the full payload to the document database to parse and clean up.
     FormModel = get_form_config(form_name=form_name, update=True)
 
     # # Here we validate and coerce data into its proper type
     form_data = FormModel.model_validate(body)
     json_data = form_data.model_dump_json()
+
+    print("\n\n\n", json_data)
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
@@ -651,6 +656,8 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
 # Delete form
     # @app.delete("/api/form/delete/{form_name}", dependencies=[Depends(api_key_auth)])
     # async def api_form_delete():
+
+
 
 # Search forms
 @app.get("/api/form/search/{form_name}")
@@ -863,10 +870,17 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
     # @app.patch("/api/auth/update")
     # async def api_auth_update(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
 
-
 # Get User / id
-    # @app.patch("/api/auth/get")
+    # @app.get("/api/auth/get")
     # async def api_auth_get(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+
+# Request Password Reset - Forgot Password
+    # @app.patch("/api/auth/forgot_password")
+    # async def api_auth_forgot_password(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+
+# Confirm password reset
+    # @app.patch("/api/auth/forgot_password/{single_use_token}")
+    # async def api_auth_forgot_password_confirm(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
 
 # Rotate user API key
     # @app.patch("/api/auth/rotate_key")
@@ -891,12 +905,11 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
 # Add new user
     # > paired with add newadmin UI route
 
-# Modify user *** including disable user
+# Modify user *** including disable user 
 
 # Get Transaction Statistics
-    # Paired with the Transaction Statistics
+    # Paired with the Transaction Statistics admin UI route
 
-# Toggle user active status
 
 # Update application config
 

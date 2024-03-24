@@ -346,7 +346,7 @@ class ManageTinyDB(ManageDocumentDB):
 
         return document_id
 
-    def update_document(self, form_name:str, document_id:str, json_data, metadata={}, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
+    def update_document(self, form_name:str, document_id:str, json_data:str, metadata={}, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
         """Updates existing form in specified form's database."""
 
         self._check_form_exists(form_name)
@@ -375,19 +375,34 @@ class ManageTinyDB(ManageDocumentDB):
 
         current_timestamp = datetime.now(self.timezone)
 
+        print("\n\n\n\nDocument: ", document)
+
         # This is a little hackish but TinyDB write data to file as Python dictionaries, not JSON.
         updated_data_dict = json.loads(json_data)
 
         # Here we remove data that has not been changed
         dropping_unchanged_data = {}
         for field in updated_data_dict.keys():
-            if field in document['data'].keys():
-                if updated_data_dict[field] != document['data'][field]:
-                    dropping_unchanged_data[field] = updated_data_dict[field]
+            print(field)
+            if all([
+                field in document['data'].keys(),
+                updated_data_dict[field] != document['data'][field],
+                updated_data_dict[field] is not None
+            ]):
 
+                print(f"\n\n\n{field} in document data but has different value")
+                dropping_unchanged_data[field] = updated_data_dict[field]
+            elif all([
+                field not in document['data'].keys(),
+                updated_data_dict[field] is not None
+            ]):
+
+                print(f"\n\n\n{field} not in document data")
+                dropping_unchanged_data[field] = updated_data_dict[field]
+
+        print("\n\n\nDropping Unchanged Fields: ", dropping_unchanged_data)
 
         # Build the journal
-
         journal = document['metadata'].get(self.journal_field)
         journal.append (
             {
@@ -398,34 +413,23 @@ class ManageTinyDB(ManageDocumentDB):
             }
         )
 
-        # Prepare the updated data and metadata
-        update_dict = {
-            "data": updated_data_dict,
-            "metadata": {
-                # Here we update only a few metadata fields ... fields like approval and signature should be
-                # handled through separate API calls.
-                self.last_modified_field: current_timestamp.isoformat(),
-                self.last_editor_field: metadata.get(self.last_editor_field, None),
-                self.ip_address_field: metadata.get(self.ip_address_field, None),
-                self.journal_field: journal,
+        # Now we update the document with the changes
+        for field in dropping_unchanged_data.keys():
+            document['data'][field] = dropping_unchanged_data[field]
 
-                # These fields should all remain the same
-                self.form_name_field: document['metadata'].get(self.form_name_field),
-                self.is_deleted_field: document['metadata'].get(self.is_deleted_field),
-                self.document_id_field: document['metadata'].get(self.document_id_field),
-                self.timezone_field: document['metadata'].get(self.timezone_field),
-                self.created_at_field: document['metadata'].get(self.created_at_field),
-                self.created_by_field: document['metadata'].get(self.created_by_field),
-                self.signature_field: document['metadata'].get(self.signature_field),
-                self.approved_field: document['metadata'].get(self.approved_field),
-                self.approved_by_field: document['metadata'].get(self.approved_by_field),
-                self.approval_signature_field: document['metadata'].get(self.approval_signature_field),
-            }
-        }
+        # Here we update only a few metadata fields ... fields like approval and signature should be
+        # handled through separate API calls.
+        document['metadata'][self.last_modified_field] = current_timestamp.isoformat()
+        document['metadata'][self.last_editor_field] = metadata.get(self.last_editor_field, None)
+        document['metadata'][self.ip_address_field] = metadata.get(self.ip_address_field, None)
+        document['metadata'][self.journal_field] = journal
+
+
+        print("\n\n\nUpdated Document: ", document)
 
         # Update only the fields that are provided in json_data and metadata, not replacing the entire 
         # document. The partial approach will minimize the room for mistakes from overwriting entire documents.
-        _ = self.databases[form_name].update(update_dict, doc_ids=[document_id])
+        _ = self.databases[form_name].update(document, doc_ids=[document_id])
 
         if self.use_logger:
             self.logger.info(f"Updated document for {form_name} with document_id {document_id}")

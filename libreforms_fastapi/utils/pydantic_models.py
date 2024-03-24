@@ -342,16 +342,28 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
         required = field_info.get("required", False) # Default to not required field
         validators = field_info.get("validators", [])
 
-        # Ensure Optional is always used with a specific type
-        if (default is ... and python_type != Optional) or (not required) or (update):
-            python_type = Optional[python_type]
-        
-        field_definitions[field_name] = (python_type, default)
+        # If update is True, provide None as the default value ... the idea here is that 
+        # the model has already imposed default value constraints at the time of creation.
+        # But, it is a legitimate format for clients to pass either (1) data that only 
+        # includes the changes the client wants to make or (2) all the data, changing only
+        # the fields the client wants to change. We need to be able to make sense of these 
+        # two cases. See: https://github.com/signebedi/libreforms-fastapi/issues/34
+        if update:
+            field_definitions[field_name] = (Optional[python_type], None)
+        else:
+            default = field_info.get("default", ...)
+            # Use Optional type if default is not set or field is not required
+            if (default is ... and python_type != Optional) or not required:
+                python_type = Optional[python_type]
+            field_definitions[field_name] = (python_type, default)
+
 
         for validator_func in validators:
-            # This assumes `validator_func` is callable that accepts a single 
+            # This assumes validator_func is callable that accepts a single 
             # value and returns a value or raises an exception
             pass
+        
+    print(field_definitions)
 
     # Creating the model dynamically, allowing arbitrary types
     class Config:
