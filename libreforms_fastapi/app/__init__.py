@@ -397,6 +397,7 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
+    # Here we validate the user groups permit this level of access to the form
     try:
         user.validate_permission(form_name=form_name, required_permission="create")
         # print("\n\n\nUser has valid permissions\n\n\n")
@@ -455,13 +456,65 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
     }
 
 # Read one form
-    # @app.get("/api/form/read_one/{form_name}")
-    # async def api_form_read_one():
+@app.get("/api/form/read_one/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+async def api_form_read_one(form_name: str, document_id: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+
+    if form_name not in get_form_names():
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    # Here we validate the user groups permit them to see their own forms, which they
+    # should do as a matter of bureaucratic best practice, but might sometimes limit.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_own")
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
+    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_all")
+        limit_query_to_users_own = False
+    except Exception as e:
+        limit_query_to_users_own = user.username
+
+    document = DocumentDatabase.get_one_document(
+        form_name=form_name, 
+        document_id=document_id, 
+        limit_users=limit_query_to_users_own
+    )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params="{}",
+        )
+
+    if not document:
+        raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+    return {
+        "message": "Data successfully retrieved", 
+        "document_id": document_id, 
+        "data": document["data"],
+        "metadata": document["metadata"],
+    }
 
 
-# Read many forms
-    # @app.get("/api/form/read_many/{form_name}")
-    # async def api_form_read_many():
+# Read all forms
+@app.get("/api/form/read_all/{form_name}", dependencies=[Depends(api_key_auth)])
+async def api_form_read_all(form_name: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+    pass
 
 # Update form
 # # *** Should we use PATCH instead of PUT? In libreForms-flask, we only pass 
@@ -640,9 +693,9 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
-# Read many forms
-    # @app.get("/ui/form/read_many/{form_name}")
-    # async def ui_form_read_many():
+# Read all forms
+    # @app.get("/ui/form/read_all/{form_name}")
+    # async def ui_form_read_all():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
