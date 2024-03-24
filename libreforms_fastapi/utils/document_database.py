@@ -373,7 +373,20 @@ class ManageTinyDB(ManageDocumentDB):
     def get_all_documents(self, form_name:str, limit_users:Union[bool, str]=False, exclude_deleted=True):
 
         """Retrieves all entries from the specified form's database."""
-        pass
+        self._check_form_exists(form_name)
+
+        documents = self.databases[form_name].all()
+
+        if not documents or len(documents) == 0:
+            return None
+
+        if isinstance(limit_users, str):
+            documents = [x for x in documents if x['metadata'][self.created_by_field] == limit_users]
+
+        if exclude_deleted:
+            documents = [x for x in documents if x['metadata'][self.is_deleted_field] == False]
+
+        return documents
 
     def get_one_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, exclude_deleted=True):
         """Retrieves a single entry that matches the search query."""
