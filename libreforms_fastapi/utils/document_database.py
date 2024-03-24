@@ -370,21 +370,27 @@ class ManageTinyDB(ManageDocumentDB):
                 # Placeholder for logger
 
 
-    def get_all_documents(self, form_name:str, exclude_deleted=True):
-        """Retrieves all entries from the specified form's database."""
-        self._check_form_exists(form_name)
-        if exclude_deleted:
-            return self.databases[form_name].search(Query()[self.is_deleted_field] == False)
-        else:
-            return self.databases[form_name].all()
+    def get_all_documents(self, form_name:str, limit_users:Union[bool, str]=False, exclude_deleted=True):
 
-    def get_one_document(self, form_name:str, search_query, exclude_deleted=True):
+        """Retrieves all entries from the specified form's database."""
+        pass
+
+    def get_one_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, exclude_deleted=True):
         """Retrieves a single entry that matches the search query."""
         self._check_form_exists(form_name)
-        if exclude_deleted:
-            search_query &= Query()[self.is_deleted_field] == False
 
-        return self.databases[form_name].get(search_query)
+        document = self.databases[form_name].get(doc_id=document_id)
+
+        if not document:
+            return None
+
+        if isinstance(limit_users, str) and document['metadata'][self.created_by_field] != limit_users:
+            return None
+
+        if exclude_deleted and document['metadata'][self.is_deleted_field] == True:
+            return None
+
+        return document
 
     def restore_document(self, form_name:str, search_query):
         """Restores soft deleted entries that match the search query."""
