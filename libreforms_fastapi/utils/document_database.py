@@ -1,7 +1,9 @@
 import os, shutil, json
 from bson import ObjectId
+from fuzzywuzzy import fuzz
 from datetime import datetime
 from zoneinfo import ZoneInfo
+
 from tinydb import (
     TinyDB, 
     Query, 
@@ -143,6 +145,22 @@ class CollectionDoesNotExist(Exception):
         message = f"The collection '{form_name}' does not exist."
         super().__init__(message)
 
+
+# Pulled from https://github.com/signebedi/gita-api
+def fuzzy_search_normalized(text_string, search_term, segment_length=None):
+    if segment_length is None:
+        segment_length = len(search_term)
+    highest_score = 0
+    text_string = text_string.lower()
+    search_term = search_term.lower()
+    for i in range(0, len(text_string), segment_length):
+        segment = text_string[i:i+segment_length]
+        score = fuzz.ratio(search_term, segment)
+        if score > highest_score:
+            highest_score = score
+    return highest_score
+
+
 class ManageDocumentDB(ABC):
     def __init__(self, form_names_callable, timezone: ZoneInfo):
         self.form_names_callable = form_names_callable
@@ -152,6 +170,7 @@ class ManageDocumentDB(ABC):
             self.log_name = "document_db.log"
 
         # Here we'll set metadata field names
+        self.form_name_field = "_form_name"
         self.document_id_field = "_document_id"
         self.is_deleted_field = "_is_deleted"
         self.timezone_field= "_timezone"
@@ -207,8 +226,8 @@ class ManageDocumentDB(ABC):
         pass
 
     @abstractmethod
-    def search_documents(self, form_name:str, search_query, exclude_deleted=True):
-        """Searches for entries that match the search query."""
+    def fuzzy_search_documents(self, form_name:str, search_query, exclude_deleted:bool=True):
+        """Fuzzy searches for entries that match the search query."""
         pass
 
     @abstractmethod
@@ -217,12 +236,12 @@ class ManageDocumentDB(ABC):
         pass
 
     @abstractmethod
-    def get_all_documents(self, form_name:str, exclude_deleted=True):
+    def get_all_documents(self, form_name:str, exclude_deleted:bool=True):
         """Retrieves all entries from the specified form's database."""
         pass
 
     @abstractmethod
-    def get_one_document(self, form_name:str, search_query, exclude_deleted=True):
+    def get_one_document(self, form_name:str, search_query, exclude_deleted:bool=True):
         """Retrieves a single entry that matches the search query."""
         pass
 
@@ -232,12 +251,12 @@ class ManageDocumentDB(ABC):
         pass
 
     @abstractmethod
-    def backup_database(self, form_name:str):
+    def backup_collection(self, form_name:str):
         """Creates a backup of the specified form's database."""
         pass
 
     @abstractmethod
-    def restore_database_from_backup(self, form_name:str, backup_filename:str, backup_before_overwriting:bool=True):
+    def restore_collection_from_backup(self, form_name:str, backup_filename:str, backup_before_overwriting:bool=True):
         """Restores the specified form's database from its backup."""
         pass
 
@@ -349,12 +368,55 @@ class ManageTinyDB(ManageDocumentDB):
         pass
 
 
-    def search_documents(self, form_name:str, search_query, exclude_deleted=True):
+    def fuzzy_search_documents(self, search_term:str, limit_users:Union[bool, dict]=False, form_name:Union[bool, str]=False, threshold=80, exclude_deleted:bool=True):
         """Searches for entries that match the search query."""
-        self._check_form_exists(form_name)
+        
+        if isinstance(form_name, str):
+            self._check_form_exists(form_name)
+            data = self.databases[form_name].all()
+
+            if isinstance(limit_users, dict):
+                if form_name not in limit_users.keys():
+                    return []
+                elif isinstance(limit_users[form_name], str):
+                    data = [x for x in data if x['metadata'][self.created_by_field] == limit_users[form_name]]
+
+        else:
+            data = []
+            for f in self.databases.keys():
+                d = self.databases[f].all()
+
+                if isinstance(limit_users, dict):
+                    if f not in limit_users.keys():
+                        # print("Form name not found")
+                        continue
+                    elif isinstance(limit_users[f], str):
+                        d = [x for x in d if x['metadata'][self.created_by_field] == limit_users[f]]
+
+                for item in d:
+                    item['metadata'][self.document_id_field] = item.doc_id
+                    item['metadata'][self.form_name_field] = f
+
+                data.extend(d)
+
+
         if exclude_deleted:
-            search_query &= Query()[self.is_deleted_field] == False
-        return self.databases[form_name].search(search_query)
+
+            print(data)
+            data = [x for x in data if x['metadata'][self.is_deleted_field] == False]
+
+        search_results = []
+
+        for document in data:
+            # Convert the document to a string representation for comparison.
+            doc_string = json.dumps(document).lower()
+            score = fuzzy_search_normalized(doc_string, search_term)
+            if score >= threshold:
+                search_results.append((document, score))
+
+        # Sort results based on score in descending order.
+        sorted_results = sorted(search_results, key=lambda x: x[1], reverse=True)
+        return [doc for doc, score in sorted_results]
 
     def delete_document(self, form_name:str, search_query, permanent:bool=False):
         """Deletes entries that match the search query, permanently or soft delete."""
@@ -370,7 +432,7 @@ class ManageTinyDB(ManageDocumentDB):
                 # Placeholder for logger
 
 
-    def get_all_documents(self, form_name:str, limit_users:Union[bool, str]=False, exclude_deleted=True):
+    def get_all_documents(self, form_name:str, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
 
         """Retrieves all entries from the specified form's database."""
         self._check_form_exists(form_name)
@@ -388,7 +450,7 @@ class ManageTinyDB(ManageDocumentDB):
 
         return documents
 
-    def get_one_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, exclude_deleted=True):
+    def get_one_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
         """Retrieves a single entry that matches the search query."""
         self._check_form_exists(form_name)
 
@@ -413,7 +475,7 @@ class ManageTinyDB(ManageDocumentDB):
 
             # Placeholder for logger
 
-    def backup_database(self, form_name:str):
+    def backup_collection(self, form_name:str):
         """Creates a backup of the specified form's database."""
         self._check_form_exists(form_name)
 
@@ -434,7 +496,7 @@ class ManageTinyDB(ManageDocumentDB):
 
         return backup_path
 
-    def restore_database_from_backup(self, form_name:str, backup_filename:str, backup_before_overwriting:bool=True):
+    def restore_collection_from_backup(self, form_name:str, backup_filename:str, backup_before_overwriting:bool=True):
         """Restores the specified form's database from its backup."""
         self._check_form_exists(form_name)
 
