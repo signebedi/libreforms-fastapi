@@ -11,6 +11,7 @@ from fastapi import (
     HTTPException,
     BackgroundTasks,
     Depends,
+    Query,
 )
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -231,7 +232,7 @@ with SessionLocal() as session:
         session.commit()
         logger.info("Default group created.")
     else:
-        print(default_group.get_permissions())
+        # print(default_group.get_permissions())
         logger.info("Default group already exists.")
 
 
@@ -476,14 +477,14 @@ async def api_form_read_one(form_name: str, document_id: str, background_tasks: 
     # Here, if the user is not able to see other user's data, then we denote the constraint.
     try:
         user.validate_permission(form_name=form_name, required_permission="read_all")
-        limit_query_to_users_own = False
+        limit_query_to = False
     except Exception as e:
-        limit_query_to_users_own = user.username
+        limit_query_to = user.username
 
     document = DocumentDatabase.get_one_document(
         form_name=form_name, 
         document_id=document_id, 
-        limit_users=limit_query_to_users_own
+        limit_users=limit_query_to
     )
 
     # Write this query to the TransactionLog
@@ -532,13 +533,13 @@ async def api_form_read_all(form_name: str, background_tasks: BackgroundTasks, r
     # Here, if the user is not able to see other user's data, then we denote the constraint.
     try:
         user.validate_permission(form_name=form_name, required_permission="read_all")
-        limit_query_to_users_own = False
+        limit_query_to = False
     except Exception as e:
-        limit_query_to_users_own = user.username
+        limit_query_to = user.username
 
     documents = DocumentDatabase.get_all_documents(
         form_name=form_name, 
-        limit_users=limit_query_to_users_own
+        limit_users=limit_query_to
     )
 
     # Write this query to the TransactionLog
@@ -571,11 +572,69 @@ async def api_form_read_all(form_name: str, background_tasks: BackgroundTasks, r
     # async def api_form_update():
 
 # Delete form
-    # @app.delete("/api/form/delete/{form_name}")
+    # @app.delete("/api/form/delete/{form_name}", dependencies=[Depends(api_key_auth)])
     # async def api_form_delete():
 
+# Search forms
+# @app.get("/api/form/search/{form_name}")
+# async def api_form_search(form_name: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+
+# Search ALL forms
+@app.get("/api/form/search", dependencies=[Depends(api_key_auth)])
+async def api_form_search_all(background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), search_term: str = Query(None, title="Search Term")):
+
+    if search_term is None:
+        return {"error": "No search term provided"}
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    # Here we are working to unpack permissions across multiple forms.
+    user_group_permissions = user.compile_permissions()
+    form_names = get_form_names()
+    limit_query_to = {}
+
+    for form_name in form_names:
+        if "read_own" in user_group_permissions[form_name]:
+            if "read_all" in user_group_permissions[form_name]:
+                limit_query_to[form_name] = False
+            else:
+                limit_query_to[form_name] = user.username
+
+    print("\n\n\n", limit_query_to)
+
+    documents = DocumentDatabase.fuzzy_search_documents(
+        search_term=search_term,
+        limit_users=limit_query_to,
+    )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params="{}",
+        )
+
+    if not documents or len(documents) == 0:
+        raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+    return {
+        "message": "Data successfully retrieved", 
+        "documents": documents, 
+    }
+
+
+
 # Approve form
-    # @app.patch("/api/form/approve/{form_name}")
+    # @app.patch("/api/form/approve/{form_name}/{document_id}")
     # async def api_form_approve():
 
 
