@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, StaticPool
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_signing import Signatures
-from libreforms_fastapi.utils.sqlalchemy_models import Base, User, Signing, TransactionLog
+from libreforms_fastapi.utils.sqlalchemy_models import Base, User, Signing, TransactionLog, Group
 from libreforms_fastapi.utils.config import yield_config
 
 # os.environ["ENVIRONMENT"] = "testing"
@@ -22,6 +22,26 @@ def setup_environment():
     TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
     Base.metadata.create_all(bind=engine)
+
+    # Here we create a group with limited permissions to ensure that the API 
+    # appropriately constrains access based on group.
+    with TestingSessionLocal() as session:
+        bad_group = session.query(Group).get(2)
+
+        if not bad_group:
+            # If not, create and add the new group
+            bad_permissions = [
+                "example_form:create",
+                "example_form:read_own",
+                # "example_form:read_all",
+                "example_form:update_own",
+                # "example_form:update_all",
+                "example_form:delete_own",
+                # "example_form:delete_all"
+            ]
+            bad_group = Group(id=2, name="bad", permissions=bad_permissions)
+            session.add(bad_group)
+            session.commit()
 
     from libreforms_fastapi.app import app, get_db
     client = TestClient(app)
