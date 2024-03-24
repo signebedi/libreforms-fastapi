@@ -188,9 +188,141 @@ def generate_html_form(fields: dict) -> List[str]:
     
     return form_html
 
+def get_form_names(config_path=config.FORM_CONFIG_PATH):
+    """
+    Given a form config path, return a list of available forms, defaulting to the example 
+    dictionary provided above.
+    """
+    # Try to open config_path and if not existent or empty, use example config
+    form_config = example_form_config  # Default to example_form_config
+
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as file:
+                form_config = json.load(file)
+        except json.JSONDecodeError:
+            pass
+            # print("Failed to load the JSON file. Falling back to the default configuration.")
+    else:
+        pass
+        # print("Config file does not exist. Using the default configuration.")
+    return form_config.keys()
+
+def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False):
+    """
+    Yields a single config dict for the form name passed, following a factory pattern approach.
+
+    If update is set to True, all fields will be set to optional.
+    """
+    # Try to open config_path and if not existent or empty, use example config
+    form_config = example_form_config  # Default to example_form_config
+
+    if os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as file:
+                form_config = json.load(file)
+        except json.JSONDecodeError:
+            pass
+            # print("Failed to load the JSON file. Falling back to the default configuration.")
+    else:
+        pass
+        # print("Config file does not exist. Using the default configuration.")
+
+    if form_name not in form_config:
+        raise Exception(f"Form '{form_name}' not found in")
+
+    fields = form_config[form_name]
+    field_definitions = {}
+    
+    for field_name, field_info in fields.items():
+        
+        # Should we consider making an Enum for fields with a limited set of options... 
+        # essentially requiring that the values passed are in the Enum of acceptable
+        # values? Bit difficult to implement for List and other data types, but may
+        # be worthwhile.
+
+        python_type: Type = field_info["output_type"]
+        default = field_info.get("default", ...)
+        required = field_info.get("required", False) # Default to not required field
+        validators = field_info.get("validators", [])
+
+        # If update is True, provide None as the default value ... the idea here is that 
+        # the model has already imposed default value constraints at the time of creation.
+        # But, it is a legitimate format for clients to pass either (1) data that only 
+        # includes the changes the client wants to make or (2) all the data, changing only
+        # the fields the client wants to change. We need to be able to make sense of these 
+        # two cases. See: https://github.com/signebedi/libreforms-fastapi/issues/34.
+        if update:
+            field_definitions[field_name] = (Optional[python_type], None)
+        else:
+            default = field_info.get("default", ...)
+            # Use Optional type if default is not set or field is not required
+            if (default is ... and python_type != Optional) or not required:
+                python_type = Optional[python_type]
+            field_definitions[field_name] = (python_type, default)
 
 
-def generate_pydantic_models(form_config: dict):
+        for validator_func in validators:
+            # This assumes validator_func is callable that accepts a single 
+            # value and returns a value or raises an exception
+            pass
+        
+    print(field_definitions)
+
+    # Creating the model dynamically, allowing arbitrary types
+    class Config:
+        arbitrary_types_allowed = True
+    
+    model = create_model(form_name, __config__=Config, **field_definitions)
+
+    for field_name, field_info in fields.items():
+        validators = field_info.get("validators", [])
+        for v in validators:
+            # Placeholder for adding the validators to the model here
+            pass
+
+    return model
+
+# Deprecated
+def __reconstruct_form_data(request, form_fields):
+    """
+    This repackages request data into a format that pydantic will be able to understand.
+
+    The flask request structure can be understood from the following resource https://stackoverflow.com/a/16664376/13301284.
+
+    We can start by getting the list of fields:
+
+    >>> list(request.form)
+
+    Then, we can iterate through each and get each value:
+
+    >>> for field in list(request.form):
+    ...     print(request.form.getlist(field))
+    """
+
+    reconstructed_form_data = {}
+
+    for field in list(request):
+
+        # Skip field if it's not supposed to be here
+        if not field in form_fields:
+            continue
+
+        field_config = form_fields[field]
+        reconstructed_form_data[field] = request[field]
+
+        target_type = form_fields[field]['output_type']
+
+        # Check if the output type calls for a collection or a scalar
+        if isinstance(reconstructed_form_data[field], list) and len(reconstructed_form_data[field]) == 1 and target_type != list:
+            reconstructed_form_data[field] = reconstructed_form_data[field][0]
+
+    return reconstructed_form_data
+
+
+
+# Deprecated
+def __generate_pydantic_models(form_config: dict):
     """
     Dynamically generates Pydantic models based on a specified form configuration. Each form is represented as a model, 
     with fields defined according to the configuration provided in `form_config`. This allows for the dynamic validation 
@@ -281,136 +413,3 @@ def generate_pydantic_models(form_config: dict):
         models[form_name] = model
     
     return models
-
-
-
-def get_form_names(config_path=config.FORM_CONFIG_PATH):
-    """
-    Given a form config path, return a list of available forms, defaulting to the example 
-    dictionary provided above.
-    """
-    # Try to open config_path and if not existent or empty, use example config
-    form_config = example_form_config  # Default to example_form_config
-
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as file:
-                form_config = json.load(file)
-        except json.JSONDecodeError:
-            pass
-            # print("Failed to load the JSON file. Falling back to the default configuration.")
-    else:
-        pass
-        # print("Config file does not exist. Using the default configuration.")
-    return form_config.keys()
-
-def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False):
-    """
-    Yields a single config dict for the form name passed, following a factory pattern approach.
-
-    If update is set to True, all fields will be set to optional.
-    """
-    # Try to open config_path and if not existent or empty, use example config
-    form_config = example_form_config  # Default to example_form_config
-
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as file:
-                form_config = json.load(file)
-        except json.JSONDecodeError:
-            pass
-            # print("Failed to load the JSON file. Falling back to the default configuration.")
-    else:
-        pass
-        # print("Config file does not exist. Using the default configuration.")
-
-    if form_name not in form_config:
-        raise Exception(f"Form '{form_name}' not found in")
-
-    fields = form_config[form_name]
-    field_definitions = {}
-    
-    for field_name, field_info in fields.items():
-        
-        # Should we consider making an Enum for fields with a limited set of options... 
-        # essentially requiring that the values passed are in the Enum of acceptable
-        # values? Bit difficult to implement for List and other data types, but may
-        # be worthwhile.
-
-        python_type: Type = field_info["output_type"]
-        default = field_info.get("default", ...)
-        required = field_info.get("required", False) # Default to not required field
-        validators = field_info.get("validators", [])
-
-        # If update is True, provide None as the default value ... the idea here is that 
-        # the model has already imposed default value constraints at the time of creation.
-        # But, it is a legitimate format for clients to pass either (1) data that only 
-        # includes the changes the client wants to make or (2) all the data, changing only
-        # the fields the client wants to change. We need to be able to make sense of these 
-        # two cases. See: https://github.com/signebedi/libreforms-fastapi/issues/34
-        if update:
-            field_definitions[field_name] = (Optional[python_type], None)
-        else:
-            default = field_info.get("default", ...)
-            # Use Optional type if default is not set or field is not required
-            if (default is ... and python_type != Optional) or not required:
-                python_type = Optional[python_type]
-            field_definitions[field_name] = (python_type, default)
-
-
-        for validator_func in validators:
-            # This assumes validator_func is callable that accepts a single 
-            # value and returns a value or raises an exception
-            pass
-        
-    print(field_definitions)
-
-    # Creating the model dynamically, allowing arbitrary types
-    class Config:
-        arbitrary_types_allowed = True
-    
-    model = create_model(form_name, __config__=Config, **field_definitions)
-
-    for field_name, field_info in fields.items():
-        validators = field_info.get("validators", [])
-        for v in validators:
-            # Placeholder for adding the validators to the model here
-            pass
-
-    return model
-
-
-def __reconstruct_form_data(request, form_fields):
-    """
-    This repackages request data into a format that pydantic will be able to understand.
-
-    The flask request structure can be understood from the following resource https://stackoverflow.com/a/16664376/13301284.
-
-    We can start by getting the list of fields:
-
-    >>> list(request.form)
-
-    Then, we can iterate through each and get each value:
-
-    >>> for field in list(request.form):
-    ...     print(request.form.getlist(field))
-    """
-
-    reconstructed_form_data = {}
-
-    for field in list(request):
-
-        # Skip field if it's not supposed to be here
-        if not field in form_fields:
-            continue
-
-        field_config = form_fields[field]
-        reconstructed_form_data[field] = request[field]
-
-        target_type = form_fields[field]['output_type']
-
-        # Check if the output type calls for a collection or a scalar
-        if isinstance(reconstructed_form_data[field], list) and len(reconstructed_form_data[field]) == 1 and target_type != list:
-            reconstructed_form_data[field] = reconstructed_form_data[field][0]
-
-    return reconstructed_form_data
