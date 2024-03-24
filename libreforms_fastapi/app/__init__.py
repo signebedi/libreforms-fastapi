@@ -582,7 +582,7 @@ async def api_form_search(form_name: str, background_tasks: BackgroundTasks, req
     if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
-    if search_term is None:
+    if search_term is None or len(search_term) == 0:
         return {"error": "No search term provided"}
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that

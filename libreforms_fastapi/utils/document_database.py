@@ -323,6 +323,8 @@ class ManageTinyDB(ManageDocumentDB):
             "metadata": {
                 # self.document_id_field: document_id,
                 self.is_deleted_field: metadata.get(self.is_deleted_field, False),
+                self.document_id_field: document_id,
+                self.form_name_field: form_name,
                 self.timezone_field: metadata.get(self.timezone_field, self.timezone.key),
                 self.created_at_field: metadata.get(self.created_at_field, current_timestamp.isoformat()),
                 self.last_modified_field: metadata.get(self.last_modified_field, current_timestamp.isoformat()),
@@ -392,10 +394,6 @@ class ManageTinyDB(ManageDocumentDB):
                         continue
                     elif isinstance(limit_users[f], str):
                         d = [x for x in d if x['metadata'][self.created_by_field] == limit_users[f]]
-
-                for item in d:
-                    item['metadata'][self.document_id_field] = item.doc_id
-                    item['metadata'][self.form_name_field] = f
 
                 data.extend(d)
 
