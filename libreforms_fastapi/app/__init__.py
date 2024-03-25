@@ -663,7 +663,7 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
         )
 
     return {
-        "message": "Form updated received and validated", 
+        "message": "Form successfully updated", 
         "document_id": document_id, 
         "data": d,
     }
@@ -673,7 +673,84 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
 # Delete form
 @app.delete("/api/form/delete/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
 async def api_form_delete(form_name: str, document_id:str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
-    pass
+
+    if form_name not in get_form_names():
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    # Here we validate the user groups permit this level of access to the form
+    try:
+        user.validate_permission(form_name=form_name, required_permission="delete_own")
+        # print("\n\n\nUser has valid permissions\n\n\n")
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
+    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="delete_all")
+        limit_query_to = False
+    except Exception as e:
+        limit_query_to = user.username
+
+    metadata={
+        DocumentDatabase.last_editor_field: user.username,
+    }
+
+    # Add the remote addr host if enabled
+    if config.COLLECT_USAGE_STATISTICS:
+        metadata[DocumentDatabase.ip_address_field] = request.client.host
+
+    try:
+        # Process the request as needed
+        success = DocumentDatabase.delete_document(
+            form_name=form_name, 
+            document_id=document_id,
+            metadata=metadata,
+        )
+
+    # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
+    # it fails to ensure the user knows their operation was not successful.
+    except DocumentDoesNotExist as e:
+        raise HTTPException(status_code=404, detail=f"{e}")
+
+    except DocumentIsDeleted as e:
+        raise HTTPException(status_code=410, detail=f"{e}")
+
+    except InsufficientPermissions as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
+
+    # Send email
+    if config.SMTP_ENABLED:
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject="Form Submitted", 
+            content=document_id, 
+            to_address=user.email,
+        )
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return {
+        "message": "Form successfully deleted", 
+        "document_id": document_id, 
+    }
 
 
 # Search forms
