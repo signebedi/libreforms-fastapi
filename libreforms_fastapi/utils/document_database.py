@@ -163,8 +163,6 @@ class DocumentIsNotDeleted(Exception):
         message = f"The document with ID '{document_id}' collection '{form_name}' is not deleted and cannot be restored."
         super().__init__(message)
 
-
-
 class InsufficientPermissions(Exception):
     """Exception raised when attempting to access a document that user lacks permissions for."""
     def __init__(self, form_name, document_id, username):
@@ -205,8 +203,22 @@ def get_document_database(
     if use_mongodb:
         if not mongodb_uri or mongodb_uri=="":
             raise Exception("Please pass a value MongoDB URI")
-        return ManageMongoDB(form_names_callable, timezone, db_path, use_logger, env)
-    return ManageTinyDB(form_names_callable, timezone, db_path, use_logger, env)
+        return ManageMongoDB(
+            form_names_callable=form_names_callable, 
+            timezone=timezone, 
+            db_path=db_path, 
+            use_logger=use_logger, 
+            env=env,
+            mongodb_uri=mongodb_uri,
+        )
+    # Default to a TinyDB database
+    return ManageTinyDB(
+        form_names_callable=form_names_callable, 
+        timezone=timezone, 
+        db_path=db_path, 
+        use_logger=use_logger, 
+        env=env,
+    )
 
 
 class ManageDocumentDB(ABC):

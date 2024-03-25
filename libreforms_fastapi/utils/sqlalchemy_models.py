@@ -51,8 +51,7 @@ class User(Base):
     locked_until = Column(DateTime, nullable=True, default=tz_aware_datetime)
     last_password_change = Column(DateTime, nullable=True, default=tz_aware_datetime)
     failed_login_attempts = Column(Integer, default=0)
-    # api_key_id = Column(Integer, ForeignKey('signing.id'), nullable=True)
-    api_key = Column(String(1000), nullable=True, unique=True)
+    api_key = Column(String(1000), ForeignKey('signing.signature'), nullable=True, unique=True)
     # This opt out, if true, will exclude this user's ID and IP from the statistics
     # gathered from their usage, see https://github.com/signebedi/gita-api/issues/59.
     opt_out = Column(Boolean, nullable=False, default=False)
