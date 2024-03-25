@@ -208,6 +208,7 @@ def get_form_names(config_path=config.FORM_CONFIG_PATH):
         # print("Config file does not exist. Using the default configuration.")
     return form_config.keys()
 
+
 def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False):
     """
     Yields a single config dict for the form name passed, following a factory pattern approach.
@@ -267,8 +268,6 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
             # value and returns a value or raises an exception
             pass
         
-    print(field_definitions)
-
     # Creating the model dynamically, allowing arbitrary types
     class Config:
         arbitrary_types_allowed = True

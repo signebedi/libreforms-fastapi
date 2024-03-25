@@ -422,8 +422,9 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
         metadata[DocumentDatabase.ip_address_field] = request.client.host
 
     # Process the validated form submission as needed
-    background_tasks.add_task(
-        DocumentDatabase.create_document, 
+    # background_tasks.add_task(
+        # DocumentDatabase.create_document,
+    d = DocumentDatabase.create_document(
         form_name=form_name, 
         json_data=json_data, 
         metadata=metadata
@@ -456,7 +457,7 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
     return {
         "message": "Form submission received and validated", 
         "document_id": document_id, 
-        "data": json_data,
+        "data": d,
     }
 
 # Read one form
@@ -618,7 +619,7 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
 
     try:
         # Process the validated form submission as needed
-        success = DocumentDatabase.update_document(
+        d = DocumentDatabase.update_document(
             form_name=form_name, 
             document_id=document_id,
             json_data=json_data, 
@@ -664,15 +665,15 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
     return {
         "message": "Form updated received and validated", 
         "document_id": document_id, 
-        "data": json_data,
+        "data": d,
     }
 
 
 
 # Delete form
-    # @app.delete("/api/form/delete/{form_name}", dependencies=[Depends(api_key_auth)])
-    # async def api_form_delete():
-
+@app.delete("/api/form/delete/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+async def api_form_delete(form_name: str, document_id:str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+    pass
 
 
 # Search forms

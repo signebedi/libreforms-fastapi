@@ -363,7 +363,7 @@ class ManageTinyDB(ManageDocumentDB):
         if self.use_logger:
             self.logger.info(f"Inserted document for {form_name} with document_id {document_id}")
 
-        return document_id
+        return data_dict
 
     def update_document(self, form_name:str, document_id:str, json_data:str, metadata={}, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
         """Updates existing form in specified form's database."""
@@ -457,7 +457,7 @@ class ManageTinyDB(ManageDocumentDB):
         if self.use_logger:
             self.logger.info(f"Updated document for {form_name} with document_id {document_id}")
 
-        return document_id
+        return document
 
     def sign_document(self, form_name:str, json_data, metadata={}):
         """Manage signatures existing form in specified form's database."""
