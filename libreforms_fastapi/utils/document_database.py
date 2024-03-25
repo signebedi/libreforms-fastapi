@@ -294,10 +294,10 @@ class ManageDocumentDB(ABC):
         """Retrieves a single entry that matches the search query."""
         pass
 
-    # @abstractmethod
-    # def restore_document(self, form_name:str, search_query):
-    #     """Restores soft deleted entries that match the search query."""
-    #     pass
+    @abstractmethod
+    def restore_document(self, form_name:str, search_query):
+        """Restores soft deleted entries that match the search query."""
+        pass
 
     @abstractmethod
     def backup_collection(self, form_name:str):
@@ -649,13 +649,22 @@ class ManageTinyDB(ManageDocumentDB):
 
         return document
 
-    # def restore_document(self, form_name:str, search_query):
-    #     """Restores soft deleted entries that match the search query."""
-    #     self._check_form_exists(form_name)
-    #     for doc_id in [d.doc_id for d in self.databases[form_name].search(search_query)]:
-    #         self.databases[form_name].update({self.is_deleted_field: False}, doc_ids=[doc_id])
+    def restore_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, restore=False, metadata:dict={}):
+        """Restores soft deleted entries that match the search query."""
+        self._check_form_exists(form_name)
 
-    #         # Placeholder for logger
+        # Pass the restore payload to the delete_document method. This approach significantly 
+        # reduces boilerplate but implements a method that developers probably expect in the API.
+        document = self.delete_document(
+            form_name=form_name, 
+            document_id=document_id, 
+            limit_users=limit_users, 
+            restore=True, 
+            metadata=metadata, 
+            permanent=False,
+        )
+
+        return document
 
     def backup_collection(self, form_name:str):
         """Creates a backup of the specified form's database."""
