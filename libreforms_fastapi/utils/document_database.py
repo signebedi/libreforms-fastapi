@@ -157,6 +157,14 @@ class DocumentIsDeleted(Exception):
         message = f"The document with ID '{document_id}' collection '{form_name}' has been deleted and cannot be edited."
         super().__init__(message)
 
+class DocumentIsNotDeleted(Exception):
+    """Exception raised when attempting to restore a document that is not deleted."""
+    def __init__(self, form_name, document_id):
+        message = f"The document with ID '{document_id}' collection '{form_name}' has not been deleted and cannot be restored."
+        super().__init__(message)
+
+
+
 class InsufficientPermissions(Exception):
     """Exception raised when attempting to access a document that user lacks permissions for."""
     def __init__(self, form_name, document_id, username):
@@ -522,7 +530,7 @@ class ManageTinyDB(ManageDocumentDB):
         sorted_results = sorted(search_results, key=lambda x: x[1], reverse=True)
         return [doc for doc, score in sorted_results]
 
-    def delete_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, metadata:dict={}, permanent:bool=False):
+    def delete_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, restore=False, metadata:dict={}, permanent:bool=False):
         """Deletes entries that match the search query, permanently or soft delete."""
         self._check_form_exists(form_name)
 
@@ -532,10 +540,14 @@ class ManageTinyDB(ManageDocumentDB):
                 self.logger.warning(f"No document for {form_name} with document_id {document_id}")
             raise DocumentDoesNotExist(form_name, document_id)
 
-        if document['metadata'][self.is_deleted_field] == True:
+        if document['metadata'][self.is_deleted_field] == True and not restore:
             if self.use_logger:
                 self.logger.warning(f"Document for {form_name} with document_id {document_id} is already deleted and was not updated")
             raise DocumentIsDeleted(form_name, document_id)
+
+
+        if document['metadata'][self.is_deleted_field] == False and restore:
+            raise DocumentIsNotDeleted(form_name, document_id)
 
         # If we are limiting user access based on group-based access controls, and this user is 
         # not the document creator, then return None
@@ -544,7 +556,7 @@ class ManageTinyDB(ManageDocumentDB):
                 self.logger.warning(f"Insufficient permissions to delete document for {form_name} with document_id {document_id}")
             raise InsufficientPermissions(form_name, document_id, limit_users)
 
-        if permanent:
+        if permanent and not restore:
             self.databases[form_name].remove(doc_ids=[document_id])
             if self.use_logger:
                 self.logger.info(f"Permanently deleted document for {form_name} with document_id {document_id}")
@@ -558,7 +570,7 @@ class ManageTinyDB(ManageDocumentDB):
                 self.last_modified_field: current_timestamp.isoformat(),
                 self.last_editor_field: metadata.get(self.last_editor_field, None),
                 self.ip_address_field: metadata.get(self.ip_address_field, None),
-                self.is_deleted_field: True,
+                self.is_deleted_field: restore==False, # Here we base the value for _is_deleted based on the `restore` param
             }
         )
 
@@ -567,7 +579,7 @@ class ManageTinyDB(ManageDocumentDB):
         document['metadata'][self.last_modified_field] = current_timestamp.isoformat()
         document['metadata'][self.last_editor_field] = metadata.get(self.last_editor_field, None)
         document['metadata'][self.ip_address_field] = metadata.get(self.ip_address_field, None)
-        document['metadata'][self.is_deleted_field] = True
+        document['metadata'][self.is_deleted_field] = restore==False # Here we base the value for _is_deleted based on the `restore` param
         document['metadata'][self.journal_field] = journal
 
         # Update only the fields that are provided in json_data and metadata, not replacing the entire 
