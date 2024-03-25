@@ -76,23 +76,21 @@ from libreforms_fastapi.utils.document_database import (
 )
 
 from libreforms_fastapi.utils.pydantic_models import (
-    # example_form_config,
-    # generate_html_form,
-    # generate_pydantic_models,
     get_form_config,
     get_form_names,
     CreateUserRequest,
 )
 
-# Here we set the application config
+# Here we set the application config using the get_config
+# factory pattern defined in libreforms_fastapi.utis.config.
 _env = os.environ.get('ENVIRONMENT', 'development')
 config = get_config(_env)
 
 if config.DEBUG:
     print(config)
 
-
-# Run our assumptions check
+# Run our assumptions checks defined in
+# libreforms_fastapi.utis.scripts
 assert check_configuration_assumptions(config=config)
 
 # Built using instructions at https://fastapi.tiangolo.com/tutorial/metadata/,
@@ -116,6 +114,7 @@ app = FastAPI(
 
 
 # Set up logger, see https://github.com/signebedi/libreforms-fastapi/issues/26,
+# again using a factory pattern defined in libreforms_fastapi.utis.logging.
 logger = set_logger(
     environment=config.ENVIRONMENT, 
     log_file_name='uvicorn.log', 
@@ -1071,7 +1070,7 @@ async def api_auth_get(id:int, session: SessionLocal = Depends(get_db), key: str
         if not config.OTHER_PROFILES_ENABLED and user.id != target.id:
             raise HTTPException(status_code=404)
 
-    return {
+    profile_data = {
         "id": target.id,
         "username": target.username,
         "email": target.email,
@@ -1079,8 +1078,16 @@ async def api_auth_get(id:int, session: SessionLocal = Depends(get_db), key: str
         "active": target.active,
         "created_date": target.created_date.strftime('%Y-%m-%d %H:%M:%S'),
         "last_login": target.last_login.strftime('%Y-%m-%d %H:%M:%S') if target.last_login else 'Never',
-        "site_admin": target.site_admin
     }
+
+    # If the user is requesting their own data, return additional information. 
+    if user.id == target.id:
+        profile_data["last_password_change"] = target.last_password_change
+        profile_data["api_key"] = target.api_key
+        profile_data["opt_out"] = target.opt_out
+        profile_data["site_admin"] = target.site_admin
+
+    return profile_data
 
 # Request Password Reset - Forgot Password
     # @app.patch("/api/auth/forgot_password")
