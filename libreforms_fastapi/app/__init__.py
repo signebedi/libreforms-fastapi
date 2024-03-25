@@ -384,7 +384,14 @@ if config.DEBUG:
 
 # Create form
 @app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth)])
-async def api_form_create(form_name: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), body: Dict = Body(...)):
+async def api_form_create(
+    form_name: str, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY), 
+    body: Dict = Body(...)
+):
 
     if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -461,7 +468,14 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
 
 # Read one form
 @app.get("/api/form/read_one/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
-async def api_form_read_one(form_name: str, document_id: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+async def api_form_read_one(
+    form_name: str, 
+    document_id: str, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
 
     if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -517,7 +531,13 @@ async def api_form_read_one(form_name: str, document_id: str, background_tasks: 
 
 # Read all forms
 @app.get("/api/form/read_all/{form_name}", dependencies=[Depends(api_key_auth)])
-async def api_form_read_all(form_name: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+async def api_form_read_all(
+    form_name: str, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
 
     if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -572,7 +592,15 @@ async def api_form_read_all(form_name: str, background_tasks: BackgroundTasks, r
 # the changed details ... But maybe pydantic can handle  the journaling and 
 # metadata. See https://github.com/signebedi/libreforms-fastapi/issues/20.
 @app.patch("/api/form/update/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)]) 
-async def api_form_update(form_name: str, document_id: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), body: Dict = Body(...)):
+async def api_form_update(
+    form_name: str, 
+    document_id: str, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY), 
+    body: Dict = Body(...)
+):
 
     if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -671,7 +699,14 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
 
 # Delete form
 @app.delete("/api/form/delete/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
-async def api_form_delete(form_name: str, document_id:str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+async def api_form_delete(
+    form_name: str, 
+    document_id:str,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY)
+):
 
     if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -753,7 +788,14 @@ async def api_form_delete(form_name: str, document_id:str, background_tasks: Bac
 
 
 @app.patch("/api/form/restore/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
-async def api_form_restore(form_name: str, document_id:str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+async def api_form_restore(
+    form_name: str,
+    document_id:str,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY)
+):
 
     if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -838,7 +880,14 @@ async def api_form_restore(form_name: str, document_id:str, background_tasks: Ba
 
 # Search forms
 @app.get("/api/form/search/{form_name}")
-async def api_form_search(form_name: str, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), search_term: str = Query(None, title="Search Term")):
+async def api_form_search(
+    form_name: str,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY),
+    search_term: str = Query(None, title="Search Term")
+):
 
     if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -895,7 +944,13 @@ async def api_form_search(form_name: str, background_tasks: BackgroundTasks, req
 
 # Search ALL forms
 @app.get("/api/form/search", dependencies=[Depends(api_key_auth)])
-async def api_form_search_all(background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY), search_term: str = Query(None, title="Search Term")):
+async def api_form_search_all(
+    background_tasks: BackgroundTasks,
+    request: Request,
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY),
+    search_term: str = Query(None, title="Search Term")
+):
 
     if search_term is None:
         return {"error": "No search term provided"}
@@ -958,8 +1013,12 @@ async def api_form_search_all(background_tasks: BackgroundTasks, request: Reques
 
 # Create user
 @app.post("/api/auth/create", include_in_schema=config.DISABLE_NEW_USERS==False)
-# async def api_auth_create(username: str, password: str, verify_password: str, email: str, opt_out: Optional[bool]):
-async def api_auth_create(user_request: CreateUserRequest, background_tasks: BackgroundTasks, request: Request, session: SessionLocal = Depends(get_db)):
+async def api_auth_create(
+    user_request: CreateUserRequest, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    session: SessionLocal = Depends(get_db)
+):
 
     if config.DISABLE_NEW_USERS:
         raise HTTPException(status_code=404)
@@ -1041,12 +1100,22 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
     }
 
 # Change user password / usermod
-    # @app.patch("/api/auth/update")
-    # async def api_auth_update(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+@app.patch("/api/auth/update")
+async def api_auth_update(
+    user_request: CreateUserRequest, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    session: SessionLocal = Depends(get_db)
+):
+    pass
 
 # Get User / id
 @app.get("/api/auth/get/{id}", dependencies=[Depends(api_key_auth)])
-async def api_auth_get(id:int, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+async def api_auth_get(
+    id:int, 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
 
     # We have already validated the API key, so if they have come this far, they have system access. As
     # such, if no user comes back (eh, that might happen if an admin hacks together an API key without a 
