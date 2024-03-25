@@ -160,7 +160,7 @@ class DocumentIsDeleted(Exception):
 class DocumentIsNotDeleted(Exception):
     """Exception raised when attempting to restore a document that is not deleted."""
     def __init__(self, form_name, document_id):
-        message = f"The document with ID '{document_id}' collection '{form_name}' has not been deleted and cannot be restored."
+        message = f"The document with ID '{document_id}' collection '{form_name}' is not deleted and cannot be restored."
         super().__init__(message)
 
 

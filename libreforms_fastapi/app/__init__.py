@@ -433,7 +433,7 @@ async def api_form_create(
     d = doc_db.create_document(
         form_name=form_name, 
         json_data=json_data, 
-        metadata=metadata
+        metadata=metadata,
     )
 
     # Send email
@@ -650,7 +650,8 @@ async def api_form_update(
             form_name=form_name, 
             document_id=document_id,
             json_data=json_data, 
-            metadata=metadata
+            metadata=metadata,
+            limit_users=limit_query_to,
         )
 
     # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
@@ -743,6 +744,7 @@ async def api_form_delete(
             form_name=form_name, 
             document_id=document_id,
             metadata=metadata,
+            limit_users=limit_query_to,
         )
 
     # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
@@ -828,11 +830,11 @@ async def api_form_restore(
 
     try:
         # Process the request as needed
-        success = doc_db.delete_document(
+        success = doc_db.restore_document(
             form_name=form_name, 
             document_id=document_id,
             metadata=metadata,
-            restore=True,
+            limit_users=limit_query_to,
         )
 
     # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
@@ -1000,9 +1002,15 @@ async def api_form_search_all(
         "documents": documents, 
     }
 
-
+# Sign form
+# This is a metadata-only field. It should not impact the data, just the metadata - namely, to afix 
+# a digital signature to the form. 
+    # @app.patch("/api/form/sign/{form_name}/{document_id}")
+    # async def api_form_sign():
 
 # Approve form
+# This is a metadata-only field. It should not impact the data, just the metadata - namely, to afix 
+# an approval - in the format of a digital signature -  to the form. 
     # @app.patch("/api/form/approve/{form_name}/{document_id}")
     # async def api_form_approve():
 
