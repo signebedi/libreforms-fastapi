@@ -887,8 +887,41 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
     # async def api_auth_update(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
 
 # Get User / id
-    # @app.get("/api/auth/get")
-    # async def api_auth_get(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+@app.get("/api/auth/get/{id}", dependencies=[Depends(api_key_auth)])
+async def api_auth_get(id:int, session: SessionLocal = Depends(get_db), key: str = Depends(X_API_KEY)):
+
+    # We have already validated the API key, so if they have come this far, they have system access. As
+    # such, if no user comes back (eh, that might happen if an admin hacks together an API key without a 
+    # user account attached to it .. for system purposes) or if there is a user, but they are not a site
+    # admin, then we check the OTHER_PROFILES_ENABLED app configuration. If disabled, then raise error; 
+    # else, return the user data.
+    user = session.query(User).filter_by(api_key=key).first() # This is the user making the request
+    target = session.query(User).filter_by(id=id).first() # This is the user whose data has been requested
+
+    # Return a 404 if the target user does not exist
+    if not target:
+        raise HTTPException(status_code=404)
+
+    # Return a 404 error if the current user lacks permission
+    if any([
+        not user,
+        not user.site_admin
+    ]):
+        # If the user is not requesting their own profile data and the app
+        # config does not allow viewing other user's profiles, return a 404.
+        if not config.OTHER_PROFILES_ENABLED and user.id != target.id:
+            raise HTTPException(status_code=404)
+
+    return {
+        "id": target.id,
+        "username": target.username,
+        "email": target.email,
+        "groups": [g.name for g in target.groups],
+        "active": target.active,
+        "created_date": target.created_date.strftime('%Y-%m-%d %H:%M:%S'),
+        "last_login": target.last_login.strftime('%Y-%m-%d %H:%M:%S') if target.last_login else 'Never',
+        "site_admin": target.site_admin
+    }
 
 # Request Password Reset - Forgot Password
     # @app.patch("/api/auth/forgot_password")

@@ -602,7 +602,7 @@ def cli_id(username, environment):
             f"ID: {user.id}\n"
             f"Username: {user.username}\n"
             f"Email: {user.email}\n"
-            f"Groups: {user.email}\n"
+            f"Groups: {', '.join(g.name for g in user.groups)}\n"
             f"Active: {user.active}\n"
             f"Created Date: {user.created_date.strftime('%Y-%m-%d %H:%M:%S')}\n"
             f"Last Login: {user.last_login.strftime('%Y-%m-%d %H:%M:%S') if user.last_login else 'Never'}\n"
