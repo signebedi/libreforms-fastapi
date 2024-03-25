@@ -435,8 +435,8 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
     if config.SMTP_ENABLED:
         background_tasks.add_task(
             mailer.send_mail, 
-            subject="Form Submitted", 
-            content=document_id, 
+            subject=f"Form Created", 
+            content=f"This email servers to notify you that a form was submitted at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
             to_address=user.email,
         )
 
@@ -643,8 +643,8 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
     if config.SMTP_ENABLED:
         background_tasks.add_task(
             mailer.send_mail, 
-            subject="Form Submitted", 
-            content=document_id, 
+            subject="Form Updated", 
+            content=f"This email servers to notify you that an existing form was updated at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
             to_address=user.email,
         )
 
@@ -728,8 +728,8 @@ async def api_form_delete(form_name: str, document_id:str, background_tasks: Bac
     if config.SMTP_ENABLED:
         background_tasks.add_task(
             mailer.send_mail, 
-            subject="Form Submitted", 
-            content=document_id, 
+            subject="Form Deleted", 
+            content=f"This email servers to notify you that a form was deleted at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
             to_address=user.email,
         )
 
@@ -811,8 +811,8 @@ async def api_form_restore(form_name: str, document_id:str, background_tasks: Ba
     if config.SMTP_ENABLED:
         background_tasks.add_task(
             mailer.send_mail, 
-            subject="Form Submitted", 
-            content=document_id, 
+            subject="Form Restored", 
+            content=f"This email servers to notify you that a deleted form was restored at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
             to_address=user.email,
         )
 
@@ -984,16 +984,13 @@ async def api_auth_create(user_request: CreateUserRequest, background_tasks: Bac
 
             _subject=f"{config.SITE_NAME} Suspicious Activity"
             _content=f"This email serves to notify you that there was an attempt to register a user with the same email as the account registered to you at {config.DOMAIN}. If this was you, you may safely disregard this email. If it was not you, you should consider contacting your system administrator and changing your password."
-            # Eventually, wrap this in an async function, see
-            # https://github.com/signebedi/libreforms-fastapi/issues/25
-            # mailer.send_mail(subject=_subject, content=_content, to_address=user_request.email)
+
             background_tasks.add_task(
                 mailer.send_mail, 
                 subject=_subject, 
                 content=_content, 
                 to_address=user_request.email,
             )
-
 
         raise HTTPException(status_code=409, detail="Registration failed. The provided information cannot be used.")
 
