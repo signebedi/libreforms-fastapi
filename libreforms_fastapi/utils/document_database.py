@@ -369,8 +369,8 @@ class ManageTinyDB(ManageDocumentDB):
         """Updates existing form in specified form's database."""
 
         self._check_form_exists(form_name)
-        if self.use_logger:
-            self.logger.info(f"Starting update for {form_name} with document_id {document_id}")
+        # if self.use_logger:
+        #     self.logger.info(f"Starting update for {form_name} with document_id {document_id}")
 
         # Ensure the document exists
         document = self.databases[form_name].get(doc_id=document_id)
@@ -522,18 +522,63 @@ class ManageTinyDB(ManageDocumentDB):
         sorted_results = sorted(search_results, key=lambda x: x[1], reverse=True)
         return [doc for doc, score in sorted_results]
 
-    def delete_document(self, form_name:str, search_query, permanent:bool=False):
+    def delete_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, metadata:dict={}, permanent:bool=False):
         """Deletes entries that match the search query, permanently or soft delete."""
         self._check_form_exists(form_name)
-        if permanent:
-            self.databases[form_name].remove(search_query)
-                # Placeholder for logger
-        else:
-            # Perform a soft delete
-            for doc_id in [d.doc_id for d in self.databases[form_name].search(search_query)]:
-                self.databases[form_name].update({self.is_deleted_field: True}, doc_ids=[doc_id])
 
-                # Placeholder for logger
+        document = self.databases[form_name].get(doc_id=document_id)
+        if not document:
+            if self.use_logger:
+                self.logger.warning(f"No document for {form_name} with document_id {document_id}")
+            raise DocumentDoesNotExist(form_name, document_id)
+
+        if document['metadata'][self.is_deleted_field] == True:
+            if self.use_logger:
+                self.logger.warning(f"Document for {form_name} with document_id {document_id} is already deleted and was not updated")
+            raise DocumentIsDeleted(form_name, document_id)
+
+        # If we are limiting user access based on group-based access controls, and this user is 
+        # not the document creator, then return None
+        if isinstance(limit_users, str) and document['metadata'][self.created_by_field] != limit_users:
+            if self.use_logger:
+                self.logger.warning(f"Insufficient permissions to delete document for {form_name} with document_id {document_id}")
+            raise InsufficientPermissions(form_name, document_id, limit_users)
+
+        if permanent:
+            self.databases[form_name].remove(doc_ids=[document_id])
+            if self.use_logger:
+                self.logger.info(f"Permanently deleted document for {form_name} with document_id {document_id}")
+
+        current_timestamp = datetime.now(self.timezone)
+
+        # Build the journal
+        journal = document['metadata'].get(self.journal_field)
+        journal.append (
+            {
+                self.last_modified_field: current_timestamp.isoformat(),
+                self.last_editor_field: metadata.get(self.last_editor_field, None),
+                self.ip_address_field: metadata.get(self.ip_address_field, None),
+                self.is_deleted_field: True,
+            }
+        )
+
+        # Here we update only a few metadata fields ... fields like approval and signature should be
+        # handled through separate API calls. The most important here are _is_deleted and _journal.
+        document['metadata'][self.last_modified_field] = current_timestamp.isoformat()
+        document['metadata'][self.last_editor_field] = metadata.get(self.last_editor_field, None)
+        document['metadata'][self.ip_address_field] = metadata.get(self.ip_address_field, None)
+        document['metadata'][self.is_deleted_field] = True
+        document['metadata'][self.journal_field] = journal
+
+        # Update only the fields that are provided in json_data and metadata, not replacing the entire 
+        # document. The partial approach will minimize the room for mistakes from overwriting entire documents.
+        _ = self.databases[form_name].update(document, doc_ids=[document_id])
+
+        if self.use_logger:
+            self.logger.info(f"Deleted document for {form_name} with document_id {document_id}")
+
+        return document
+
 
 
     def get_all_documents(self, form_name:str, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
