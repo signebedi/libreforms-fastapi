@@ -97,6 +97,10 @@ class Config(BaseSettings):
     # see https://github.com/signebedi/libreforms-fastapi/issues/18.
     UI_ENABLED:bool = os.getenv('UI_ENABLED', 'True') == 'True'
 
+    # Here we allow admins to decide whether users should be able to see each other's 
+    # profile data, see https://github.com/signebedi/libreforms-fastapi/issues/54.
+    OTHER_PROFILES_ENABLED:bool = os.getenv('OTHER_PROFILES_ENABLED', 'True') == 'True'
+
     # Here we specify a path to our JSON form config representation, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/37.
     FORM_CONFIG_PATH:str = os.getenv('FORM_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "form_config.json")))

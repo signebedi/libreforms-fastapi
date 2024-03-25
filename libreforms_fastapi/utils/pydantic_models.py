@@ -283,6 +283,7 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
 
     return model
 
+
 # Deprecated
 def __reconstruct_form_data(request, form_fields):
     """
