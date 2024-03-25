@@ -16,10 +16,10 @@ from sqlalchemy.orm import relationship, declarative_base
 
 from sqlalchemy_signing import create_signing_class
 
-from libreforms_fastapi.utils.config import yield_config
+from libreforms_fastapi.utils.config import get_config
 
 _env = os.environ.get('ENVIRONMENT', 'development')
-config = yield_config(_env)
+config = get_config(_env)
 
 Base = declarative_base()
 

@@ -4,10 +4,10 @@ from sqlalchemy import create_engine, StaticPool
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_signing import Signatures
 from libreforms_fastapi.utils.sqlalchemy_models import Base, User, Signing, TransactionLog, Group
-from libreforms_fastapi.utils.config import yield_config
+from libreforms_fastapi.utils.config import get_config
 
 # os.environ["ENVIRONMENT"] = "testing"
-config = yield_config(_env="testing")
+config = get_config(_env="testing")
 
 # Define a session-scoped fixture for the TestClient and Signatures
 @pytest.fixture(scope="session")

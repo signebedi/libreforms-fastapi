@@ -17,7 +17,7 @@ from sqlalchemy_signing import (
     KeyExpired,
 )
 
-from libreforms_fastapi.utils.config import yield_config
+from libreforms_fastapi.utils.config import get_config
 
 from libreforms_fastapi.utils.sqlalchemy_models import (
     Base,
@@ -407,7 +407,7 @@ def cli_useradd(username, password, email, opt_out, site_admin, environment):
     """Add a new user to the application."""
 
     # Set ENVIRONMENT  
-    config = yield_config(environment)
+    config = get_config(environment)
 
     # Run our assumptions check
     assert check_configuration_assumptions(config=config)
@@ -485,7 +485,7 @@ def cli_usermod(username, password, new_email, opt_out, active, site_admin, head
 
 
     # Set ENVIRONMENT  
-    config = yield_config(environment)
+    config = get_config(environment)
 
     # Run our assumptions check
     assert check_configuration_assumptions(config=config)
@@ -572,7 +572,7 @@ def cli_id(username, environment):
 
 
     # Set ENVIRONMENT  
-    config = yield_config(environment)
+    config = get_config(environment)
 
     # Run our assumptions check
     assert check_configuration_assumptions(config=config)

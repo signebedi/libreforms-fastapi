@@ -15,10 +15,10 @@ from pydantic import (
 
 from pydantic.functional_validators import field_validator, model_validator
 
-from libreforms_fastapi.utils.config import yield_config
+from libreforms_fastapi.utils.config import get_config
 
 _env = os.environ.get('ENVIRONMENT', 'development')
-config = yield_config(_env)
+config = get_config(_env)
 
 class ImproperUsernameFormat(Exception):
     """Raised when the username does not meet the regular expression defined in the app config"""

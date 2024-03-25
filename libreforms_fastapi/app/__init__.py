@@ -44,7 +44,7 @@ from libreforms_fastapi.utils.smtp import Mailer
 from libreforms_fastapi.utils.logging import set_logger
 
 from libreforms_fastapi.utils.config import (
-    yield_config,
+    get_config,
     validate_and_write_configs,
 )
 
@@ -84,7 +84,7 @@ from libreforms_fastapi.utils.pydantic_models import (
 
 # Here we set the application config
 _env = os.environ.get('ENVIRONMENT', 'development')
-config = yield_config(_env)
+config = get_config(_env)
 
 if config.DEBUG:
     print(config)

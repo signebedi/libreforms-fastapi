@@ -51,7 +51,7 @@ if not env == 'testing':
 
 else: env_file_path=""
 
-def yield_config(_env=env):
+def get_config(_env=env):
     if _env == 'production':
         return ProductionConfig()
     elif _env == 'testing':
