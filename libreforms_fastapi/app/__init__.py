@@ -63,9 +63,11 @@ from libreforms_fastapi.utils.scripts import (
     check_password_hash,
 )
 
+# Import the document database factory function and several
+# Exceptions that can help with error handling / determining 
+# HTTP response codes.
 from libreforms_fastapi.utils.document_database import (
-    ManageTinyDB,
-    ManageMongoDB,
+    get_document_database,
     CollectionDoesNotExist,
     DocumentDoesNotExist,
     DocumentIsDeleted,
@@ -241,12 +243,9 @@ with SessionLocal() as session:
 
 
 # Initialize the document database
-if config.MONGODB_ENABLED:
-    DocumentDatabase = ManageMongoDB(form_names_callable=get_form_names, timezone=config.TIMEZONE, env=config.ENVIRONMENT)
-    logger.info('MongoDB has been initialized')
-else: 
-    DocumentDatabase = ManageTinyDB(form_names_callable=get_form_names, timezone=config.TIMEZONE, env=config.ENVIRONMENT)
-    logger.info('TinyDB has been initialized')
+
+doc_db = get_document_database(form_names_callable=get_form_names, timezone=config.TIMEZONE, env=config.ENVIRONMENT, use_mongodb=config.MONGODB_ENABLED, mongodb_uri=config.MONGODB_URI)
+logger.info('Document Database has been initialized')
 
 # Here we define an API key header for the api view functions.
 X_API_KEY = APIKeyHeader(name="X-API-Key")
@@ -409,23 +408,23 @@ async def api_form_create(form_name: str, background_tasks: BackgroundTasks, req
     except Exception as e:
         raise HTTPException(status_code=403, detail=f"{e}")
 
-    # Set the document_id here, and pass to the DocumentDatabase
+    # Set the document_id here, and pass to the doc_db
     document_id = str(ObjectId())
 
     metadata={
-        DocumentDatabase.document_id_field: document_id,
-        DocumentDatabase.created_by_field: user.username,
-        DocumentDatabase.last_editor_field: user.username,
+        doc_db.document_id_field: document_id,
+        doc_db.created_by_field: user.username,
+        doc_db.last_editor_field: user.username,
     }
 
     # Add the remote addr host if enabled
     if config.COLLECT_USAGE_STATISTICS:
-        metadata[DocumentDatabase.ip_address_field] = request.client.host
+        metadata[doc_db.ip_address_field] = request.client.host
 
     # Process the validated form submission as needed
     # background_tasks.add_task(
-        # DocumentDatabase.create_document,
-    d = DocumentDatabase.create_document(
+        # doc_db.create_document,
+    d = doc_db.create_document(
         form_name=form_name, 
         json_data=json_data, 
         metadata=metadata
@@ -486,7 +485,7 @@ async def api_form_read_one(form_name: str, document_id: str, background_tasks: 
     except Exception as e:
         limit_query_to = user.username
 
-    document = DocumentDatabase.get_one_document(
+    document = doc_db.get_one_document(
         form_name=form_name, 
         document_id=document_id, 
         limit_users=limit_query_to
@@ -542,7 +541,7 @@ async def api_form_read_all(form_name: str, background_tasks: BackgroundTasks, r
     except Exception as e:
         limit_query_to = user.username
 
-    documents = DocumentDatabase.get_all_documents(
+    documents = doc_db.get_all_documents(
         form_name=form_name, 
         limit_users=limit_query_to
     )
@@ -611,16 +610,16 @@ async def api_form_update(form_name: str, document_id: str, background_tasks: Ba
         limit_query_to = user.username
 
     metadata={
-        DocumentDatabase.last_editor_field: user.username,
+        doc_db.last_editor_field: user.username,
     }
 
     # Add the remote addr host if enabled
     if config.COLLECT_USAGE_STATISTICS:
-        metadata[DocumentDatabase.ip_address_field] = request.client.host
+        metadata[doc_db.ip_address_field] = request.client.host
 
     try:
         # Process the validated form submission as needed
-        d = DocumentDatabase.update_document(
+        d = doc_db.update_document(
             form_name=form_name, 
             document_id=document_id,
             json_data=json_data, 
@@ -697,16 +696,16 @@ async def api_form_delete(form_name: str, document_id:str, background_tasks: Bac
         limit_query_to = user.username
 
     metadata={
-        DocumentDatabase.last_editor_field: user.username,
+        doc_db.last_editor_field: user.username,
     }
 
     # Add the remote addr host if enabled
     if config.COLLECT_USAGE_STATISTICS:
-        metadata[DocumentDatabase.ip_address_field] = request.client.host
+        metadata[doc_db.ip_address_field] = request.client.host
 
     try:
         # Process the request as needed
-        success = DocumentDatabase.delete_document(
+        success = doc_db.delete_document(
             form_name=form_name, 
             document_id=document_id,
             metadata=metadata,
@@ -779,16 +778,16 @@ async def api_form_restore(form_name: str, document_id:str, background_tasks: Ba
         limit_query_to = user.username
 
     metadata={
-        DocumentDatabase.last_editor_field: user.username,
+        doc_db.last_editor_field: user.username,
     }
 
     # Add the remote addr host if enabled
     if config.COLLECT_USAGE_STATISTICS:
-        metadata[DocumentDatabase.ip_address_field] = request.client.host
+        metadata[doc_db.ip_address_field] = request.client.host
 
     try:
         # Process the request as needed
-        success = DocumentDatabase.delete_document(
+        success = doc_db.delete_document(
             form_name=form_name, 
             document_id=document_id,
             metadata=metadata,
@@ -864,7 +863,7 @@ async def api_form_search(form_name: str, background_tasks: BackgroundTasks, req
             else:
                 limit_query_to[form_name] = user.username
 
-    documents = DocumentDatabase.fuzzy_search_documents(
+    documents = doc_db.fuzzy_search_documents(
         search_term=search_term,
         form_name=form_name,
         limit_users=limit_query_to,
@@ -920,7 +919,7 @@ async def api_form_search_all(background_tasks: BackgroundTasks, request: Reques
 
     print("\n\n\n", limit_query_to)
 
-    documents = DocumentDatabase.fuzzy_search_documents(
+    documents = doc_db.fuzzy_search_documents(
         search_term=search_term,
         limit_users=limit_query_to,
     )

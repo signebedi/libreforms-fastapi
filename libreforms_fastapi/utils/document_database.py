@@ -188,6 +188,27 @@ def fuzzy_search_normalized(text_string, search_term, segment_length=None):
     return highest_score
 
 
+def get_document_database(
+    form_names_callable, 
+    timezone: ZoneInfo, 
+    db_path: str = "instance/", 
+    use_logger=True, 
+    env="development",
+    use_mongodb=False,
+    mongodb_uri=None,
+):
+    """
+    This is a factory function that will return one of Document Database manangement classes 
+    defined below. The goal of adding the wrapper / intermediate structure here is to reduce
+    coupling and facilitate easier testing.
+    """
+    if use_mongodb:
+        if not mongodb_uri or mongodb_uri=="":
+            raise Exception("Please pass a value MongoDB URI")
+        return ManageMongoDB(form_names_callable, timezone, db_path, use_logger, env)
+    return ManageTinyDB(form_names_callable, timezone, db_path, use_logger, env)
+
+
 class ManageDocumentDB(ABC):
     def __init__(self, form_names_callable, timezone: ZoneInfo):
         self.form_names_callable = form_names_callable
