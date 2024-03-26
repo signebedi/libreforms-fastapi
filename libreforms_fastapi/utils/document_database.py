@@ -24,6 +24,10 @@ from abc import ABC, abstractmethod
 
 from libreforms_fastapi.utils.logging import set_logger
 
+# This import is used to afix digital signatures to records
+from libreforms_fastapi.utils.certificates import sign_record
+
+
 # We want to modify TinyDB use use string representations of bson 
 # ObjectIDs. As such, we will need to modify some underlying behavior, 
 # see https://github.com/signebedi/libreforms-fastapi/issues/15.
@@ -327,12 +331,13 @@ class ManageTinyDB(ManageDocumentDB):
         self.db_path = db_path
         os.makedirs(self.db_path, exist_ok=True)
 
+        self.env = env
         self.log_name = "tinydb.log"
         self.use_logger = use_logger
 
         if self.use_logger:
             self.logger = set_logger(
-                environment=env, 
+                environment=self.env, 
                 log_file_name=self.log_name, 
                 namespace=self.log_name
             )
@@ -488,9 +493,6 @@ class ManageTinyDB(ManageDocumentDB):
         document['metadata'][self.ip_address_field] = metadata.get(self.ip_address_field, None)
         document['metadata'][self.journal_field] = journal
 
-
-        # print("\n\n\nUpdated Document: ", document)
-
         # Update only the fields that are provided in json_data and metadata, not replacing the entire 
         # document. The partial approach will minimize the room for mistakes from overwriting entire documents.
         _ = self.databases[form_name].update(document, doc_ids=[document_id])
@@ -500,13 +502,75 @@ class ManageTinyDB(ManageDocumentDB):
 
         return document
 
-    def sign_document(self, form_name:str, json_data, metadata={}):
-        """Manage signatures existing form in specified form's database."""
+    def sign_document(
+        self, 
+        form_name:str, 
+        document_id:str, 
+        username:str, 
+        public_key=None, 
+        private_key_path=None, 
+        metadata={}, 
+        exclude_deleted=True
+    ):
+        """
+        Manage signatures existing form in specified form's database.
 
-        # Placeholder for logger
+        This is a metadata-only method. The actual form data should not be touched.
+        
+        """
+
+        self._check_form_exists(form_name)
+
+        # Ensure the document exists
+        document = self.databases[form_name].get(doc_id=document_id)
+        if not document:
+            if self.use_logger:
+                self.logger.warning(f"No document for {form_name} with document_id {document_id}")
+            raise DocumentDoesNotExist(form_name, document_id)
+
+        # If exclude_deleted is set, then we return None if the document is marked as deleted
+        if exclude_deleted and document['metadata'][self.is_deleted_field] == True:
+            if self.use_logger:
+                self.logger.warning(f"Document for {form_name} with document_id {document_id} is deleted and was not updated")
+            raise DocumentIsDeleted(form_name, document_id)
+
+        # Now we afix the signature
+        _, signature = sign_record(record=document, username=username, env=self.env)
+
+        # Placeholder - before proceeding, should we verify the signature and raise an
+        # SignatureError exception if the verification fails?
+
+        current_timestamp = datetime.now(self.timezone)
+
+        # Build the journal
+        journal = document['metadata'].get(self.journal_field)
+        journal.append (
+            {
+                self.signature_field: signature,
+                self.last_modified_field: current_timestamp.isoformat(),
+                self.last_editor_field: metadata.get(self.last_editor_field, None),
+                self.ip_address_field: metadata.get(self.ip_address_field, None),
+            }
+        )
 
 
-        pass
+        # Here we update only a few metadata fields ... fields like approval and signature should be
+        # handled through separate API calls.
+        document['metadata'][self.last_modified_field] = current_timestamp.isoformat()
+        document['metadata'][self.last_editor_field] = metadata.get(self.last_editor_field, None)
+        document['metadata'][self.ip_address_field] = metadata.get(self.ip_address_field, None)
+        document['metadata'][self.journal_field] = journal
+        document['metadata'][self.signature_field] = signature
+
+
+        # Update only the fields that are provided in json_data and metadata, not replacing the entire 
+        # document. The partial approach will minimize the room for mistakes from overwriting entire documents.
+        _ = self.databases[form_name].update(document, doc_ids=[document_id])
+
+        if self.use_logger:
+            self.logger.info(f"User {username} signed document for {form_name} with document_id {document_id}")
+
+        return document
 
 
     def approve_document(self, form_name:str, json_data, metadata={}):

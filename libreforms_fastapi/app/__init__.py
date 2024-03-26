@@ -236,7 +236,8 @@ with SessionLocal() as session:
             "example_form:update_own",
             "example_form:update_all",
             "example_form:delete_own",
-            "example_form:delete_all"
+            "example_form:delete_all",
+            "example_form:sign_own"
         ]
         default_group = Group(id=1, name="default", permissions=default_permissions)
         session.add(default_group)
@@ -1013,13 +1014,93 @@ async def api_form_search_all(
 # Sign form
 # This is a metadata-only field. It should not impact the data, just the metadata - namely, to afix 
 # a digital signature to the form. See https://github.com/signebedi/libreforms-fastapi/issues/59.
-@app.patch("/api/form/sign/{form_name}/{document_id}")
-async def api_form_sign():
+@app.patch("/api/form/sign/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+async def api_form_sign(
+    form_name:str,
+    document_id:str,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY),
+):
 
     # The underlying principle is that the user can only sign their own form. The question is what 
     # part of the application decides: the API, or the document database?
 
-    pass
+    if form_name not in get_form_names():
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    # Here we validate the user groups permit this level of access to the form
+    try:
+        for group in user.groups:
+            print("\n\n", group.get_permissions()) 
+
+        user.validate_permission(form_name=form_name, required_permission="sign_own")
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+        
+            # "example_form:sign_own"
+
+    metadata={
+        doc_db.last_editor_field: user.username,
+    }
+
+    # Add the remote addr host if enabled
+    if config.COLLECT_USAGE_STATISTICS:
+        metadata[doc_db.ip_address_field] = request.client.host
+
+    try:
+        # Process the request as needed
+        success = doc_db.sign_document(
+            form_name=form_name, 
+            document_id=document_id,
+            metadata=metadata,
+            username=user.username,
+            public_key=user.public_key,
+            private_key_path=user.private_key_ref,
+        )
+
+    # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
+    # it fails to ensure the user knows their operation was not successful.
+    except DocumentDoesNotExist as e:
+        raise HTTPException(status_code=404, detail=f"{e}")
+
+    except DocumentIsDeleted as e:
+        raise HTTPException(status_code=410, detail=f"{e}")
+
+
+    # Send email
+    if config.SMTP_ENABLED:
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject="Form Signed", 
+            content=f"This email servers to notify you that a form was signed at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator.", 
+            to_address=user.email,
+        )
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return {
+        "message": "Form successfully signed", 
+        "document_id": document_id, 
+    }
 
 # Approve form
 # This is a metadata-only field. It should not impact the data, just the metadata - namely, to afix 
