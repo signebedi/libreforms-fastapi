@@ -48,7 +48,7 @@ class DigitalSignatureManager:
             os.makedirs(self.key_storage_path)
 
     def get_private_key_file(self):
-        
+
         if self.private_key_path:
             return self.private_key_path
 
@@ -201,8 +201,9 @@ def sign_record(record, username, env="development"):
     ds_manager = DigitalSignatureManager(username=username, env=env)
     serialized = serialize_record_for_signing(record)
     signature = ds_manager.sign_data(serialized.encode())
-    record['metadata']['_signature'] = signature.hex()  # Store the signature as a hex string
-    return record
+    s = signature.hex()
+    record['metadata']['_signature'] = s  # Store the signature as a hex string
+    return record, s
 
 def verify_record_signature(record, username, env="development", public_key=None):
     """
