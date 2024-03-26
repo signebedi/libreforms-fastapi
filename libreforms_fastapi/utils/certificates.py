@@ -1,7 +1,7 @@
 """
 # Example usage:
-user_id = 'user123'
-ds_manager = DigitalSignatureManager(user_id)
+username = 'user123'
+ds_manager = DigitalSignatureManager(username)
 ds_manager.generate_rsa_key_pair()
 
 data_to_sign = b"Important document content."
@@ -26,8 +26,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.exceptions import InvalidSignature
 
 class DigitalSignatureManager:
-    def __init__(self, user_id, env="development", key_storage_path=os.path.join('instance', 'keys')):
-        self.user_id = user_id
+    def __init__(self, username, env="development", key_storage_path=os.path.join('instance', 'keys')):
+        self.username = username
         self.env = env
         self.key_storage_path = key_storage_path
         self.ensure_key_storage()
@@ -37,10 +37,10 @@ class DigitalSignatureManager:
             os.makedirs(self.key_storage_path)
 
     def get_private_key_file(self):
-        return os.path.join(self.key_storage_path, f"{self.env}_{self.user_id}_private.key")
+        return os.path.join(self.key_storage_path, f"{self.env}_{self.username}_private.key")
 
     def get_public_key_file(self):
-        return os.path.join(self.key_storage_path, f"{self.env}_{self.user_id}_public.key")
+        return os.path.join(self.key_storage_path, f"{self.env}_{self.username}_public.key")
 
     def generate_rsa_key_pair(self):
         """
@@ -52,6 +52,12 @@ class DigitalSignatureManager:
             backend=default_backend()
         )
         public_key = private_key.public_key()
+
+        self.public_key_bytes = public_key.public_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PublicFormat.SubjectPublicKeyInfo
+        )
+
 
         # Save the private key
         with open(self.get_private_key_file(), "wb") as private_file:
@@ -65,12 +71,7 @@ class DigitalSignatureManager:
 
         # Save the public key
         with open(self.get_public_key_file(), "wb") as public_file:
-            public_file.write(
-                public_key.public_bytes(
-                    encoding=serialization.Encoding.PEM,
-                    format=serialization.PublicFormat.SubjectPublicKeyInfo
-                )
-            )
+            public_file.write(self.public_key_bytes)
 
     def sign_data(self, data):
         """
@@ -131,16 +132,17 @@ def serialize_record_for_signing(record):
     print(select_data_fields)
     return json.dumps(select_data_fields, sort_keys=True)
 
-def sign_record(record, ds_manager):
+def sign_record(record, username, env="development"):
     """
     Generates a signature for the given record and inserts it into the '_signature' field.
     """
+    ds_manager = DigitalSignatureManager(username=username, env=env)
     serialized = serialize_record_for_signing(record)
     signature = ds_manager.sign_data(serialized.encode())
     record['metadata']['_signature'] = signature.hex()  # Store the signature as a hex string
     return record
 
-def verify_record_signature(record, ds_manager):
+def verify_record_signature(record, username, env="development"):
     """
     Verifies the signature of the given record.
     Returns True if the signature is valid, False otherwise.
@@ -148,6 +150,8 @@ def verify_record_signature(record, ds_manager):
     if '_signature' not in record['metadata'] or record['metadata']['_signature'] is None:
         return False  # No signature to verify
     
+    ds_manager = DigitalSignatureManager(username=username, env=env)
+
     record_copy = copy.deepcopy(record)
     signature_bytes = bytes.fromhex(record['metadata']['_signature'])
     serialized = serialize_record_for_signing(record_copy)
