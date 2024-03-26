@@ -194,18 +194,18 @@ def serialize_record_for_signing(record):
     # print(select_data_fields)
     return json.dumps(select_data_fields, sort_keys=True)
 
-def sign_record(record, username, env="development"):
+def sign_record(record, username, env="development", private_key_path=None):
     """
     Generates a signature for the given record and inserts it into the '_signature' field.
     """
-    ds_manager = DigitalSignatureManager(username=username, env=env)
+    ds_manager = DigitalSignatureManager(username=username, env=env, private_key_path=private_key_path)
     serialized = serialize_record_for_signing(record)
     signature = ds_manager.sign_data(serialized.encode())
     s = signature.hex()
     record['metadata']['_signature'] = s  # Store the signature as a hex string
     return record, s
 
-def verify_record_signature(record, username, env="development", public_key=None):
+def verify_record_signature(record, username, env="development", public_key=None, private_key_path=None):
     """
     Verifies the signature of the given record.
     Returns True if the signature is valid, False otherwise.
@@ -213,12 +213,16 @@ def verify_record_signature(record, username, env="development", public_key=None
     if '_signature' not in record['metadata'] or record['metadata']['_signature'] is None:
         return False  # No signature to verify
     
-    ds_manager = DigitalSignatureManager(username=username, env=env)
+    ds_manager = DigitalSignatureManager(username=username, env=env, private_key_path=private_key_path)
 
     record_copy = copy.deepcopy(record)
     signature_bytes = bytes.fromhex(record['metadata']['_signature'])
     serialized = serialize_record_for_signing(record_copy)
     
+    # This is hackish, because ds_manager.verify_signature should be able to accept bytes. It's a workaround for now.
+    if isinstance(public_key, bytes):
+        public_key = public_key.decode('utf-8')
+
     try:
         return ds_manager.verify_signature(serialized.encode(), signature_bytes, public_key=public_key)
     except InvalidSignature:

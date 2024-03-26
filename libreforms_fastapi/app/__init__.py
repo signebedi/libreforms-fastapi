@@ -79,6 +79,7 @@ from libreforms_fastapi.utils.document_database import (
     DocumentIsDeleted,
     InsufficientPermissions,
     DocumentIsNotDeleted,
+    SignatureError,
 )
 
 from libreforms_fastapi.utils.pydantic_models import (
@@ -1036,8 +1037,8 @@ async def api_form_sign(
 
     # Here we validate the user groups permit this level of access to the form
     try:
-        for group in user.groups:
-            print("\n\n", group.get_permissions()) 
+        # for group in user.groups:
+        #     print("\n\n", group.get_permissions()) 
 
         user.validate_permission(form_name=form_name, required_permission="sign_own")
     except Exception as e:
@@ -1071,6 +1072,9 @@ async def api_form_sign(
 
     except DocumentIsDeleted as e:
         raise HTTPException(status_code=410, detail=f"{e}")
+
+    except SignatureError as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
 
 
     # Send email

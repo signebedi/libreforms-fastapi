@@ -51,6 +51,7 @@ class User(Base):
     last_login = Column(DateTime, nullable=True, default=tz_aware_datetime)
     locked_until = Column(DateTime, nullable=True, default=tz_aware_datetime)
     public_key = Column(LargeBinary(), nullable=True)
+    # public_key = Column(String, nullable=True)
     private_key_ref = Column(String, nullable=True) 
     last_password_change = Column(DateTime, nullable=True, default=tz_aware_datetime)
     failed_login_attempts = Column(Integer, default=0)

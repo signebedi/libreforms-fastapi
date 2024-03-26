@@ -25,7 +25,7 @@ from abc import ABC, abstractmethod
 from libreforms_fastapi.utils.logging import set_logger
 
 # This import is used to afix digital signatures to records
-from libreforms_fastapi.utils.certificates import sign_record
+from libreforms_fastapi.utils.certificates import sign_record, verify_record_signature
 
 
 # We want to modify TinyDB use use string representations of bson 
@@ -170,11 +170,18 @@ class DocumentIsNotDeleted(Exception):
 class InsufficientPermissions(Exception):
     """Exception raised when attempting to access a document that user lacks permissions for."""
     def __init__(self, form_name, document_id, username):
-        message = f"User '{user}' has insufficinet permissions to perform the requested operation on document" \
+        message = f"User '{username}' has insufficient permissions to perform the requested operation on document" \
             f"with ID '{document_id}' collection '{form_name}'."
         super().__init__(message)
 
+class SignatureError(Exception):
+    """Exception raised when attempting to sign a document but the process fails."""
+    def __init__(self, form_name, document_id, username):
+        message = f"User '{username}' has failed to sign the document" \
+            f"with ID '{document_id}' collection '{form_name}'."
+        super().__init__(message)
 
+SignatureError
 # Pulled from https://github.com/signebedi/gita-api
 def fuzzy_search_normalized(text_string, search_term, segment_length=None):
     if segment_length is None:
@@ -510,7 +517,8 @@ class ManageTinyDB(ManageDocumentDB):
         public_key=None, 
         private_key_path=None, 
         metadata={}, 
-        exclude_deleted=True
+        exclude_deleted=True,
+        verify_on_sign=True,
     ):
         """
         Manage signatures existing form in specified form's database.
@@ -535,10 +543,15 @@ class ManageTinyDB(ManageDocumentDB):
             raise DocumentIsDeleted(form_name, document_id)
 
         # Now we afix the signature
-        _, signature = sign_record(record=document, username=username, env=self.env)
+        try:
+            r, signature = sign_record(record=document, username=username, env=self.env, private_key_path=private_key_path)
 
-        # Placeholder - before proceeding, should we verify the signature and raise an
-        # SignatureError exception if the verification fails?
+            if verify_on_sign:
+                verify = verify_record_signature(record=r, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
+                assert (verify)
+                # print ("\n\n\n", a)
+        except:
+            raise SignatureError(form_name, document_id, username)
 
         current_timestamp = datetime.now(self.timezone)
 
@@ -563,7 +576,7 @@ class ManageTinyDB(ManageDocumentDB):
         document['metadata'][self.signature_field] = signature
 
 
-        # Update only the fields that are provided in json_data and metadata, not replacing the entire 
+        # Update only the fields that are provided in  metadata, not replacing the entire 
         # document. The partial approach will minimize the room for mistakes from overwriting entire documents.
         _ = self.databases[form_name].update(document, doc_ids=[document_id])
 
