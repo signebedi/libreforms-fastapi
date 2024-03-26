@@ -1119,6 +1119,81 @@ async def api_form_sign(
 
 
 ##########################
+### API Routes - Validators
+##########################
+
+# Validate form field
+    # @app.get("/api/validate/field/{form_name}")
+    # async def api_validate_field():
+
+# Validate form signature, see https://github.com/signebedi/libreforms-fastapi/issues/72
+@app.get("/api/validate/signature/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+async def api_validate_signature(
+    form_name:str,
+    document_id:str,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY),
+):
+
+    # The underlying principle is that the user can only sign their own form. The question is what 
+    # part of the application decides: the API, or the document database?
+
+    if form_name not in get_form_names():
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    # Here we validate the user groups permit them to see their own forms, which they
+    # should do as a matter of bureaucratic best practice, but might sometimes limit.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_own")
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
+    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_all")
+        limit_query_to = False
+    except Exception as e:
+        limit_query_to = user.username
+
+    document = doc_db.get_one_document(
+        form_name=form_name, 
+        document_id=document_id, 
+        limit_users=limit_query_to
+    )
+
+    if not document:
+        raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    valid = verify_record_signature(record=document, username=user.username, env=config.ENVIRONMENT, public_key=user.public_key, private_key_path=user.private_key_ref)
+
+    return {
+        "valid": valid, 
+        "document_id": document_id, 
+    }
+
+
+##########################
 ### API Routes - Auth
 ##########################
 
@@ -1289,13 +1364,6 @@ async def api_auth_get(
     # @app.patch("/api/auth/forgot_password/{single_use_token}")
     # async def api_auth_forgot_password_confirm(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
 
-##########################
-### API Routes - Validators
-##########################
-
-# Validate form field
-    # @app.get("/api/validate/field/{form_name}")
-    # async def api_validate_field():
 
 
 ##########################
