@@ -80,6 +80,7 @@ from libreforms_fastapi.utils.document_database import (
     InsufficientPermissions,
     DocumentIsNotDeleted,
     SignatureError,
+    DocumentAlreadyHasValidSignature,
 )
 
 from libreforms_fastapi.utils.pydantic_models import (
@@ -1075,6 +1076,10 @@ async def api_form_sign(
 
     except SignatureError as e:
         raise HTTPException(status_code=403, detail=f"{e}")
+
+
+    except DocumentAlreadyHasValidSignature as e:
+        raise HTTPException(status_code=200, detail=f"{e}")
 
 
     # Send email

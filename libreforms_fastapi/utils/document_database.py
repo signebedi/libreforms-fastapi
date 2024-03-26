@@ -170,16 +170,25 @@ class DocumentIsNotDeleted(Exception):
 class InsufficientPermissions(Exception):
     """Exception raised when attempting to access a document that user lacks permissions for."""
     def __init__(self, form_name, document_id, username):
-        message = f"User '{username}' has insufficient permissions to perform the requested operation on document" \
+        message = f"User '{username}' has insufficient permissions to perform the requested operation on document " \
             f"with ID '{document_id}' collection '{form_name}'."
         super().__init__(message)
 
 class SignatureError(Exception):
     """Exception raised when attempting to sign a document but the process fails."""
     def __init__(self, form_name, document_id, username):
-        message = f"User '{username}' has failed to sign the document" \
+        message = f"User '{username}' has failed to sign the document " \
             f"with ID '{document_id}' collection '{form_name}'."
         super().__init__(message)
+
+class DocumentAlreadyHasValidSignature(Exception):
+    """Exception raised when attempting to sign a document but the it's been signed and the signature is valid."""
+    def __init__(self, form_name, document_id, username):
+        message = f"User '{username}' has failed to sign the document " \
+            f"with ID '{document_id}' collection '{form_name}'. Document already signed and valid."
+        super().__init__(message)
+
+
 
 SignatureError
 # Pulled from https://github.com/signebedi/gita-api
@@ -541,6 +550,15 @@ class ManageTinyDB(ManageDocumentDB):
             if self.use_logger:
                 self.logger.warning(f"Document for {form_name} with document_id {document_id} is deleted and was not updated")
             raise DocumentIsDeleted(form_name, document_id)
+
+        # Before we even begin, we verify whether a signature exists and only proceed if it doesn't. Otherwise, 
+        # we raise a DocumentAlreadyHasValidSignature exception. The idea here is to avoid spamming signatures if
+        # there has been no substantive change to the data since a past signature. This will allow the logic here
+        # to proceed if there is no signature, or if the data has changed since the last signature.
+        has_document_already_been_signed = verify_record_signature(record=document, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
+
+        if has_document_already_been_signed:
+            raise DocumentAlreadyHasValidSignature(form_name, document_id, username)
 
         # Now we afix the signature
         try:
