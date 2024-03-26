@@ -11,11 +11,13 @@ print("Signature:", signature)
 verification_result = ds_manager.verify_signature(data_to_sign, signature)
 print("Verification:", verification_result)
 
+
+username = 'user123'
 record_to_sign = {"data": {"text_input": "Sample text"}, "metadata": {"_signature": None}}
-signed_record = sign_record(record_to_sign, ds_manager)
+signed_record = sign_record(record_to_sign, username=username)
 print("Signed Record:", signed_record)
 
-verification_result = verify_record_signature(signed_record, ds_manager)
+verification_result = verify_record_signature(signed_record, username=username)
 print("Verification Result:", verification_result)
 """
 import os, json, copy
@@ -94,16 +96,56 @@ class DigitalSignatureManager:
         )
         return signature
 
-    def verify_signature(self, data, signature):
+    # def verify_signature(self, data, signature):
+    #     """
+    #     Verifies the signature of the data using the public key.
+    #     """
+    #     with open(self.get_public_key_file(), "rb") as key_file:
+    #         public_key = serialization.load_pem_public_key(
+    #             key_file.read(),
+    #             backend=default_backend()
+    #         )
+
+    #     try:
+    #         public_key.verify(
+    #             signature,
+    #             data,
+    #             padding.PSS(
+    #                 mgf=padding.MGF1(hashes.SHA256()),
+    #                 salt_length=padding.PSS.MAX_LENGTH
+    #             ),
+    #             hashes.SHA256()
+    #         )
+    #         return True
+    #     except Exception as e:
+    #         return False
+    def verify_signature(self, data, signature, public_key=None):
         """
-        Verifies the signature of the data using the public key.
+        Verifies the signature of the data using the provided public key.
+        
+        :param data: The original data that was signed.
+        :param signature: The signature to verify.
+        :param public_key: Optional. The public key used for verification. This can be
+                        either a PEM-encoded string or a loaded public key object.
+                        If None, the public key will be read from the file specified
+                        by `get_public_key_file()`.
+        :return: True if the signature is valid; False otherwise.
         """
-        with open(self.get_public_key_file(), "rb") as key_file:
+        if public_key is None:
+            # Load the public key from file if not provided
+            with open(self.get_public_key_file(), "rb") as key_file:
+                public_key = serialization.load_pem_public_key(
+                    key_file.read(),
+                    backend=default_backend()
+                )
+        elif isinstance(public_key, str):
+            # Load the public key from a PEM-encoded string if provided as such
             public_key = serialization.load_pem_public_key(
-                key_file.read(),
+                public_key.encode('utf-8'),
                 backend=default_backend()
             )
-
+            print(public_key)
+        
         try:
             public_key.verify(
                 signature,
@@ -115,7 +157,10 @@ class DigitalSignatureManager:
                 hashes.SHA256()
             )
             return True
+        except InvalidSignature:
+            return False
         except Exception as e:
+            print(f"Verification failed: {str(e)}")
             return False
 
 
@@ -129,7 +174,7 @@ def serialize_record_for_signing(record):
     # expected) to change, eg. through the form approval process, we expect the data to remain 
     # the same.
     select_data_fields = record_copy['data']
-    print(select_data_fields)
+    # print(select_data_fields)
     return json.dumps(select_data_fields, sort_keys=True)
 
 def sign_record(record, username, env="development"):
@@ -142,7 +187,7 @@ def sign_record(record, username, env="development"):
     record['metadata']['_signature'] = signature.hex()  # Store the signature as a hex string
     return record
 
-def verify_record_signature(record, username, env="development"):
+def verify_record_signature(record, username, env="development", public_key=None):
     """
     Verifies the signature of the given record.
     Returns True if the signature is valid, False otherwise.
@@ -157,7 +202,7 @@ def verify_record_signature(record, username, env="development"):
     serialized = serialize_record_for_signing(record_copy)
     
     try:
-        return ds_manager.verify_signature(serialized.encode(), signature_bytes)
+        return ds_manager.verify_signature(serialized.encode(), signature_bytes, public_key=public_key)
     except InvalidSignature:
         return False
 
