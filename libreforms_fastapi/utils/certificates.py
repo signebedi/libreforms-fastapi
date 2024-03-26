@@ -28,20 +28,37 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.exceptions import InvalidSignature
 
 class DigitalSignatureManager:
-    def __init__(self, username, env="development", key_storage_path=os.path.join('instance', 'keys')):
+    def __init__(
+        self, 
+        username, 
+        env="development", 
+        key_storage_path=os.path.join('instance', 'keys'),
+        public_key_path=None,
+        private_key_path=None,
+    ):
         self.username = username
         self.env = env
         self.key_storage_path = key_storage_path
         self.ensure_key_storage()
+        self.public_key_path=public_key_path
+        self.private_key_path=private_key_path
 
     def ensure_key_storage(self):
         if not os.path.exists(self.key_storage_path):
             os.makedirs(self.key_storage_path)
 
     def get_private_key_file(self):
+        
+        if self.private_key_path:
+            return self.private_key_path
+
         return os.path.join(self.key_storage_path, f"{self.env}_{self.username}_private.key")
 
     def get_public_key_file(self):
+        
+        if self.public_key_path:
+            return self.public_key_path
+
         return os.path.join(self.key_storage_path, f"{self.env}_{self.username}_public.key")
 
     def generate_rsa_key_pair(self):
