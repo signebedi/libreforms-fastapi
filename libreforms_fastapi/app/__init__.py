@@ -307,6 +307,8 @@ def write_api_call_to_transaction_log(api_key, endpoint, remote_addr=None, query
             # Truncate to avoid unpredictable behavior
             query_params = query_params[:max_length]
 
+        # logger.info(api_key, endpoint, remote_addr, query_params)
+
     with SessionLocal() as session:
         user = session.query(User).filter_by(api_key=api_key).first()
         if user:
@@ -324,58 +326,58 @@ def write_api_call_to_transaction_log(api_key, endpoint, remote_addr=None, query
                 session.rollback()
 
 
-if config.DEBUG:
-    ### This is a dummy route to validate jinja2 templates
-    @app.get("/debug/items/{id}", response_class=HTMLResponse, include_in_schema=False)
-    async def read_item(request: Request, id: str):
-        return templates.TemplateResponse(
-            request=request, 
-            name="item.html", 
-            context={"id": id}
-        )
+# if config.DEBUG:
+#     ### This is a dummy route to validate jinja2 templates
+#     @app.get("/debug/items/{id}", response_class=HTMLResponse, include_in_schema=False)
+#     async def read_item(request: Request, id: str):
+#         return templates.TemplateResponse(
+#             request=request, 
+#             name="item.html", 
+#             context={"id": id}
+#         )
 
-    ### These are dummy routes to validate the sqlalchemy-signing library in development
-    @app.get("/debug/create", include_in_schema=False)
-    async def create_key():
-        key = signatures.write_key(expiration=.5, scope="api_key")
-        return {"key": key}
+#     ### These are dummy routes to validate the sqlalchemy-signing library in development
+#     @app.get("/debug/create", include_in_schema=False)
+#     async def create_key():
+#         key = signatures.write_key(expiration=.5, scope="api_key")
+#         return {"key": key}
 
-    @app.get("/debug/get", include_in_schema=False)
-    async def get_key_details(key: str):
-        key_details = signatures.get_key(key)
-        return {"key": key_details}
+#     @app.get("/debug/get", include_in_schema=False)
+#     async def get_key_details(key: str):
+#         key_details = signatures.get_key(key)
+#         return {"key": key_details}
 
-    @app.get("/debug/verify", include_in_schema=False)
-    async def verify_key_details(key: str = Depends(X_API_KEY)):
+#     @app.get("/debug/verify", include_in_schema=False)
+#     async def verify_key_details(key: str = Depends(X_API_KEY)):
 
-        try:
-            verify = signatures.verify_key(key, scope=[])
+#         try:
+#             verify = signatures.verify_key(key, scope=[])
 
-        except RateLimitExceeded:
-            raise HTTPException(
-                status_code=429,
-                detail="Rate limit exceeded"
-            )
+#         except RateLimitExceeded:
+#             raise HTTPException(
+#                 status_code=429,
+#                 detail="Rate limit exceeded"
+#             )
 
-        except KeyDoesNotExist:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid API key"
-            )
+#         except KeyDoesNotExist:
+#             raise HTTPException(
+#                 status_code=401,
+#                 detail="Invalid API key"
+#             )
 
-        except ScopeMismatch:
-            raise HTTPException(
-                status_code=401,
-                detail="Invalid API key"
-            )
+#         except ScopeMismatch:
+#             raise HTTPException(
+#                 status_code=401,
+#                 detail="Invalid API key"
+#             )
 
-        except KeyExpired:
-            raise HTTPException(
-                status_code=401,
-                detail="API key expired"
-            )
+#         except KeyExpired:
+#             raise HTTPException(
+#                 status_code=401,
+#                 detail="API key expired"
+#             )
 
-        return {"valid": verify}
+#         return {"valid": verify}
 
 
 ##########################
@@ -1004,13 +1006,18 @@ async def api_form_search_all(
 
 # Sign form
 # This is a metadata-only field. It should not impact the data, just the metadata - namely, to afix 
-# a digital signature to the form. 
-    # @app.patch("/api/form/sign/{form_name}/{document_id}")
-    # async def api_form_sign():
+# a digital signature to the form. See https://github.com/signebedi/libreforms-fastapi/issues/59.
+@app.patch("/api/form/sign/{form_name}/{document_id}")
+async def api_form_sign():
+
+    # The underlying principle is that the user can only sign their own form. The question is what 
+    # part of the application decides: the API, or the document database?
+
+    pass
 
 # Approve form
 # This is a metadata-only field. It should not impact the data, just the metadata - namely, to afix 
-# an approval - in the format of a digital signature -  to the form. 
+# an approval - in the format of a digital signature - to the form. 
     # @app.patch("/api/form/approve/{form_name}/{document_id}")
     # async def api_form_approve():
 
@@ -1107,16 +1114,6 @@ async def api_auth_create(
         "message": f"Successfully created new user {user_request.username}"
     }
 
-# Change user password / usermod
-@app.patch("/api/auth/update")
-async def api_auth_update(
-    user_request: CreateUserRequest, 
-    background_tasks: BackgroundTasks, 
-    request: Request, 
-    session: SessionLocal = Depends(get_db)
-):
-    pass
-
 # Get User / id
 @app.get("/api/auth/get/{id}", dependencies=[Depends(api_key_auth)])
 async def api_auth_get(
@@ -1166,6 +1163,22 @@ async def api_auth_get(
 
     return profile_data
 
+
+# Update User - change user password / usermod
+# @app.patch("/api/auth/update")
+# async def api_auth_update(
+#     user_request: CreateUserRequest, 
+#     background_tasks: BackgroundTasks, 
+#     request: Request, 
+#     session: SessionLocal = Depends(get_db)
+# ):
+#     pass
+
+# Rotate user API key
+    # @app.patch("/api/auth/rotate_key")
+    # async def api_auth_rotate_key():
+
+
 # Request Password Reset - Forgot Password
     # @app.patch("/api/auth/forgot_password")
     # async def api_auth_forgot_password(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
@@ -1173,10 +1186,6 @@ async def api_auth_get(
 # Confirm password reset
     # @app.patch("/api/auth/forgot_password/{single_use_token}")
     # async def api_auth_forgot_password_confirm(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
-
-# Rotate user API key
-    # @app.patch("/api/auth/rotate_key")
-    # async def api_auth_rotate_key():
 
 ##########################
 ### API Routes - Validators

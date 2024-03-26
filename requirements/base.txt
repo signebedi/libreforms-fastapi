@@ -1,3 +1,4 @@
+cryptography<42.0.0
 email_validator<3.0.0
 fastapi<1.0.0
 fuzzywuzzy<1.0.0
