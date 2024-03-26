@@ -63,6 +63,12 @@ from libreforms_fastapi.utils.scripts import (
     check_password_hash,
 )
 
+# Import the tools used to generate signatures
+from libreforms_fastapi.utils.certificates import (
+    verify_record_signature,
+    sign_record,
+    DigitalSignatureManager,
+)
 # Import the document database factory function and several
 # Exceptions that can help with error handling / determining 
 # HTTP response codes.
@@ -1079,6 +1085,12 @@ async def api_auth_create(
     api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=user_request.email)
     new_user.api_key = api_key
 
+    # Here we add user key pair information, namely, the path to the user private key, and the
+    # contents of the public key, see https://github.com/signebedi/libreforms-fastapi/issues/71.
+    ds_manager = DigitalSignatureManager(username=user_request.username, env=config.ENVIRONMENT)
+    ds_manager.generate_rsa_key_pair()
+    new_user.private_key_ref = ds_manager.get_private_key_file()
+    new_user.public_key = ds_manager.public_key_bytes
 
     # Add the user to the default group
     group = session.query(Group).filter_by(name='default').first()
