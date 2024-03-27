@@ -19,7 +19,7 @@ from libreforms_fastapi.utils.logging import set_logger
 from libreforms_fastapi.utils.certificates import sign_record, verify_record_signature
 
 from libreforms_fastapi.utils.custom_tinydb import (
-    DateEncoder,
+    CustomEncoder,
     CustomTinyDB,
 )
 
@@ -251,7 +251,7 @@ class ManageTinyDB(ManageDocumentDB):
         self.databases = {}
         for form_name in self.form_names_callable():
             # self.databases[form_name] = TinyDB(self._get_db_path(form_name))
-            self.databases[form_name] = CustomTinyDB(self._get_db_path(form_name), cls=DateEncoder)
+            self.databases[form_name] = CustomTinyDB(self._get_db_path(form_name), cls=CustomEncoder)
 
     def _get_db_path(self, form_name:str):
         """Constructs a file path for the given form's database."""

@@ -21,7 +21,7 @@ from typing import (
 )
 
 
-class DateEncoder(JSONEncoder):
+class CustomEncoder(JSONEncoder):
     """We need to convert date objects to 'YYYY-MM-DD' format"""
     def default(self, obj):
         if isinstance(obj, date):
