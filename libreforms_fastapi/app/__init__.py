@@ -1192,7 +1192,12 @@ async def api_validate_signature(
             query_params={},
         )
 
-    valid = verify_record_signature(record=document, username=user.username, env=config.ENVIRONMENT, public_key=user.public_key, private_key_path=user.private_key_ref)
+    # Here we get the user information for the user who created the document to validate their signature
+    owner = session.query(User).filter_by(username=document['metadata'][doc_db.created_by_field]).first()
+    if not owner:
+        raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+    valid = verify_record_signature(record=document, username=owner.username, env=config.ENVIRONMENT, public_key=owner.public_key, private_key_path=owner.private_key_ref)
 
     return {
         "valid": valid, 
