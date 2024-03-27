@@ -398,7 +398,7 @@ class ManageTinyDB(ManageDocumentDB):
         if len(dropping_unchanged_data.keys()) == 0:
             raise NoChangesProvided(form_name, document_id)
 
-        print("\n\n\nDropping Unchanged Fields: ", dropping_unchanged_data)
+        # print("\n\n\nDropping Unchanged Fields: ", dropping_unchanged_data)
 
         # Build the journal
         journal = document['metadata'].get(self.journal_field)
@@ -441,6 +441,7 @@ class ManageTinyDB(ManageDocumentDB):
         metadata={}, 
         exclude_deleted=True,
         verify_on_sign=True,
+        unsign=False,
     ):
         """
         Manage signatures existing form in specified form's database.
@@ -464,25 +465,41 @@ class ManageTinyDB(ManageDocumentDB):
                 self.logger.warning(f"Document for {form_name} with document_id {document_id} is deleted and was not updated")
             raise DocumentIsDeleted(form_name, document_id)
 
-        # Before we even begin, we verify whether a signature exists and only proceed if it doesn't. Otherwise, 
-        # we raise a DocumentAlreadyHasValidSignature exception. The idea here is to avoid spamming signatures if
-        # there has been no substantive change to the data since a past signature. This will allow the logic here
-        # to proceed if there is no signature, or if the data has changed since the last signature.
-        has_document_already_been_signed = verify_record_signature(record=document, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
+        if username != document['metadata'][self.created_by_field]:
+            if self.use_logger:
+                self.logger.warning(f"Insufficient permissions to {'unsign' if unsign else 'sign'} document for {form_name} with document_id {document_id}")
+            raise InsufficientPermissions(form_name, document_id, username)
 
-        if has_document_already_been_signed:
-            raise DocumentAlreadyHasValidSignature(form_name, document_id, username)
+        # If we are trying to unsign the document, then we remove the signature, update the document, and return.
+        if unsign:
+            
+            # If the document is not signed, raise a no changes exception
+            if not document['metadata'][self.signature_field]:
+                raise NoChangesProvided(form_name, document_id)
 
-        # Now we afix the signature
-        try:
-            r, signature = sign_record(record=document, username=username, env=self.env, private_key_path=private_key_path)
+            signature = None
 
-            if verify_on_sign:
-                verify = verify_record_signature(record=r, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
-                assert (verify)
-                # print ("\n\n\n", a)
-        except:
-            raise SignatureError(form_name, document_id, username)
+        else:
+
+            # Before we even begin, we verify whether a signature exists and only proceed if it doesn't. Otherwise, 
+            # we raise a DocumentAlreadyHasValidSignature exception. The idea here is to avoid spamming signatures if
+            # there has been no substantive change to the data since a past signature. This will allow the logic here
+            # to proceed if there is no signature, or if the data has changed since the last signature.
+            has_document_already_been_signed = verify_record_signature(record=document, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
+
+            if has_document_already_been_signed:
+                raise DocumentAlreadyHasValidSignature(form_name, document_id, username)
+
+            # Now we afix the signature
+            try:
+                r, signature = sign_record(record=document, username=username, env=self.env, private_key_path=private_key_path)
+
+                if verify_on_sign:
+                    verify = verify_record_signature(record=r, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
+                    assert (verify)
+                    # print ("\n\n\n", a)
+            except:
+                raise SignatureError(form_name, document_id, username)
 
         current_timestamp = datetime.now(self.timezone)
 
