@@ -81,6 +81,7 @@ from libreforms_fastapi.utils.document_database import (
     DocumentIsNotDeleted,
     SignatureError,
     DocumentAlreadyHasValidSignature,
+    NoChangesProvided,
 )
 
 from libreforms_fastapi.utils.pydantic_models import (
@@ -444,8 +445,8 @@ async def api_form_create(
         # doc_db.create_document,
     d = doc_db.create_document(
         form_name=form_name, 
-        # json_data=json_data, 
-        data_dict=data_dict, 
+        json_data=json_data, 
+        # data_dict=data_dict, 
         metadata=metadata,
     )
 
@@ -663,8 +664,8 @@ async def api_form_update(
         d = doc_db.update_document(
             form_name=form_name, 
             document_id=document_id,
-            # json_data=json_data,
-            updated_data_dict=data_dict, 
+            json_data=json_data,
+            # updated_data_dict=data_dict, 
             metadata=metadata,
             limit_users=limit_query_to,
         )
@@ -680,6 +681,8 @@ async def api_form_update(
     except InsufficientPermissions as e:
         raise HTTPException(status_code=403, detail=f"{e}")
 
+    except NoChangesProvided as e:
+        raise HTTPException(status_code=200, detail=f"{e}")
 
     # Send email
     if config.SMTP_ENABLED:

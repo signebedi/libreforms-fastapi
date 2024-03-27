@@ -33,42 +33,48 @@ class CollectionDoesNotExist(Exception):
 class DocumentDoesNotExist(Exception):
     """Exception raised when attempting to access a document that does not exist."""
     def __init__(self, form_name, document_id):
-        message = f"The document with ID '{document_id}' collection '{form_name}' does not exist."
+        message = f"The document with ID '{document_id}' in collection '{form_name}' does not exist."
         super().__init__(message)
 
 class DocumentIsDeleted(Exception):
     """Exception raised when attempting to access a document that has been deleted."""
     def __init__(self, form_name, document_id):
-        message = f"The document with ID '{document_id}' collection '{form_name}' has been deleted and cannot be edited."
+        message = f"The document with ID '{document_id}' in collection '{form_name}' has been deleted and cannot be edited."
         super().__init__(message)
 
 class DocumentIsNotDeleted(Exception):
     """Exception raised when attempting to restore a document that is not deleted."""
     def __init__(self, form_name, document_id):
-        message = f"The document with ID '{document_id}' collection '{form_name}' is not deleted and cannot be restored."
+        message = f"The document with ID '{document_id}' in collection '{form_name}' is not deleted and cannot be restored."
         super().__init__(message)
 
 class InsufficientPermissions(Exception):
     """Exception raised when attempting to access a document that user lacks permissions for."""
     def __init__(self, form_name, document_id, username):
         message = f"User '{username}' has insufficient permissions to perform the requested operation on document " \
-            f"with ID '{document_id}' collection '{form_name}'."
+            f"with ID '{document_id}' in collection '{form_name}'."
         super().__init__(message)
 
 class SignatureError(Exception):
     """Exception raised when attempting to sign a document but the process fails."""
     def __init__(self, form_name, document_id, username):
         message = f"User '{username}' has failed to sign the document " \
-            f"with ID '{document_id}' collection '{form_name}'."
+            f"with ID '{document_id}' in collection '{form_name}'."
         super().__init__(message)
 
 class DocumentAlreadyHasValidSignature(Exception):
-    """Exception raised when attempting to sign a document but the it's been signed and the signature is valid."""
+    """Exception raised when attempting to sign a document but it's been signed and the signature is valid."""
     def __init__(self, form_name, document_id, username):
         message = f"User '{username}' has failed to sign the document " \
-            f"with ID '{document_id}' collection '{form_name}'. Document already signed and valid."
+            f"with ID '{document_id}' in collection '{form_name}'. Document already signed and valid."
         super().__init__(message)
 
+class NoChangesProvided(Exception):
+    """Exception raised when attempting to update a document but none of the data has changed."""
+    def __init__(self, form_name, document_id,):
+        message = f"Failed to update the document with ID '{document_id}' in collection '{form_name}'. " \
+            "No new data was provided."
+        super().__init__(message)
 
 
 SignatureError
@@ -271,8 +277,8 @@ class ManageTinyDB(ManageDocumentDB):
     def create_document(
         self, 
         form_name:str, 
-        # json_data,
-        data_dict, 
+        json_data,
+        # data_dict, 
         metadata={}
     ):
         """Adds json data to the specified form's database."""
@@ -281,13 +287,12 @@ class ManageTinyDB(ManageDocumentDB):
         current_timestamp = datetime.now(self.timezone)
 
         # This is a little hackish but TinyDB write data to file as Python dictionaries, not JSON.
-        # convert_data_to_dict = json.loads(json_data)
+        convert_data_to_dict = json.loads(json_data)
 
         document_id = metadata.get(self.document_id_field, str(ObjectId()))
 
         data_dict = {
-            # "data": convert_data_to_dict,
-            "data": data_dict,
+            "data": convert_data_to_dict,
             "metadata": {
                 # self.document_id_field: document_id,
                 self.is_deleted_field: metadata.get(self.is_deleted_field, False),
@@ -319,8 +324,8 @@ class ManageTinyDB(ManageDocumentDB):
         self, 
         form_name:str, 
         document_id:str, 
-        # json_data:str,
-        updated_data_dict:dict, 
+        json_data:str,
+        # updated_data_dict:dict, 
         metadata={}, 
         limit_users:Union[bool, str]=False, 
         exclude_deleted:bool=True
@@ -351,12 +356,18 @@ class ManageTinyDB(ManageDocumentDB):
                 self.logger.warning(f"Insufficient permissions to update document for {form_name} with document_id {document_id}")
             raise InsufficientPermissions(form_name, document_id, limit_users)
 
+        # Here we validate and coerce document into its proper types
+        # FormModel = get_form_config(form_name=form_name, update=True)
+        # _type_safe_data = FormModel.model_validate(document['data'])
+        # _data_dict = _type_safe_data.model_dump()
+
+
         current_timestamp = datetime.now(self.timezone)
 
         # print("\n\n\n\nDocument: ", document)
 
         # This is a little hackish but TinyDB write data to file as Python dictionaries, not JSON.
-        # updated_data_dict = json.loads(json_data)
+        updated_data_dict = json.loads(json_data)
 
         # Here we remove data that has not been changed
         dropping_unchanged_data = {}
@@ -382,7 +393,12 @@ class ManageTinyDB(ManageDocumentDB):
 
                 dropping_unchanged_data[field] = updated_data_dict[field]
 
-        # print("\n\n\nDropping Unchanged Fields: ", dropping_unchanged_data)
+        # If there are no unchanged fields, then raise an exception, 
+        # see https://github.com/signebedi/libreforms-fastapi/issues/74
+        if len(dropping_unchanged_data.keys()) == 0:
+            raise NoChangesProvided(form_name, document_id)
+
+        print("\n\n\nDropping Unchanged Fields: ", dropping_unchanged_data)
 
         # Build the journal
         journal = document['metadata'].get(self.journal_field)
