@@ -413,6 +413,7 @@ async def api_form_create(
     # # Here we validate and coerce data into its proper type
     form_data = FormModel.model_validate(body)
     json_data = form_data.model_dump_json()
+    data_dict = form_data.model_dump()
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
@@ -443,7 +444,8 @@ async def api_form_create(
         # doc_db.create_document,
     d = doc_db.create_document(
         form_name=form_name, 
-        json_data=json_data, 
+        # json_data=json_data, 
+        data_dict=data_dict, 
         metadata=metadata,
     )
 
@@ -626,6 +628,7 @@ async def api_form_update(
     # # Here we validate and coerce data into its proper type
     form_data = FormModel.model_validate(body)
     json_data = form_data.model_dump_json()
+    data_dict = form_data.model_dump()
 
     # print("\n\n\n", json_data)
 
@@ -660,7 +663,8 @@ async def api_form_update(
         d = doc_db.update_document(
             form_name=form_name, 
             document_id=document_id,
-            json_data=json_data, 
+            # json_data=json_data,
+            updated_data_dict=data_dict, 
             metadata=metadata,
             limit_users=limit_query_to,
         )
