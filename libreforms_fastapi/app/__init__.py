@@ -1541,18 +1541,33 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
 
     # Placeholder, validate that user has not exceeded the max failed login attempts,
     # see https://github.com/signebedi/libreforms-fastapi/issues/78
-    if not _:
-        pass
+    if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS:
+        raise HTTPException(status_code=400, detail="User authentication failed")
 
     if not check_password_hash(user.password, form_data.password):
 
         # Placeholder: implement failed_password_attempts, see 
         # https://github.com/signebedi/libreforms-fastapi/issues/78
+        user.failed_login_attempts += 1
 
+        # If the user has exceeded their failed password attemps, set them
+        # as inactive.
+        if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS:
+            _report_to_user = True
+            user.active = False
 
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
+        session.add(user)
+        session.commit()
 
+        raise HTTPException(status_code=400, detail=f"Incorrect username or password{'. Max password failures exceeded. User account locked.' if _report_to_user else ''}")
 
+    # If the password IS correct, clear the user's failed password attempts, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/78.
+    else:
+        user.failed_login_attempts = 0
+
+        session.add(user)
+        session.commit()
 
     user_dict = {
         "id": user.id,
@@ -1560,7 +1575,7 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
         "aud": f"{config.SITE_NAME}WebUser",
         "iss": config.SITE_NAME,
         # Set the expiration time based on the timedelta stored in the app config
-        "exp": datetime.now(config.TIMEZONE) + config.PERMANENT_SESSION_LENGTH,
+        "exp": datetime.now(config.TIMEZONE) + config.PERMANENT_SESSION_LIFETIME,
         "email": user.email,
         "active": user.active,
     }
@@ -1571,11 +1586,11 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
     return {"access_token": token, "token_type": "bearer"}
 
 
-# @app.get("/users/me")
-# async def read_users_me(
-#     current_user: Annotated[User, Depends(get_current_user)]
-# ):
-#     return current_user
+@app.get("/users/me")
+async def read_users_me(
+    current_user: Annotated[User, Depends(get_current_user)]
+):
+    return current_user
 
 
 
