@@ -72,6 +72,7 @@ from libreforms_fastapi.utils.certificates import (
     verify_record_signature,
     sign_record,
     DigitalSignatureManager,
+    RuntimeKeypair,
 )
 # Import the document database factory function and several
 # Exceptions that can help with error handling / determining 
@@ -129,6 +130,9 @@ app = FastAPI(
 # Here we instantiate our oauth object, see
 # https://github.com/signebedi/libreforms-fastapi/issues/19
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+# Here we read / generate an RSA keypair for this environment, see
+# https://github.com/signebedi/libreforms-fastapi/issues/79
+site_key_pair = RuntimeKeypair(env=config.ENVIRONMENT)
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
@@ -137,12 +141,22 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         # https://github.com/signebedi/libreforms-fastapi/issues/77. 
         # This is an effort to adhere to RFC 7519. see 
         # https://pyjwt.readthedocs.io/en/latest/usage.html#registered-claim-names
+        # payload = jwt.decode(
+        #     token, 
+        #     config.SECRET_KEY, 
+        #     issuer=config.SITE_NAME, 
+        #     audience=f"{config.SITE_NAME}WebUser", 
+        #     algorithms=['HS256']
+        # )
+
+        # Reimplementing to use RSA keypair, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/79
         payload = jwt.decode(
             token, 
-            config.SECRET_KEY, 
+            site_key_pair.get_public_key(), 
             issuer=config.SITE_NAME, 
             audience=f"{config.SITE_NAME}WebUser", 
-            algorithms=['HS256']
+            algorithms=['RS256']
         )
 
 
@@ -1532,34 +1546,33 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
     with SessionLocal() as session:
         user = session.query(User).filter_by(username=form_data.username.lower()).first()
 
-    if not user:
-        raise HTTPException(status_code=400, detail="Incorrect username or password")
+        if not user:
+            raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+        if not check_password_hash(user.password, form_data.password):
+
+            # Implement failed_password_attempts, see 
+            # https://github.com/signebedi/libreforms-fastapi/issues/78
+            user.failed_login_attempts += 1
+
+            # If the user has exceeded their failed password attemps, set them
+            # as inactive.
+            if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS:
+                _report_to_user = True
+                user.active = False
+
+            session.add(user)
+            session.commit()
+
+            raise HTTPException(status_code=400, detail=f"Incorrect username or password{'. Max password failures exceeded. User account locked.' if _report_to_user else ''}")
 
     if not user.active:
         raise HTTPException(status_code=400, detail="User authentication failed")
 
-
-    # Placeholder, validate that user has not exceeded the max failed login attempts,
+    # Validate that user has not exceeded the max failed login attempts,
     # see https://github.com/signebedi/libreforms-fastapi/issues/78
-    if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS:
+    if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
         raise HTTPException(status_code=400, detail="User authentication failed")
-
-    if not check_password_hash(user.password, form_data.password):
-
-        # Placeholder: implement failed_password_attempts, see 
-        # https://github.com/signebedi/libreforms-fastapi/issues/78
-        user.failed_login_attempts += 1
-
-        # If the user has exceeded their failed password attemps, set them
-        # as inactive.
-        if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS:
-            _report_to_user = True
-            user.active = False
-
-        session.add(user)
-        session.commit()
-
-        raise HTTPException(status_code=400, detail=f"Incorrect username or password{'. Max password failures exceeded. User account locked.' if _report_to_user else ''}")
 
     # If the password IS correct, clear the user's failed password attempts, see
     # https://github.com/signebedi/libreforms-fastapi/issues/78.
@@ -1580,8 +1593,16 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
         "active": user.active,
     }
 
+    # token = jwt.encode(user_dict, config.SECRET_KEY)
 
-    token = jwt.encode(user_dict, config.SECRET_KEY)
+    # Reimplementing to use RSA keypair, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/79
+    token = jwt.encode(
+        user_dict, 
+        site_key_pair.get_private_key(), 
+        algorithm='RS256'
+    )
+
 
     return {"access_token": token, "token_type": "bearer"}
 
