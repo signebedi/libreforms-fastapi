@@ -125,20 +125,34 @@ app = FastAPI(
     },
 )
 
+
 # Here we instantiate our oauth object, see
 # https://github.com/signebedi/libreforms-fastapi/issues/19
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
-        payload = jwt.decode(token, config.SECRET_KEY, algorithms=['HS256'])
+
+        # If the token is expired, raise an HTTP exception here, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/77. 
+        # This is an effort to adhere to RFC 7519. see 
+        # https://pyjwt.readthedocs.io/en/latest/usage.html#registered-claim-names
+        payload = jwt.decode(
+            token, 
+            config.SECRET_KEY, 
+            issuer=config.SITE_NAME, 
+            audience=f"{config.SITE_NAME}WebUser", 
+            algorithms=['HS256']
+        )
+
+
         with SessionLocal() as session:
             user = session.query(User).filter_by(id=payload.get("id", None)).first()
 
     except:
         raise HTTPException(
             status_code=401,
-            detail="Incorrect username or password"
+            detail="Unable to login at this time"
         )
 
     if not user:
@@ -148,6 +162,12 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
         )
 
     if not user.active:
+        raise HTTPException(
+            status_code=401,
+            detail="Unable to login at this time"
+        )
+
+    if not user.username == payload['sub']:
         raise HTTPException(
             status_code=401,
             detail="Unable to login at this time"
@@ -1515,15 +1535,28 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
+    if not user.active:
+        raise HTTPException(status_code=400, detail="User authentication failed")
+
+
     if not check_password_hash(user.password, form_data.password):
+
+
         raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+
 
     user_dict = {
         "id": user.id,
+        "sub": user.username,
+        "aud": f"{config.SITE_NAME}WebUser",
+        "iss": config.SITE_NAME,
+        # Set the expiration time based on the timedelta stored in the app config
+        "exp": datetime.now(config.TIMEZONE) + config.PERMANENT_SESSION_LENGTH,
         "email": user.email,
-        "username": user.username,
         "active": user.active,
     }
+
 
     token = jwt.encode(user_dict, config.SECRET_KEY)
 
