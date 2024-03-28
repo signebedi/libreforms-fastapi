@@ -36,6 +36,79 @@
 
                 <ul class="navbar-nav">
                     
+                    {# 
+                    
+                    {% if current_user.is_authenticated %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('record') }}">Record Audio</a>
+                    </li> 
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('upload') }}">Upload Audio</a>
+                    </li> 
+
+                    {% if show_transcriptions_history_link %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('history') }}">History</a>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('profile') }}">Profile</a>
+                    </li>
+
+                    {% if show_help_page_link %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('help') }}">Help</a>
+                    </li>
+                    {% endif %}
+
+                    {% if current_user.site_admin %}
+                    <li class="nav-item dropdown">
+                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Admin</a>
+                    <div class="dropdown-menu">
+                        <a class="dropdown-item" href="{{ url_for( 'admin_stats' ) }}">Usage Statistics</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_users' ) }}">Manage Users</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_site' ) }}">Site Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_smtp' ) }}">SMTP Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_celery' ) }}">Celery Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_hcaptcha' ) }}">hCaptcha Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_config_database' ) }}">Database Config</a>
+                        <a class="dropdown-item" href="{{ url_for( 'admin_trigger_reload' ) }}">Reload Server</a>
+                    </div>
+                    </li>
+                    {% endif %}
+
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                    </li>
+
+
+
+                    {% else %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                    </li>
+
+
+                    {% if not config['DISABLE_NEW_USERS'] %}
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('create_user') }}">Create Account</a>
+                    </li>
+                    {% endif %}
+
+                    {% endif %}
+
+                    {% if reload_warning_banner %}
+                    <li class="nav-item">
+                        <a class="nav-link text-danger">Please Note: Site Reload Scheduled, Site May Become Unavailable</a>
+                    </li>
+                    {% endif %} 
+                    
+                    #}
+
+                    
                 </ul>
             </div>
         </div>
@@ -44,6 +117,26 @@
 
 
     <div class="alerts-container">
+        {# 
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+
+                {# This sets the flask-login "message" category to something that plays nicely with Bootstrap
+                See https://flask.palletsprojects.com/en/latest/api/#flask.flash and  
+                https://github.com/maxcountryman/flask-login/blob/main/src/flask_login/config.py #}
+                {% if category == "message" %}
+                    {% set category = "warning" %}
+                {% endif %}
+                                
+                <div role="status" class="alert alert-dismissible alert-{{category}}"{% if category == "info" %} aria-live="polite" {%else%}aria-atomic="true" {% endif %}>
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" title="dismiss-alert"></button>
+                    <strong>{{ message }}</strong>
+                </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %} 
+        #}
     </div>
     
     <main class="container mt-5 content">
@@ -81,7 +174,7 @@
 
                     <div>
                         <a href="{{config['SITE_SOURCE_URL']}}" class="text-light">Source</a> |
-                        <a href="{{ url_for('ui_privacy') }}" class="text-light">Privacy</a>
+                        <a href="{{ url_for('privacy') }}" class="text-light">Privacy</a>
                     </div>
                 </div>
             </div>
@@ -95,6 +188,11 @@
     <!-- Jquery -->
     <script src="{{ url_for('static', path='js/jquery-3.7.1.min.js') }}"></script>
 
+
+    {% if config['HCAPTCHA_ENABLED'] %}
+    <!-- hCaptcha -->
+    <script src="https://js.hcaptcha.com/1/api.js" async defer></script>
+    {% endif %}
 
     <script>
         function setTheme(theme) {

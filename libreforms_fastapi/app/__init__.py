@@ -219,8 +219,10 @@ async def test_logger(period: int):
 async def start_test_logger():
     task = asyncio.create_task(test_logger(6000))
 
-# app.mount("/static", StaticFiles(directory="static"), name="static")
-# templates = Jinja2Templates(directory="templates")
+app.mount("/static", StaticFiles(directory="libreforms_fastapi/app/static"), name="static")
+templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
+
+
 
 # Instantiate the Mailer object
 mailer = Mailer(
@@ -1612,6 +1614,36 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
 ##########################
 ### UI Routes - Auth
 ##########################
+
+# Homepage
+@app.get("/ui/home", response_class=HTMLResponse)
+async def ui_homepage(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="about.html.jinja", 
+        context={
+            "config": config.model_dump(),
+            "version": __version__,
+        }
+    )
+
+# Homepage
+@app.get("/ui/privacy", response_class=HTMLResponse)
+async def ui_privacy(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="privacy.html.jinja", 
+        context={
+            "config": config.model_dump(),
+            "version": __version__,
+        }
+    )
 
 # Create user
     # @app.get("/ui/auth/create")
