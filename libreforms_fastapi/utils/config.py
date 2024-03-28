@@ -66,13 +66,39 @@ class Config(BaseSettings):
     CONFIG_FILE_PATH:str = env_file_path
     SITE_NAME:str = os.getenv('SITE_NAME', 'libreforms_fastapi')
     SITE_SOURCE_URL:str = os.getenv('SITE_SOURCE_URL', 'https://github.com/signebedi/libreforms-fastapi')
-    HOMEPAGE_CONTENT:str = Markup(os.getenv('HOMEPAGE_CONTENT', ''))
-    PRIVACY_MESSAGE:str = Markup(os.getenv('PRIVACY_MESSAGE', ''))
+
+
+    HOMEPAGE_CONTENT:str = os.getenv('HOMEPAGE_CONTENT', '<p>Welcome to <code>libreforms-fastapi</code>, an open-source form management application based on the <a href="https://github.com/libreForms/spec">libreForms API</a> and built using FastAPI.</p>')
+
+
+    @field_validator('HOMEPAGE_CONTENT')
+    def validate_homepage_content(cls, v):
+        try:
+            # Attempt to create a Markup object to validate the privacy message
+            m = Markup(v)
+        except:
+            # If there is an issue, raise a ValueError
+            raise ValueError(f'Issue converting to markup: {v}')
+        return m
+
+    PRIVACY_MESSAGE:str = os.getenv('PRIVACY_MESSAGE', '')
+
+    @field_validator('PRIVACY_MESSAGE')
+    def validate_privacy_message(cls, v):
+        try:
+            # Attempt to create a Markup object to validate the privacy message
+            m = Markup(v)
+        except:
+            # If there is an issue, raise a ValueError
+            raise ValueError(f'Issue converting to markup: {v}')
+        return m
+
+
     DOMAIN:str = os.getenv('DOMAIN', 'http://127.0.0.1:5000')
     DEBUG:bool = os.getenv('DEBUG', 'False') == 'True'
     SECRET_KEY:str = os.getenv('SECRET_KEY', 'supersecret_dev_key')
 
-    TIMEZONE: constr(strip_whitespace=True) = os.getenv('TIMEZONE', 'America/New_York')
+    TIMEZONE: ZoneInfo | str = os.getenv('TIMEZONE', 'America/New_York')
 
     @field_validator('TIMEZONE')
     def validate_timezone(cls, v):
