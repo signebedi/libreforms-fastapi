@@ -1,6 +1,6 @@
-import re, os, json, tempfile, logging, sys, asyncio
+import re, os, json, tempfile, logging, sys, asyncio, jwt
 from datetime import datetime, timedelta
-from typing import Dict, Optional
+from typing import Dict, Optional, Annotated
 from markupsafe import escape
 from bson import ObjectId
 
@@ -16,7 +16,11 @@ from fastapi import (
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from fastapi.security import APIKeyHeader
+from fastapi.security import (
+    APIKeyHeader,
+    OAuth2PasswordBearer,
+    OAuth2PasswordRequestForm,
+)
 
 from sqlalchemy import (
     create_engine, 
@@ -120,6 +124,36 @@ app = FastAPI(
         "url": "https://github.com/signebedi/libreforms-fastapi/blob/master/LICENSE",
     },
 )
+
+# Here we instantiate our oauth object, see
+# https://github.com/signebedi/libreforms-fastapi/issues/19
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+    try:
+        payload = jwt.decode(token, config.SECRET_KEY, algorithms=['HS256'])
+        with SessionLocal() as session:
+            user = session.query(User).filter_by(id=payload.get("id", None)).first()
+
+    except:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password"
+        )
+
+    if not user:
+        raise HTTPException(
+            status_code=401,
+            detail="Incorrect username or password"
+        )
+
+    if not user.active:
+        raise HTTPException(
+            status_code=401,
+            detail="Unable to login at this time"
+        )
+
+    return user
 
 
 # Set up logger, see https://github.com/signebedi/libreforms-fastapi/issues/26,
@@ -1468,6 +1502,37 @@ async def api_auth_get(
 # Confirm password reset
     # @app.patch("/api/auth/forgot_password/{single_use_token}")
     # async def api_auth_forgot_password_confirm(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+
+# Login, uses OAUTH and current_user functionality, see
+# https://github.com/signebedi/libreforms-fastapi/issues/19
+@app.post('/api/auth/login')
+async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
+    with SessionLocal() as session:
+        user = session.query(User).filter_by(username=form_data.username.lower()).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    if not check_password_hash(user.password, form_data.password):
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
+
+    user_dict = {
+        "id": user.id,
+        "email": user.email,
+        "username": user.username,
+        "active": user.active,
+    }
+
+    token = jwt.encode(user_dict, config.SECRET_KEY)
+
+    return {"access_token": token, "token_type": "bearer"}
+
+
+# @app.get("/users/me")
+# async def read_users_me(
+#     current_user: Annotated[User, Depends(get_current_user)]
+# ):
+#     return current_user
 
 
 

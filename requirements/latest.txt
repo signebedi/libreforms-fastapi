@@ -5,8 +5,10 @@ fuzzywuzzy
 Jinja2
 passlib[bcrypt]
 pydantic-settings
+PyJWT
 pymongo
 python-Levenshtein
+python-multipart
 SQLAlchemy
 sqlalchemy-signing
 tinydb

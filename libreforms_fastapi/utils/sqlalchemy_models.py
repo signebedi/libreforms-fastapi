@@ -13,7 +13,8 @@ from sqlalchemy import (
     JSON,
     LargeBinary,
 )
-from sqlalchemy.orm import relationship, declarative_base
+from sqlalchemy.inspection import inspect
+from sqlalchemy.orm import relationship, declarative_base, class_mapper
 
 from sqlalchemy_signing import create_signing_class
 
@@ -106,7 +107,6 @@ class User(Base):
                         permissions_dict[form_name].append(permission)
 
         return permissions_dict
-
 
 
 # Allow admins to define custom groups, see
