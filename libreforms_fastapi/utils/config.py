@@ -68,7 +68,7 @@ class Config(BaseSettings):
     SITE_SOURCE_URL:str = os.getenv('SITE_SOURCE_URL', 'https://github.com/signebedi/libreforms-fastapi')
 
 
-    HOMEPAGE_CONTENT:str = os.getenv('HOMEPAGE_CONTENT', '<p>Welcome to <code>libreforms-fastapi</code>, an open-source form management application based on the <a href="https://github.com/libreForms/spec">libreForms API</a> and built using FastAPI.</p>')
+    HOMEPAGE_CONTENT:str | Markup = os.getenv('HOMEPAGE_CONTENT', '<p>Welcome to <code>libreforms-fastapi</code>, an open-source form management application based on the <a href="https://github.com/libreForms/spec">libreForms API</a> and built using FastAPI.</p>')
 
 
     @field_validator('HOMEPAGE_CONTENT')
@@ -81,7 +81,7 @@ class Config(BaseSettings):
             raise ValueError(f'Issue converting to markup: {v}')
         return m
 
-    PRIVACY_MESSAGE:str = os.getenv('PRIVACY_MESSAGE', '')
+    PRIVACY_MESSAGE:str | Markup = os.getenv('PRIVACY_MESSAGE', '')
 
     @field_validator('PRIVACY_MESSAGE')
     def validate_privacy_message(cls, v):

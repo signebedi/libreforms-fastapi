@@ -1615,6 +1615,17 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
 ### UI Routes - Auth
 ##########################
 
+# This is a standard callable that will generate the context
+# for the UI routes and Jinja templates.
+def build_ui_context():
+
+    kwargs = {}
+
+    kwargs["config"] = config.model_dump()
+    kwargs["version"] = __version__
+
+    return kwargs
+
 # Homepage
 @app.get("/ui/home", response_class=HTMLResponse)
 async def ui_homepage(request: Request):
@@ -1625,8 +1636,7 @@ async def ui_homepage(request: Request):
         request=request, 
         name="about.html.jinja", 
         context={
-            "config": config.model_dump(),
-            "version": __version__,
+            **build_ui_context(),
         }
     )
 
@@ -1640,8 +1650,7 @@ async def ui_privacy(request: Request):
         request=request, 
         name="privacy.html.jinja", 
         context={
-            "config": config.model_dump(),
-            "version": __version__,
+            **build_ui_context(),
         }
     )
 
