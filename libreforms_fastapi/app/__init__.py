@@ -1539,7 +1539,15 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
         raise HTTPException(status_code=400, detail="User authentication failed")
 
 
+    # Placeholder, validate that user has not exceeded the max failed login attempts,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/78
+    if not _:
+        pass
+
     if not check_password_hash(user.password, form_data.password):
+
+        # Placeholder: implement failed_password_attempts, see 
+        # https://github.com/signebedi/libreforms-fastapi/issues/78
 
 
         raise HTTPException(status_code=400, detail="Incorrect username or password")
