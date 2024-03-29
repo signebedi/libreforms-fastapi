@@ -11,7 +11,8 @@ User Profile
 {% block content %}
 <h1>User Profile</h1>
 <div class="container table-responsive">
-    <table id="profileTable" class="table table-hover table-striped table-light">
+    <div class="spinner-border spinner-border-sm loading-circle" role="status"></div>
+    <table id="profileTable" class="table table-hover table-striped table-light" style="display: none;">
         <thead>
             <tr>
                 <th>Attribute</th>
@@ -76,9 +77,11 @@ User Profile
 <script>
     $(document).ready( function () {
 
+        const spinner = document.querySelector('.loading-circle');
+        const profileTable = document.getElementById('profileTable');
         const apiKey = "{{ request.user.api_key }}";
         const userId = "{{ request.user.id }}";
-        
+
         $.ajax({
             url: `/api/auth/get/${userId}`,
             type: "GET",
@@ -126,6 +129,9 @@ User Profile
                     $("#profileTable tbody").append(row);
                 });
 
+                spinner.style.display = 'none'; // Hide the spinner
+                profileTable.style.display = ''; // Show the profile table
+
                 $('#profileTable').DataTable({
                     "ordering": false,
                     "info": false,
@@ -135,6 +141,10 @@ User Profile
             },
             error: function(error) {
                 console.error("Error fetching profile data:", error);
+
+                // Stash a flashed success message and redirect
+                setFlashMessage("There was an issue fetching user profile data", AlertCategories.WARNING);
+                window.location.href = '/ui/home';
             }
         });
     });

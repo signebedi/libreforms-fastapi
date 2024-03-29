@@ -71,12 +71,15 @@ $(document).ready(function() {
                 // Store the token or handle the response as needed
                 localStorage.setItem('jwt_token', response.access_token);
 
-                // Redirect to the UI home route
+                // Stash a flashed success message and redirect
+                setFlashMessage("Successfully logged in", AlertCategories.SUCCESS);
                 window.location.href = '/ui/home';
+
             },
             error: function(xhr) {
                 // Handle errors, e.g., show a message in the console log
                 console.error('Login failed', xhr.responseText);
+                flashMessage(xhr.responseText, AlertCategories.WARNING);
             }
         });
     });

@@ -64,7 +64,7 @@ def get_config(_env=env):
 class Config(BaseSettings):
     ENVIRONMENT:str = env
     CONFIG_FILE_PATH:str = env_file_path
-    SITE_NAME:str = os.getenv('SITE_NAME', 'libreforms_fastapi')
+    SITE_NAME:str = os.getenv('SITE_NAME', 'libreForms')
     SITE_SOURCE_URL:str = os.getenv('SITE_SOURCE_URL', 'https://github.com/signebedi/libreforms-fastapi')
 
 
