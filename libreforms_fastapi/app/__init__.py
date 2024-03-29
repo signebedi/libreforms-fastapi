@@ -23,7 +23,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import (
     APIKeyHeader,
-    # OAuth2PasswordBearer,
+    OAuth2PasswordBearer,
     OAuth2PasswordRequestForm,
 )
 from starlette.middleware.authentication import AuthenticationMiddleware
@@ -142,70 +142,12 @@ app = FastAPI(
     },
 )
 
-
-# # Here we instantiate our oauth object, see
-# # https://github.com/signebedi/libreforms-fastapi/issues/19
-# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
-# # Here we read / generate an RSA keypair for this environment, see
-# # https://github.com/signebedi/libreforms-fastapi/issues/79
-# site_key_pair = RuntimeKeypair(env=config.ENVIRONMENT)
-
-# async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-#     try:
-
-#         # If the token is expired, raise an HTTP exception here, see
-#         # https://github.com/signebedi/libreforms-fastapi/issues/77. 
-#         # This is an effort to adhere to RFC 7519. see 
-#         # https://pyjwt.readthedocs.io/en/latest/usage.html#registered-claim-names
-#         # payload = jwt.decode(
-#         #     token, 
-#         #     config.SECRET_KEY, 
-#         #     issuer=config.SITE_NAME, 
-#         #     audience=f"{config.SITE_NAME}WebUser", 
-#         #     algorithms=['HS256']
-#         # )
-
-#         # Reimplementing to use RSA keypair, see
-#         # https://github.com/signebedi/libreforms-fastapi/issues/79
-#         payload = jwt.decode(
-#             token, 
-#             site_key_pair.get_public_key(), 
-#             issuer=config.SITE_NAME, 
-#             audience=f"{config.SITE_NAME}WebUser", 
-#             algorithms=['RS256']
-#         )
-
-
-#         with SessionLocal() as session:
-#             user = session.query(User).filter_by(id=payload.get("id", None)).first()
-
-#     except:
-#         raise HTTPException(
-#             status_code=401,
-#             detail="Unable to login at this time"
-#         )
-
-#     if not user:
-#         raise HTTPException(
-#             status_code=401,
-#             detail="Incorrect username or password"
-#         )
-
-#     if not user.active:
-#         raise HTTPException(
-#             status_code=401,
-#             detail="Unable to login at this time"
-#         )
-
-#     if not user.username == payload['sub']:
-#         raise HTTPException(
-#             status_code=401,
-#             detail="Unable to login at this time"
-#         )
-
-#     return user
-
-
+# Here we instantiate our oauth object, see
+# https://github.com/signebedi/libreforms-fastapi/issues/19
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+# Here we read / generate an RSA keypair for this environment, see
+# https://github.com/signebedi/libreforms-fastapi/issues/79
+site_key_pair = RuntimeKeypair(env=config.ENVIRONMENT)
 
 # Authentication Backend Class, see https://www.starlette.io/authentication,
 # https://github.com/tiangolo/fastapi/issues/3043#issuecomment-914316010, and
@@ -1653,14 +1595,6 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
     return response
 
 
-# @app.get("/users/me")
-# async def read_users_me(
-#     request: Request,
-#     current_user: Annotated[User, Depends(get_current_user)]
-# ):
-#     return current_user
-
-
 
 ##########################
 ### API Routes - Admin
@@ -1696,10 +1630,18 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
 ##########################
 
 # Create form
-    # @app.get("/ui/form/create/{form_name}")
-    # async def ui_form_create():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/form/create/{form_name}")#, response_class=HTMLResponse)
+@requires(['authenticated'], status_code=404)
+async def ui_form_create(request: Request, form_name: str):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if form_name not in get_form_names():
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Placeholder - generate form HTML
+
+    return {"asd":form_name}
 
 
 # Read one form
@@ -1819,6 +1761,7 @@ def ui_auth_logout(response: Response, request: Request):
 
 # Create user
 @app.get("/ui/auth/create", response_class=HTMLResponse)
+@requires(['unauthenticated'], status_code=404)
 async def ui_auth_create(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
