@@ -1831,6 +1831,21 @@ async def ui_auth_create(request: Request):
 
 
 # View profile
+@app.get("/ui/auth/profile/", response_class=HTMLResponse)
+@requires(['authenticated'], status_code=404)
+def ui_auth_profile(request: Request):
+
+    # requesting_user = session.query(User).filter_by(username=request.user.username).first()
+    # if not requesting_user:
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="profile.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
 
 ##########################
 ### UI Routes - Admin

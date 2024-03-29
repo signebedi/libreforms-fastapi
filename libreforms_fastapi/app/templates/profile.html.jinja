@@ -1,7 +1,7 @@
 {% extends "base.html.jinja" %}
 
 {% block header %}
-    <link href="{{ url_for('static', filename='css/datatables.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', path='css/datatables.css') }}" rel="stylesheet">
 {% endblock %}
 
 {% block title %}
@@ -19,40 +19,40 @@ User Profile
             </tr>
         </thead>
         <tbody>
-            <tr>
+            {# <tr>
                 <td>Email</td>
-                <td>{{ current_user.email }}</td>
+                <td>{{ request.user.email }}</td>
             </tr>
             <tr>
                 <td>Username</td>
-                <td>{{ current_user.username }}</td>
+                <td>{{ request.user.username }}</td>
             </tr>
             <tr>
                 <td>Account Status</td>
-                <td>{{ 'Active' if current_user.active else 'Inactive' }}</td>
+                <td>{{ 'Active' if request.user.active else 'Inactive' }}</td>
             </tr>
             {% if config["COLLECT_USAGE_STATISTICS"] %}
             <tr>
                 <td>Opted out of detailed usage statistics</td>
-                <td>{{ 'Yes' if current_user.opt_out else 'No' }}</td>
+                <td>{{ 'Yes' if request.user.opt_out else 'No' }}</td>
             </tr>
             {% endif %}
             <tr>
                 <td>Account Created</td>
-                <td>{{ current_user.created_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ request.user.created_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             </tr>
             <tr>
                 <td>Last Login</td>
-                <td>{{ current_user.last_login.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ request.user.last_login.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             </tr>
             <tr>
                 <td>Last Password Change</td>
-                <td>{{ current_user.last_password_change.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                <td>{{ request.user.last_password_change.strftime('%Y-%m-%d %H:%M:%S') }}</td>
             </tr>
             <tr>
                 <td title="Expires: {{ key_expiry }}">API Key</td>
                 <td>
-                    <span title="Expires: {{ key_expiry }}" id="apiKey">{{ current_user.api_key }}</span>
+                    <span title="Expires: {{ key_expiry }}" id="apiKey">{{ request.user.api_key }}</span>
                     <svg title="Click to copy to the clipboard" onclick="copyToClipboard(this)" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="fa-xs profile-icon clipboard-icon bi bi-clipboard" viewBox="0 0 16 16">
                         <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
                         <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
@@ -65,21 +65,77 @@ User Profile
                         </svg>
                     </a>
                 </td>
-            </tr>
+            </tr> #}
         </tbody>
     </table>
 </div>
 {% endblock %}
 
 {% block scripts %}
-<script src="{{url_for('static', filename='js/datatables.js')}}"></script>
+<script src="{{url_for('static', path='js/datatables.js')}}"></script>
 <script>
     $(document).ready( function () {
-        $('#profileTable').DataTable({
-            "ordering": false,
-            "info": false,
-            "paging": false,
-            "searching": false 
+
+        const apiKey = "{{ request.user.api_key }}";
+        const userId = "{{ request.user.id }}";
+        
+        $.ajax({
+            url: `/api/auth/get/${userId}`,
+            type: "GET",
+            beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
+            success: function(profileData) {
+
+                const attributes = [
+                    { label: "ID", value: profileData.id },
+                    { label: "Username", value: profileData.username },
+                    { label: "Email", value: profileData.email },
+                    { label: "Groups", value: profileData.groups.join(", ") },
+                    { label: "Active", value: profileData.active ? 'Yes' : 'No' },
+                    { label: "Created Date", value: profileData.created_date },
+                    { label: "Last Login", value: profileData.last_login },
+                    { label: "Last Password Change", value: profileData.last_password_change || 'N/A' },
+                    { label: "API Key", value: profileData.api_key || 'N/A' },
+                    { label: "Opted out of detailed usage statistics", value: profileData.opt_out ? 'Yes' : 'No' },
+                    { label: "Site Admin", value: profileData.site_admin ? 'Yes' : 'No' }
+                ];
+
+                attributes.forEach(attr => {
+
+                let row; // Declare row variable without initializing it.
+
+                // Check if the current attribute label is "API Key" and if so, add some custom icons
+                if (attr.label === "API Key") {
+                    row = `<tr>
+                            <td>${attr.label}</td>
+                            <td>
+                                <span id="apiKey">${attr.value}</span>
+                                <svg title="Click to copy to the clipboard" onclick="copyToClipboard(this)" xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="fa-xs profile-icon clipboard-icon bi bi-clipboard" viewBox="0 0 16 16">
+                                    <path d="M4 1.5H3a2 2 0 0 0-2 2V14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V3.5a2 2 0 0 0-2-2h-1v1h1a1 1 0 0 1 1 1V14a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1V3.5a1 1 0 0 1 1-1h1z"/>
+                                    <path d="M9.5 1a.5.5 0 0 1 .5.5v1a.5.5 0 0 1-.5.5h-3a.5.5 0 0 1-.5-.5v-1a.5.5 0 0 1 .5-.5zm-3-1A1.5 1.5 0 0 0 5 1.5v1A1.5 1.5 0 0 0 6.5 4h3A1.5 1.5 0 0 0 11 2.5v-1A1.5 1.5 0 0 0 9.5 0z"/>
+                                </svg>
+                            </td>
+                        </tr>`;
+                } else {
+                    // Else just list the normal attribute and value.
+                    row = `<tr>
+                            <td>${attr.label}</td>
+                            <td>${attr.value}</td>
+                        </tr>`;
+                }
+
+                    $("#profileTable tbody").append(row);
+                });
+
+                $('#profileTable').DataTable({
+                    "ordering": false,
+                    "info": false,
+                    "paging": false,
+                    "searching": false 
+                });
+            },
+            error: function(error) {
+                console.error("Error fetching profile data:", error);
+            }
         });
     });
     // Function to copy to clipboard and show tooltip

@@ -40,17 +40,20 @@
 
 
                     <li class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Submit Forms</a>
-                    <div class="dropdown-menu">
-                        {% for form in available_forms %}
-                        <a class="dropdown-item" href="{{ url_for( 'ui_form_create', form_name=form ) }}">Submit {{ form }} </a>
-                        {% endfor %}
-                    </div>
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Submit Forms</a>
+                        <div class="dropdown-menu">
+                            {% for form in available_forms %}
+                            <a class="dropdown-item" href="{{ url_for( 'ui_form_create', form_name=form ) }}">Submit {{ form }} </a>
+                            {% endfor %}
+                        </div>
                     </li>
 
-
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('ui_auth_logout') }}">Logout</a>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Account</a>
+                        <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{{ url_for( 'ui_auth_profile' ) }}">Profile</a>
+                            <a class="dropdown-item" href="{{ url_for( 'ui_auth_logout' ) }}">Logout</a>
+                        </div>
                     </li>
 
                     {% else %}
