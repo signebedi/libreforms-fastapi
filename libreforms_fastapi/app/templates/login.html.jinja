@@ -6,7 +6,7 @@ Login
 
 {% block content %}
 <h1>Login</h1>
-<form method="POST" action="{{ url_for('login') }}">
+<form method="POST" action="">
 
 
     <fieldset style="padding-top: 10px;" class="form-check">
@@ -34,7 +34,7 @@ Login
 
     {% if not config['DISABLE_NEW_USERS'] %}
     <fieldset style="padding-top: 10px;" class="form-check">
-        <p style="padding-top: 10px;">Don't have an account? Create one <a href="{{url_for('create_user')}}">here</a>.</p>
+        <p style="padding-top: 10px;">Don't have an account? Create one <a href="{{url_for('ui_auth_create')}}">here</a>.</p>
     </fieldset>
     {% endif %}
 

@@ -1731,11 +1731,33 @@ async def ui_privacy(request: Request):
         }
     )
 
+@app.get("/ui/auth/login", response_class=HTMLResponse)
+async def ui_auth_login(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="login.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
 # Create user
-    # @app.get("/ui/auth/create")
-    # async def ui_auth_create():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/auth/create", response_class=HTMLResponse)
+async def ui_auth_create(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="create_user.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
 
 
 
@@ -1753,11 +1775,6 @@ async def ui_privacy(request: Request):
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
-# Login
-    # @app.get("/ui/auth/login")
-    # async def ui_auth_login():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
 # View profile
