@@ -1828,8 +1828,6 @@ async def ui_auth_create(request: Request):
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
-
-
 # View profile
 @app.get("/ui/auth/profile/", response_class=HTMLResponse)
 @requires(['authenticated'], status_code=404)
@@ -1846,6 +1844,40 @@ def ui_auth_profile(request: Request):
             **build_ui_context(),
         }
     )
+
+@app.get("/ui/auth/profile/{id}", response_class=HTMLResponse)
+@requires(['authenticated'], status_code=404)
+def ui_auth_profile_other(request: Request, id: int):
+
+    # requesting_user = session.query(User).filter_by(username=request.user.username).first()
+    # target_user = session.query(User).filter_by(id=id).first()
+
+    # print("\n\n\n", requesting_user.groups, target_user.groups)
+
+    # if any([
+    #     not requesting_user,
+    #     not target_user,
+    #     requesting_user.id != target_user.id and not config.OTHER_PROFILES_ENABLED,
+    # ]):
+    #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # print("\n\n\n", request.user.id)
+
+    if request.user.id == id:
+        return RedirectResponse(request.url_for("ui_auth_profile"), status_code=303)
+    elif not config.OTHER_PROFILES_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not existasdasddas")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="profile_other.html.jinja", 
+        context={
+            **build_ui_context(),
+            "target_user_id": id,
+        }
+    )
+
+
 
 ##########################
 ### UI Routes - Admin
