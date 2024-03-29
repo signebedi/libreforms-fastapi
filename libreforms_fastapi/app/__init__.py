@@ -14,12 +14,16 @@ from fastapi import (
     Depends,
     Query,
 )
-from fastapi.responses import HTMLResponse, JSONResponse
+from fastapi.responses import (
+    HTMLResponse, 
+    JSONResponse, 
+    RedirectResponse
+)
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import (
     APIKeyHeader,
-    OAuth2PasswordBearer,
+    # OAuth2PasswordBearer,
     OAuth2PasswordRequestForm,
 )
 from starlette.middleware.authentication import AuthenticationMiddleware
@@ -139,67 +143,67 @@ app = FastAPI(
 )
 
 
-# Here we instantiate our oauth object, see
-# https://github.com/signebedi/libreforms-fastapi/issues/19
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
-# Here we read / generate an RSA keypair for this environment, see
-# https://github.com/signebedi/libreforms-fastapi/issues/79
-site_key_pair = RuntimeKeypair(env=config.ENVIRONMENT)
+# # Here we instantiate our oauth object, see
+# # https://github.com/signebedi/libreforms-fastapi/issues/19
+# oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+# # Here we read / generate an RSA keypair for this environment, see
+# # https://github.com/signebedi/libreforms-fastapi/issues/79
+# site_key_pair = RuntimeKeypair(env=config.ENVIRONMENT)
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
-    try:
+# async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+#     try:
 
-        # If the token is expired, raise an HTTP exception here, see
-        # https://github.com/signebedi/libreforms-fastapi/issues/77. 
-        # This is an effort to adhere to RFC 7519. see 
-        # https://pyjwt.readthedocs.io/en/latest/usage.html#registered-claim-names
-        # payload = jwt.decode(
-        #     token, 
-        #     config.SECRET_KEY, 
-        #     issuer=config.SITE_NAME, 
-        #     audience=f"{config.SITE_NAME}WebUser", 
-        #     algorithms=['HS256']
-        # )
+#         # If the token is expired, raise an HTTP exception here, see
+#         # https://github.com/signebedi/libreforms-fastapi/issues/77. 
+#         # This is an effort to adhere to RFC 7519. see 
+#         # https://pyjwt.readthedocs.io/en/latest/usage.html#registered-claim-names
+#         # payload = jwt.decode(
+#         #     token, 
+#         #     config.SECRET_KEY, 
+#         #     issuer=config.SITE_NAME, 
+#         #     audience=f"{config.SITE_NAME}WebUser", 
+#         #     algorithms=['HS256']
+#         # )
 
-        # Reimplementing to use RSA keypair, see
-        # https://github.com/signebedi/libreforms-fastapi/issues/79
-        payload = jwt.decode(
-            token, 
-            site_key_pair.get_public_key(), 
-            issuer=config.SITE_NAME, 
-            audience=f"{config.SITE_NAME}WebUser", 
-            algorithms=['RS256']
-        )
+#         # Reimplementing to use RSA keypair, see
+#         # https://github.com/signebedi/libreforms-fastapi/issues/79
+#         payload = jwt.decode(
+#             token, 
+#             site_key_pair.get_public_key(), 
+#             issuer=config.SITE_NAME, 
+#             audience=f"{config.SITE_NAME}WebUser", 
+#             algorithms=['RS256']
+#         )
 
 
-        with SessionLocal() as session:
-            user = session.query(User).filter_by(id=payload.get("id", None)).first()
+#         with SessionLocal() as session:
+#             user = session.query(User).filter_by(id=payload.get("id", None)).first()
 
-    except:
-        raise HTTPException(
-            status_code=401,
-            detail="Unable to login at this time"
-        )
+#     except:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Unable to login at this time"
+#         )
 
-    if not user:
-        raise HTTPException(
-            status_code=401,
-            detail="Incorrect username or password"
-        )
+#     if not user:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Incorrect username or password"
+#         )
 
-    if not user.active:
-        raise HTTPException(
-            status_code=401,
-            detail="Unable to login at this time"
-        )
+#     if not user.active:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Unable to login at this time"
+#         )
 
-    if not user.username == payload['sub']:
-        raise HTTPException(
-            status_code=401,
-            detail="Unable to login at this time"
-        )
+#     if not user.username == payload['sub']:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Unable to login at this time"
+#         )
 
-    return user
+#     return user
 
 
 
@@ -1743,12 +1747,13 @@ def build_ui_context():
 
     kwargs["config"] = config.model_dump()
     kwargs["version"] = __version__
+    kwargs["available_forms"] = get_form_names()
 
     return kwargs
 
 # Homepage
 @app.get("/ui/home", response_class=HTMLResponse)
-async def ui_homepage(request: Request):
+async def ui_home(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -1764,7 +1769,7 @@ async def ui_homepage(request: Request):
 
     return templates.TemplateResponse(
         request=request, 
-        name="about.html.jinja", 
+        name="home.html.jinja", 
         context={
             **build_ui_context(),
         }
@@ -1785,6 +1790,7 @@ async def ui_privacy(request: Request):
     )
 
 @app.get("/ui/auth/login", response_class=HTMLResponse)
+@requires(['unauthenticated'], status_code=404)
 async def ui_auth_login(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -1796,6 +1802,20 @@ async def ui_auth_login(request: Request):
             **build_ui_context(),
         }
     )
+
+
+@app.get("/ui/auth/logout", response_class=RedirectResponse)
+@requires(['authenticated'], status_code=404)
+def ui_auth_logout(response: Response, request: Request):
+
+    # Redirect to the homepage
+    response = RedirectResponse(request.url_for("ui_home"), status_code=303)
+
+    # Set the cookie to expire in the past, effectively removing it
+    response.delete_cookie(key="access_token")
+
+    return response
+
 
 # Create user
 @app.get("/ui/auth/create", response_class=HTMLResponse)

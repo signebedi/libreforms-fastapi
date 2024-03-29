@@ -40,7 +40,7 @@ Login
 
 $(document).ready(function() {
     // Initially disable the submit button
-    var $submitBtn = $('button[type="submit"]').prop('disabled', true);
+    var $submitBtn = $('#loginButton').prop('disabled', true);
 
     // Function to check input fields and toggle the submit button's disabled property
     function toggleLoginButton() {
@@ -75,7 +75,7 @@ $(document).ready(function() {
                 window.location.href = '/ui/home';
             },
             error: function(xhr) {
-                // Handle errors, e.g., show a message in the console logs
+                // Handle errors, e.g., show a message in the console log
                 console.error('Login failed', xhr.responseText);
             }
         });
