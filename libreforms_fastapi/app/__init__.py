@@ -8,12 +8,13 @@ from fastapi import (
     FastAPI,
     Body,
     Request,
+    Response,
     HTTPException,
     BackgroundTasks,
     Depends,
     Query,
 )
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import (
@@ -21,6 +22,17 @@ from fastapi.security import (
     OAuth2PasswordBearer,
     OAuth2PasswordRequestForm,
 )
+from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.authentication import (
+    AuthCredentials, 
+    AuthenticationBackend, 
+    AuthenticationError, 
+    SimpleUser,
+    UnauthenticatedUser,
+    requires,
+)
+from http.cookies import SimpleCookie
+
 
 from sqlalchemy import (
     create_engine, 
@@ -190,6 +202,66 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     return user
 
 
+
+# Authentication Backend Class, see https://www.starlette.io/authentication,
+# https://github.com/tiangolo/fastapi/issues/3043#issuecomment-914316010, and
+# https://github.com/signebedi/libreforms-fastapi/issues/19. Is this redundant
+# with get_current_user?
+class BearerTokenAuthBackend(AuthenticationBackend):
+    """
+    This is a custom auth backend class that will allow you to authenticate your request and return auth and user as
+    a tuple
+    """
+    async def authenticate(self, request):
+        # This function is inherited from the base class and called by some other class
+        if "cookie" not in request.headers:
+
+            # print("\n\n\n\n,", request.headers)
+            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
+        cookie = SimpleCookie()
+        cookie.load(request.headers["cookie"])
+
+        auth = cookie['access_token'].value if 'access_token' in cookie else None
+
+        try:
+            scheme, token = auth.split()
+
+            # print("\n\n\n", scheme)
+            if scheme.strip().lower() != 'bearer':
+                return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
+            payload = jwt.decode(
+                token, 
+                site_key_pair.get_public_key(), 
+                issuer=config.SITE_NAME, 
+                audience=f"{config.SITE_NAME}WebUser", 
+                algorithms=['RS256']
+            )
+            
+            with SessionLocal() as session:
+                user = session.query(User).filter_by(id=payload.get("id", None)).first()
+                # print(user)
+
+        except:
+            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
+        if not user:
+            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
+        if not user.active:
+            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
+        if not user.username == payload['sub']:
+            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
+        if user.site_admin:
+            return AuthCredentials(["authenticated", "admin"]), SimpleUser(user.username)
+
+
+        return AuthCredentials(["authenticated"]), SimpleUser(user.username)
+
+
 # Set up logger, see https://github.com/signebedi/libreforms-fastapi/issues/26,
 # again using a factory pattern defined in libreforms_fastapi.utis.logging.
 logger = set_logger(
@@ -255,7 +327,7 @@ async def start_test_logger():
 
 app.mount("/static", StaticFiles(directory="libreforms_fastapi/app/static"), name="static")
 templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
-
+app.add_middleware(AuthenticationMiddleware, backend=BearerTokenAuthBackend())
 
 
 # Instantiate the Mailer object
@@ -406,59 +478,19 @@ def write_api_call_to_transaction_log(api_key, endpoint, remote_addr=None, query
                 session.rollback()
 
 
-# if config.DEBUG:
-#     ### This is a dummy route to validate jinja2 templates
-#     @app.get("/debug/items/{id}", response_class=HTMLResponse, include_in_schema=False)
-#     async def read_item(request: Request, id: str):
-#         return templates.TemplateResponse(
-#             request=request, 
-#             name="item.html", 
-#             context={"id": id}
-#         )
+if config.DEBUG:
 
-#     ### These are dummy routes to validate the sqlalchemy-signing library in development
-#     @app.get("/debug/create", include_in_schema=False)
-#     async def create_key():
-#         key = signatures.write_key(expiration=.5, scope="api_key")
-#         return {"key": key}
+    # These routes help debug the auth backend
 
-#     @app.get("/debug/get", include_in_schema=False)
-#     async def get_key_details(key: str):
-#         key_details = signatures.get_key(key)
-#         return {"key": key_details}
+    @app.get("/test/auth", response_class=HTMLResponse)
+    @requires(['authenticated'], status_code=404)
+    async def test_auth_scope(request: Request):
+        return JSONResponse({"a": "blargh"})
 
-#     @app.get("/debug/verify", include_in_schema=False)
-#     async def verify_key_details(key: str = Depends(X_API_KEY)):
-
-#         try:
-#             verify = signatures.verify_key(key, scope=[])
-
-#         except RateLimitExceeded:
-#             raise HTTPException(
-#                 status_code=429,
-#                 detail="Rate limit exceeded"
-#             )
-
-#         except KeyDoesNotExist:
-#             raise HTTPException(
-#                 status_code=401,
-#                 detail="Invalid API key"
-#             )
-
-#         except ScopeMismatch:
-#             raise HTTPException(
-#                 status_code=401,
-#                 detail="Invalid API key"
-#             )
-
-#         except KeyExpired:
-#             raise HTTPException(
-#                 status_code=401,
-#                 detail="API key expired"
-#             )
-
-#         return {"valid": verify}
-
+    @app.get("/test/admin", response_class=HTMLResponse)
+    @requires(['authenticated', 'admin'], status_code=404)
+    async def test_admin_scope(request: Request):
+        return JSONResponse({"a": "blargh"})
 
 ##########################
 ### API Routes - Form
@@ -1591,6 +1623,7 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
         "exp": datetime.now(config.TIMEZONE) + config.PERMANENT_SESSION_LIFETIME,
         "email": user.email,
         "active": user.active,
+        "admin": user.site_admin,
     }
 
     # token = jwt.encode(user_dict, config.SECRET_KEY)
@@ -1602,16 +1635,26 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
         site_key_pair.get_private_key(), 
         algorithm='RS256'
     )
+    # return {"access_token": token, "token_type": "bearer"}
+
+    # Set the HTTP-only cookie with the token
+    response = JSONResponse({"access_token": token, "token_type": "bearer"})
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {token}",
+        httponly=True,
+        max_age=config.PERMANENT_SESSION_LIFETIME.total_seconds(),
+        expires=config.PERMANENT_SESSION_LIFETIME.total_seconds(),
+    )
+    return response
 
 
-    return {"access_token": token, "token_type": "bearer"}
-
-
-@app.get("/users/me")
-async def read_users_me(
-    current_user: Annotated[User, Depends(get_current_user)]
-):
-    return current_user
+# @app.get("/users/me")
+# async def read_users_me(
+#     request: Request,
+#     current_user: Annotated[User, Depends(get_current_user)]
+# ):
+#     return current_user
 
 
 
@@ -1708,6 +1751,16 @@ def build_ui_context():
 async def ui_homepage(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # print("\n\n\n", request.auth.scopes)
+    # if request.user.is_authenticated:
+    #     return JSONResponse({"a":request.user.username})
+
+    # if request.user.is_authenticated:
+    #     if "admin" in request.auth.scopes:
+    #         return JSONResponse({"v":request.user.username})
+    #     return JSONResponse({"a":request.user.username})
+
 
     return templates.TemplateResponse(
         request=request, 

@@ -6,7 +6,7 @@ Create User
 
 {% block content %}
 <h1>Create User</h1>
-<form id="registrationForm" method="POST" action="">
+<form id="registrationForm">
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <label aria-labelledby="usernameHelpInline" for="username" class="form-check-label">Username</label>
@@ -65,14 +65,6 @@ Create User
         </div>
     </fieldset>
     {% endif %}
-
-
-    {% if config['HCAPTCHA_ENABLED'] %}
-    <fieldset style="padding-top: 10px;" class="form-check" title="captcha">
-        <div class="h-captcha" data-theme="dark" id="captcha" data-sitekey="{{ config['HCAPTCHA_SITE_KEY'] }}"></div>
-    </fieldset>
-    {% endif %}
-
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <button type="submit" class="btn btn-primary" onClick="this.form.submit(); this.disabled=true; this.value='Creating...';">Create</button>

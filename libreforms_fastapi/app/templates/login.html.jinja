@@ -6,8 +6,7 @@ Login
 
 {% block content %}
 <h1>Login</h1>
-<form method="POST" action="">
-
+<form method="POST" id="loginForm">
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <label for="username" class="form-check-label">Username</label>
@@ -21,14 +20,9 @@ Login
     </fieldset>
 
 
-    {% if config['HCAPTCHA_ENABLED'] %}
-    <fieldset style="padding-top: 10px;" class="form-check" title="captcha">
-        <div class="h-captcha" data-theme="dark" id="captcha" data-error-callback="onError" data-sitekey="{{ config['HCAPTCHA_SITE_KEY'] }}"></div>
-    </fieldset>
-    {% endif %}
-
     <fieldset style="padding-top: 10px;" class="form-check">
-        <button type="submit" class="btn btn-primary" onClick="this.form.submit(); this.disabled=true; this.value='Loading...';">Login</button>
+        {# <button type="submit" class="btn btn-primary" onClick="this.form.submit(); this.disabled=true; this.value='Loading...';">Login</button> #}
+        <button type="submit" class="btn btn-primary" id="loginButton">Login</button>
     </fieldset>
 
 
@@ -39,4 +33,54 @@ Login
     {% endif %}
 
 </form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+$(document).ready(function() {
+    // Initially disable the submit button
+    var $submitBtn = $('button[type="submit"]').prop('disabled', true);
+
+    // Function to check input fields and toggle the submit button's disabled property
+    function toggleLoginButton() {
+        var username = $('#username').val().trim();
+        var password = $('#password').val().trim();
+        $submitBtn.prop('disabled', !username || !password);
+    }
+
+    // Attach the toggle function to keyup and change events
+    $('#username, #password').on('keyup change', toggleLoginButton);
+
+    // Event listener for form submission
+    $('form').submit(function(event) {
+        event.preventDefault(); // Stop the form from submitting normally
+
+        // Get the form data
+        var formData = {
+            username: $('#username').val().trim(),
+            password: $('#password').val().trim()
+        };
+
+        // Send the AJAX POST request to the API
+        $.ajax({
+            url: '/api/auth/login', // API endpoint for login
+            type: 'POST',
+            data: formData,
+            success: function(response) {
+                // Store the token or handle the response as needed
+                localStorage.setItem('jwt_token', response.access_token);
+
+                // Redirect to the UI home route
+                window.location.href = '/ui/home';
+            },
+            error: function(xhr) {
+                // Handle errors, e.g., show a message in the console logs
+                console.error('Login failed', xhr.responseText);
+            }
+        });
+    });
+});
+
+</script>
 {% endblock %}
