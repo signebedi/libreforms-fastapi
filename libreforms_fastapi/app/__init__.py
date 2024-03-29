@@ -31,7 +31,8 @@ from starlette.authentication import (
     AuthCredentials, 
     AuthenticationBackend, 
     AuthenticationError, 
-    SimpleUser,
+    # SimpleUser,
+    BaseUser,
     UnauthenticatedUser,
     requires,
 )
@@ -149,6 +150,35 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 # https://github.com/signebedi/libreforms-fastapi/issues/79
 site_key_pair = RuntimeKeypair(env=config.ENVIRONMENT)
 
+
+
+class LibreFormsUser(BaseUser):
+    def __init__(
+        self, 
+        username: str,
+        id: int, 
+        email: str,
+        groups: list[str], 
+        api_key: str,
+        site_admin:bool,
+    ) -> None:
+    
+        self.username = username
+        self.id = id
+        self.email = email
+        self.groups = groups
+        self.api_key = api_key
+        self.site_admin = site_admin
+
+    @property
+    def is_authenticated(self) -> bool:
+        return True
+
+    @property
+    def display_name(self) -> str:
+        return self.username
+
+
 # Authentication Backend Class, see https://www.starlette.io/authentication,
 # https://github.com/tiangolo/fastapi/issues/3043#issuecomment-914316010, and
 # https://github.com/signebedi/libreforms-fastapi/issues/19. Is this redundant
@@ -187,6 +217,7 @@ class BearerTokenAuthBackend(AuthenticationBackend):
             
             with SessionLocal() as session:
                 user = session.query(User).filter_by(id=payload.get("id", None)).first()
+                _groups = [g.name for g in user.groups]
                 # print(user)
 
         except:
@@ -201,12 +232,18 @@ class BearerTokenAuthBackend(AuthenticationBackend):
         if not user.username == payload['sub']:
             return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
 
+        user_to_return = LibreFormsUser(username=user.username,
+            id=user.id,
+            email=user.email,
+            groups=_groups,
+            api_key=user.api_key,
+            site_admin=user.site_admin,
+        )
+
         if user.site_admin:
-            return AuthCredentials(["authenticated", "admin"]), SimpleUser(user.username)
+            return AuthCredentials(["authenticated", "admin"]), user_to_return
 
-
-        return AuthCredentials(["authenticated"]), SimpleUser(user.username)
-
+        return AuthCredentials(["authenticated"]), user_to_return
 
 # Set up logger, see https://github.com/signebedi/libreforms-fastapi/issues/26,
 # again using a factory pattern defined in libreforms_fastapi.utis.logging.
@@ -1457,39 +1494,39 @@ async def api_auth_get(
     # user account attached to it .. for system purposes) or if there is a user, but they are not a site
     # admin, then we check the OTHER_PROFILES_ENABLED app configuration. If disabled, then raise error; 
     # else, return the user data.
-    user = session.query(User).filter_by(api_key=key).first() # This is the user making the request
-    target = session.query(User).filter_by(id=id).first() # This is the user whose data has been requested
+    requesting_user = session.query(User).filter_by(api_key=key).first() # This is the user making the request
+    target_user = session.query(User).filter_by(id=id).first() # This is the user whose data has been requested
 
     # Return a 404 if the target user does not exist
-    if not target:
+    if not target_user:
         raise HTTPException(status_code=404)
 
     # Return a 404 error if the current user lacks permission
     if any([
-        not user,
-        not user.site_admin
+        not requesting_user,
+        not requesting_user.site_admin
     ]):
         # If the user is not requesting their own profile data and the app
         # config does not allow viewing other user's profiles, return a 404.
-        if not config.OTHER_PROFILES_ENABLED and user.id != target.id:
+        if not config.OTHER_PROFILES_ENABLED and requesting_user.id != target_user.id:
             raise HTTPException(status_code=404)
 
     profile_data = {
-        "id": target.id,
-        "username": target.username,
-        "email": target.email,
-        "groups": [g.name for g in target.groups],
-        "active": target.active,
-        "created_date": target.created_date.strftime('%Y-%m-%d %H:%M:%S'),
-        "last_login": target.last_login.strftime('%Y-%m-%d %H:%M:%S') if target.last_login else 'Never',
+        "id": target_user.id,
+        "username": target_user.username,
+        "email": target_user.email,
+        "groups": [g.name for g in target_user.groups],
+        "active": target_user.active,
+        "created_date": target_user.created_date.strftime('%Y-%m-%d %H:%M:%S'),
+        "last_login": target_user.last_login.strftime('%Y-%m-%d %H:%M:%S') if target_user.last_login else 'Never',
     }
 
     # If the user is requesting their own data, return additional information. 
-    if user.id == target.id:
-        profile_data["last_password_change"] = target.last_password_change
-        profile_data["api_key"] = target.api_key
-        profile_data["opt_out"] = target.opt_out
-        profile_data["site_admin"] = target.site_admin
+    if requesting_user.id == target_user.id:
+        profile_data["last_password_change"] = target_user.last_password_change
+        profile_data["api_key"] = target_user.api_key
+        profile_data["opt_out"] = target_user.opt_out
+        profile_data["site_admin"] = target_user.site_admin
 
     return profile_data
 
@@ -1516,6 +1553,7 @@ async def api_auth_get(
 # Confirm password reset
     # @app.patch("/api/auth/forgot_password/{single_use_token}")
     # async def api_auth_forgot_password_confirm(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+
 
 # Login, uses OAUTH and current_user functionality, see
 # https://github.com/signebedi/libreforms-fastapi/issues/19
@@ -1572,8 +1610,6 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
         "admin": user.site_admin,
     }
 
-    # token = jwt.encode(user_dict, config.SECRET_KEY)
-
     # Reimplementing to use RSA keypair, see
     # https://github.com/signebedi/libreforms-fastapi/issues/79
     token = jwt.encode(
@@ -1581,7 +1617,6 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
         site_key_pair.get_private_key(), 
         algorithm='RS256'
     )
-    # return {"access_token": token, "token_type": "bearer"}
 
     # Set the HTTP-only cookie with the token
     response = JSONResponse({"access_token": token, "token_type": "bearer"})
@@ -1628,6 +1663,19 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
 ##########################
 ### UI Routes - Forms
 ##########################
+
+
+# This is a standard callable that will generate the context
+# for the UI routes and Jinja templates.
+def build_ui_context():
+
+    kwargs = {}
+
+    kwargs["config"] = config.model_dump()
+    kwargs["version"] = __version__
+    kwargs["available_forms"] = get_form_names()
+
+    return kwargs
 
 # Create form
 @app.get("/ui/form/create/{form_name}")#, response_class=HTMLResponse)
@@ -1681,17 +1729,6 @@ async def ui_form_create(request: Request, form_name: str):
 ### UI Routes - Auth
 ##########################
 
-# This is a standard callable that will generate the context
-# for the UI routes and Jinja templates.
-def build_ui_context():
-
-    kwargs = {}
-
-    kwargs["config"] = config.model_dump()
-    kwargs["version"] = __version__
-    kwargs["available_forms"] = get_form_names()
-
-    return kwargs
 
 # Homepage
 @app.get("/ui/home", response_class=HTMLResponse)
