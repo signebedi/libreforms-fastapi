@@ -137,6 +137,16 @@ class ManageDocumentDB(ABC):
             self.log_name = "document_db.log"
 
         # Here we'll set metadata field names
+        self.metadata_fields = self._initialize_metadata_fields()
+
+        # These configs will be helpful later for managing time consistently
+        self.timezone = timezone
+
+        # Finally we'll initialize the database instances
+        self._initialize_database_collections()
+
+    def _initialize_metadata_fields(self):
+        """Set and return the metadata fields employed in the document database"""
         self.form_name_field = "_form_name"
         self.document_id_field = "_document_id"
         self.is_deleted_field = "_is_deleted"
@@ -152,12 +162,22 @@ class ManageDocumentDB(ABC):
         self.approval_signature_field = "_approval_signature"
         self.journal_field = "_journal"
 
-        # These configs will be helpful later for managing time consistently
-        self.timezone = timezone
-
-        # Finally we'll initialize the database instances
-        self._initialize_database_collections()
-
+        return [
+            self.form_name_field, 
+            self.document_id_field, 
+            self.is_deleted_field, 
+            self.timezone_field, 
+            self.created_at_field, 
+            self.last_modified_field, 
+            self.ip_address_field, 
+            self.created_by_field, 
+            self.signature_field, 
+            self.last_editor_field, 
+            self.approved_field, 
+            self.approved_by_field, 
+            self.approval_signature_field, 
+            self.journal_field, 
+        ]
     @abstractmethod
     def _initialize_database_collections(self):
         """Establishes database instances / collections for each form."""
@@ -285,9 +305,9 @@ class ManageTinyDB(ManageDocumentDB):
 
     def _get_existing_document_ids(self, form_name:str | None = None) -> list:
         """Returns a list of document_id for the given form. If no form is passed, return ALL document_ids"""
-        self._check_form_exists(form_name)
 
         if form_name:
+            self._check_form_exists(form_name)
             documents = self.databases[form_name].all()
         else:
             documents = []
