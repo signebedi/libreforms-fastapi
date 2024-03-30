@@ -174,8 +174,8 @@ class ManageDocumentDB(ABC):
         pass
 
     @abstractmethod
-    def _get_existing_document_ids(self, form_name:str):
-        """Returns a list of document_id for the given form name."""
+    def _get_existing_document_ids(self, form_name:str | None = None) -> list:
+        """Returns a list of document_id for the given form. If no form is passed, return ALL document_ids"""
         pass
 
     @abstractmethod
@@ -206,6 +206,10 @@ class ManageDocumentDB(ABC):
     @abstractmethod
     def delete_document(self, form_name:str, search_query, permanent:bool=False):
         """Deletes entries that match the search query, permanently or soft delete."""
+        pass
+
+    def get_all_documents_for_user(self, username: str, exclude_deleted:bool=True) -> list:
+        """Retrieves all the documents created by a given user"""
         pass
 
     @abstractmethod
@@ -279,11 +283,16 @@ class ManageTinyDB(ManageDocumentDB):
         if form_name not in self.databases.keys():
             self._initialize_database_collections()
 
-    def _get_existing_document_ids(self, form_name:str):
-        """Returns a list of document_id for the given form name."""
+    def _get_existing_document_ids(self, form_name:str | None = None) -> list:
+        """Returns a list of document_id for the given form. If no form is passed, return ALL document_ids"""
         self._check_form_exists(form_name)
 
-        documents = self.databases[form_name].all()
+        if form_name:
+            documents = self.databases[form_name].all()
+        else:
+            documents = []
+            for f in self.databases.keys():
+                documents.extend(self.databases[f])
 
         document_id_list = [x.doc_id for x in documents]
 
@@ -665,6 +674,20 @@ class ManageTinyDB(ManageDocumentDB):
         return document
 
 
+    def get_all_documents_for_user(self, username: str, exclude_deleted:bool=True) -> list:
+        """Retrieves all the documents created by a given user"""
+
+        documents = []
+        for f in self.databases.keys():
+            d = self.get_all_documents(
+                form_name=f,
+                limit_users=username,
+                exclude_deleted=exclude_deleted,
+            )
+
+            documents.extend(d)
+
+        return documents
 
     def get_all_documents(self, form_name:str, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
 

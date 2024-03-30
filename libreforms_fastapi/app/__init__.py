@@ -1744,6 +1744,7 @@ def build_ui_context():
     kwargs["config"] = config.model_dump()
     kwargs["version"] = __version__
     kwargs["available_forms"] = get_form_names()
+    kwargs["current_year"] = datetime.now().year
 
     return kwargs
 
