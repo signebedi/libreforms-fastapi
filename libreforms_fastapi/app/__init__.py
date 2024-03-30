@@ -1748,9 +1748,9 @@ def build_ui_context():
     return kwargs
 
 # Create form
-@app.get("/ui/form/create/{form_name}")#, response_class=HTMLResponse)
+@app.get("/ui/form/create/{form_name}", response_class=HTMLResponse)
 @requires(['authenticated'], status_code=404)
-async def ui_form_create(request: Request, form_name: str):
+async def ui_form_create(form_name:str, request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -1774,10 +1774,27 @@ async def ui_form_create(request: Request, form_name: str):
 
 
 # Read one form
-    # @app.get("/ui/form/read_one/{form_name}")
-    # async def ui_form_read_one():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/form/read_one/{form_name}/{document_id}", response_class=HTMLResponse)
+@requires(['authenticated'], status_code=404)
+async def ui_form_read_one(form_name:str, document_id:str, request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if form_name not in get_form_names():
+        raise HTTPException(status_code=404)
+
+    if document_id not in doc_db._get_existing_document_ids(form_name):
+        raise HTTPException(status_code=404)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="read_one_form.html.jinja", 
+        context={
+            "form_name": form_name,
+            "document_id": document_id,
+            **build_ui_context(),
+        }
+    )
 
 
 # Read all forms

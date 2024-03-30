@@ -1,0 +1,110 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+{{config.SITE_NAME}} — Read Form
+{% endblock %}
+
+{% block header %}
+    <link href="{{ url_for('static', path='css/datatables.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<h1>Read Form: {{form_name | replace("_", " ") | title}}</h1>
+
+<div class="container">
+    <div id="documentContent">
+        <!-- Data will be populated here -->
+    </div>
+    <div class="accordion" id="metadataAccordion">
+        <div class="accordion-item">
+            <h2 class="accordion-header" id="headingMetadata">
+                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMetadata" aria-expanded="false" aria-controls="collapseMetadata">
+                    Metadata
+                </button>
+            </h2>
+            <div id="collapseMetadata" class="accordion-collapse collapse" aria-labelledby="headingMetadata" data-bs-parent="#metadataAccordion">
+                <div class="accordion-body" id="documentMetadata">
+                    <!-- Metadata will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{url_for('static', path='js/datatables.js')}}"></script>
+
+<script>
+$(document).ready(function() {
+    var apiKey = "{{ request.user.api_key }}";
+    var formName = "{{ form_name }}";
+    var documentId = "{{ document_id }}";
+
+    function renderTable(data, tableName) {
+        var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
+        table += '<th>Attribute</th><th>Value</th>';
+        table += '</tr></thead><tbody>';
+
+        for (var key in data) {
+            table += '<tr>';
+            table += '<td>' + key + '</td>';
+            var value = data[key];
+
+            // Check if the value is an array or object and convert it to a string
+            if (typeof value === 'object' && value !== null) {
+                value = JSON.stringify(value);
+            }
+
+            table += '<td>' + value + '</td>';
+            table += '</tr>';
+        }
+
+        table += '</tbody></table>';
+        return table;
+    }
+
+    function fetchDocument() {
+        $.ajax({
+            url: `/api/form/read_one/${formName}/${documentId}`,
+            type: 'GET',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            dataType: 'json',
+            success: function(response) {
+                var dataTable = renderTable(response.data, "dataTable");
+                var metadataTable = renderTable(response.metadata, "metadataTable");
+                $('#documentContent').html(dataTable);
+                $('#documentMetadata').html(metadataTable);
+
+                $('#dataTable').DataTable({
+                    "ordering": false,
+                    "info": false,
+                    "paging": false,
+                    "searching": false 
+                });
+
+                
+                $('#metadataTable').DataTable({
+                    "ordering": false,
+                    "info": false,
+                    "paging": false,
+                    "searching": false 
+                });
+
+
+            },
+            error: function(xhr) {
+                // Handle errors
+                console.error('Failed to fetch document', xhr.responseText);
+                // Display error message to the user
+                flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+            }
+        });
+    }
+
+    fetchDocument();
+});
+</script>
+{% endblock %}
