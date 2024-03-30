@@ -6,21 +6,24 @@
 
 {% block content %}
 <h1>Create Form: {{form_name}}</h1>
-<form id="registrationForm">
 
-    {% for field in form_html %}
+<div class="container">
 
-        {{field | safe}}
+    <form id="registrationForm">
 
-    {% endfor %}
+        {% for field in form_html %}
 
-    <fieldset style="padding-top: 10px;" class="form-check">
-        <button type="submit" class="btn btn-primary" id="createButton">Create</button>
-    </fieldset>
+            {{field | safe}}
 
+        {% endfor %}
 
+        <fieldset style="padding-top: 10px;" class="form-check">
+            <button type="submit" class="btn btn-primary" id="createButton">Create</button>
+        </fieldset>
 
-</form>
+    </form>
+
+</div>
 {% endblock %}
 
 

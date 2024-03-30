@@ -49,13 +49,6 @@ class CreateUserRequest(BaseModel):
             raise ValueError(config.USERNAME_HELPER_TEXT)
         return value.lower()
 
-    # @validator('password', 'verify_password', pre=True)
-    # def coerce_to_secret_str(cls, value):
-    #     # This is somewhat redundant, as Pydantic handles coercion to SecretStr,
-    #     if not isinstance(value, SecretStr):
-    #         return SecretStr(value)
-    #     return value
-        
     @validator('password', 'verify_password', pre=True, each_item=False)
     def password_pattern(cls, value):
         # Since value is now of type SecretStr, we need to get its actual value
@@ -80,6 +73,11 @@ example_form_config = {
             "field_name": "text_input",
             "default": "Default Text",
             "validators": [],
+            # "validators": {
+            #     "_min_length": None,
+            #     "_max_length": None,
+            #     "_regex": None,
+            # },
             "required": False,
             "options": None,
             "description": "This is a text field",
@@ -257,68 +255,88 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
     return model
 
 
-def get_form_html(
-        form_name:str, 
-        config_path:str=config.FORM_CONFIG_PATH,
-        current_document:dict=None
-    ) -> List[str]:
-    pass
+def get_form_html(form_name:str, config_path:str=config.FORM_CONFIG_PATH, current_document:dict=None) -> List[str]:
     """
-    Generates a list of HTML form fields based on the input config and form name, supporting default values.
+    Generates a list of Bootstrap 5 styled HTML form fields based on the input config and form name,
+    supporting default values.
 
     Params:
         current_document (dict): optional document containing the form's existing data. If passed, it will override
             the default content of the form config.
 
-    Returns: List[str] of HTML elements for front-end
+    Returns: List[str] of HTML elements for the front-end
     """
-    form_config = load_form_config(config_path=config.FORM_CONFIG_PATH)
+    form_config = load_form_config(config_path=config_path)
 
     if form_name not in form_config:
-        raise Exception(f"Form '{form_name}' not found in")
-
+        raise Exception(f"Form '{form_name}' not found in config")
 
     form_html = []
     
     for field_name, field_info in form_config[form_name].items():
-        
-        if current_document:
-            default = ""
-            if field_name in current_document['data'].keys():
-                default = current_document['data'][field_name]
-        else:
-            default = field_info.get("default")
+        default = current_document['data'][field_name] if current_document and field_name in current_document['data'] else field_info.get("default")
+        field_html = ""
 
+        description_id = f"{field_name}HelpInline"
 
         if field_info['input_type'] in ['text', 'number', 'email', 'date']:
-            field_html = f'<label for="{field_name}">{field_name.capitalize()}:</label>' \
-                         f'<input type="{field_info["input_type"]}" id="{field_name}" name="{field_name}" value="{default or ""}"><br><br>'
+            field_html += f'''
+                <fieldset class="form-check" style="padding-top: 10px;">
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
+                    <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
+                    <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" value="{default or ''}">
+                    <div class="valid-feedback"></div>
+                    <div class="invalid-feedback"></div>
+                </fieldset>'''
+
         elif field_info['input_type'] == 'textarea':
-            field_html = f'<label for="{field_name}">{field_name.capitalize()}:</label><br>' \
-                         f'<textarea id="{field_name}" name="{field_name}" rows="4" cols="50">{default or ""}</textarea><br><br>'
-        
+            field_html += f'''
+                <fieldset class="form-check" style="padding-top: 10px;">
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
+                    <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
+                    <textarea class="form-control" id="{field_name}" name="{field_name}" rows="4">{default or ''}</textarea>
+                    <div class="valid-feedback"></div>
+                    <div class="invalid-feedback"></div>
+                </fieldset>'''
+
         elif field_info['input_type'] in ['checkbox', 'radio']:
-            field_html = f'<label>{field_name.capitalize()}:</label><br>'
+            field_html += f'''
+                <fieldset class="form-check" style="padding-top: 10px;">
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
+                    <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
+            '''
             for option in field_info['options']:
                 checked = "checked" if default and (option == default or option in default) else ""
-                field_html += f'<input type="{field_info["input_type"]}" id="{option}" name="{field_name}" value="{option}" {checked}>' \
-                              f'<label for="{option}">{option}</label><br>'
-            field_html += '<br>'
+                field_html += f'''
+                    <div class="form-check {field_info["input_type"]}-form-check">
+                        <input class="form-check-input" type="{field_info["input_type"]}" id="{option}" name="{field_name}" value="{option}" {checked}>
+                        <label class="form-check-label" for="{option}">{option}</label>
+                    </div>
+                '''
+            field_html += f'''
+                </fieldset>
+            '''
 
         elif field_info['input_type'] == 'select':
-            field_html = f'<label for="{field_name}">{field_name.capitalize()}:</label>' \
-                         f'<select id="{field_name}" name="{field_name}">'
+            field_html += f'''
+                <fieldset class="form-check" style="padding-top: 10px;">
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
+                    <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
+                    <select class="form-control" id="{field_name}" name="{field_name}">'''
             for option in field_info['options']:
                 selected = "selected" if default and (option == default or option in default) else ""
                 field_html += f'<option value="{option}" {selected}>{option}</option>'
-            field_html += '</select><br><br>'
-        else:
-            continue  # Skip if the input type is not recognized
-        
-        form_html.append(field_html)
+            field_html += '''
+                    </select>
+                </fieldset>'''
+
+        # Skipping file input for now becase it usually doesn't have a default value and handling 
+        # might be different based on requirements
+
+        if field_html:
+            form_html.append(field_html)
     
     return form_html
-
 
 
 class HelpRequest(BaseModel):
