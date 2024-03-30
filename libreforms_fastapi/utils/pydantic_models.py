@@ -74,8 +74,8 @@ example_form_config = {
             "default": "Default Text",
             "validators": [],
             # "validators": {
-            #     "_min_length": None,
-            #     "_max_length": None,
+            #     "_min_length": None, # for number fields this will be treated as a min value
+            #     "_max_length": None, # for number fields this will be treated as a max value
             #     "_regex": None,
             # },
             "required": False,

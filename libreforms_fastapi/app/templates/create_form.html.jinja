@@ -1,24 +1,22 @@
 {% extends "base.html.jinja" %}
 
 {% block title %}
-{{config.SITE_NAME}} — Create Form
+{{ config.SITE_NAME }} — Create Form
 {% endblock %}
 
 {% block content %}
-<h1>Create Form: {{form_name}}</h1>
+<h1>Create Form: {{form_name | replace("_", " ") | title}}</h1>
 
 <div class="container">
 
-    <form id="registrationForm">
+    <form id="dataForm" method="POST">
 
         {% for field in form_html %}
-
-            {{field | safe}}
-
+            {{ field | safe }}
         {% endfor %}
 
         <fieldset style="padding-top: 10px;" class="form-check">
-            <button type="submit" class="btn btn-primary" id="createButton">Create</button>
+            <button type="submit" class="btn btn-primary" id="createButton">Submit</button>
         </fieldset>
 
     </form>
@@ -27,9 +25,79 @@
 {% endblock %}
 
 
-
-
-
 {% block scripts %}
+<script>
+$(document).ready(function() {
+    var $createButton = $('#createButton').prop('disabled', true);
 
+    // Enable the Create button only if there's some data
+    function toggleCreateButton() {
+        var isFormFilled = $('#dataForm').find('input, textarea, select').filter(function() {
+            return $.trim($(this).val()).length > 0;
+        }).length > 0;
+
+        $createButton.prop('disabled', !isFormFilled);
+    }
+
+    // Check form inputs to toggle the create button
+    $('#dataForm').on('keyup change paste', 'input, textarea, select', toggleCreateButton);
+
+    // Form submission event
+    $('#dataForm').submit(function(event) {
+        event.preventDefault(); // Prevent the form from submitting via the browser
+        
+        var formData = {};
+        
+        // Process all except checkboxes
+        $('#dataForm').find('input:not(:checkbox), textarea, select').each(function() {
+            formData[this.name] = $(this).val();
+        });
+        
+        // Process checkboxes: group them by name and gather checked values into arrays
+        $('#dataForm').find('input:checkbox').each(function() {
+            if (!formData.hasOwnProperty(this.name)) {
+                formData[this.name] = [];
+            }
+            if ($(this).is(':checked')) {
+                formData[this.name].push($(this).val() || true); // Push 'true' if value is unspecified
+            }
+        });
+
+        // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
+        var apiKey = "{{ request.user.api_key }}"; // Adjust based on actual access method
+        var formName = "{{ form_name }}";
+
+        $.ajax({
+            url: `/api/form/create/${formName}`,
+            type: 'POST',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            data: JSON.stringify(formData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                // Redirect to the read_one page with the form_name and document_id from the response
+                setFlashMessage("Successfully created form submission", AlertCategories.SUCCESS);
+                
+
+                // We purposefully delay for a second before relocating to the new document
+                setTimeout(function() {
+                    window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
+                }, 1000);
+
+            },
+            error: function(xhr) {
+                // Handle errors, e.g., show an error message
+                console.error('Form creation failed', xhr.responseText);
+                // Implement flashMessage or another way to show errors to the user
+                flashMessage(xhr.responseText, 'warning');
+                
+                // Optionally re-enable the Create button here
+                $createButton.prop('disabled', false);
+            }
+        });
+    });
+});
+</script>
 {% endblock %}

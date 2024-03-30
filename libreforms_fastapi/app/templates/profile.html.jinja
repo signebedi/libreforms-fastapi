@@ -21,36 +21,6 @@
         </thead>
         <tbody>
             {# <tr>
-                <td>Email</td>
-                <td>{{ request.user.email }}</td>
-            </tr>
-            <tr>
-                <td>Username</td>
-                <td>{{ request.user.username }}</td>
-            </tr>
-            <tr>
-                <td>Account Status</td>
-                <td>{{ 'Active' if request.user.active else 'Inactive' }}</td>
-            </tr>
-            {% if config["COLLECT_USAGE_STATISTICS"] %}
-            <tr>
-                <td>Opted out of detailed usage statistics</td>
-                <td>{{ 'Yes' if request.user.opt_out else 'No' }}</td>
-            </tr>
-            {% endif %}
-            <tr>
-                <td>Account Created</td>
-                <td>{{ request.user.created_date.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-            </tr>
-            <tr>
-                <td>Last Login</td>
-                <td>{{ request.user.last_login.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-            </tr>
-            <tr>
-                <td>Last Password Change</td>
-                <td>{{ request.user.last_password_change.strftime('%Y-%m-%d %H:%M:%S') }}</td>
-            </tr>
-            <tr>
                 <td title="Expires: {{ key_expiry }}">API Key</td>
                 <td>
                     <span title="Expires: {{ key_expiry }}" id="apiKey">{{ request.user.api_key }}</span>
