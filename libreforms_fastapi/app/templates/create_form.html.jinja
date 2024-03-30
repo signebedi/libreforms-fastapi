@@ -1,0 +1,32 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+{{config.SITE_NAME}} — Create Form
+{% endblock %}
+
+{% block content %}
+<h1>Create Form: {{form_name}}</h1>
+<form id="registrationForm">
+
+    {% for field in form_html %}
+
+        {{field | safe}}
+
+    {% endfor %}
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="submit" class="btn btn-primary" id="createButton">Create</button>
+    </fieldset>
+
+
+
+</form>
+{% endblock %}
+
+
+
+
+
+{% block scripts %}
+
+{% endblock %}

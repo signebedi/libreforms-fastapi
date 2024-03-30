@@ -81,7 +81,8 @@ example_form_config = {
             "default": "Default Text",
             "validators": [],
             "required": False,
-            "options": None
+            "options": None,
+            "description": "This is a text field",
         },
         "number_input": {
             "input_type": "number",
@@ -90,7 +91,8 @@ example_form_config = {
             "default": 42,
             "validators": [],
             "required": False,
-            "options": None
+            "options": None,
+            "description": "This is a number field",
         },
         "email_input": {
             "input_type": "email",
@@ -99,7 +101,8 @@ example_form_config = {
             "default": "user@example.com",
             "validators": [],
             "required": False,
-            "options": None
+            "options": None,
+            "description": "This is an email field",
         },
         "date_input": {
             "input_type": "date",
@@ -108,7 +111,8 @@ example_form_config = {
             "default": "2024-01-01",
             "validators": [],
             "required": False,
-            "options": None
+            "options": None,
+            "description": "This is a date field",
         },
         "checkbox_input": {
             "input_type": "checkbox",
@@ -117,7 +121,8 @@ example_form_config = {
             "options": ["Option1", "Option2", "Option3"],
             "validators": [],
             "required": False,
-            "default": ["Option1", "Option3"]
+            "default": ["Option1", "Option3"],
+            "description": "This is a checkbox field",
         },
         "radio_input": {
             "input_type": "radio",
@@ -126,7 +131,8 @@ example_form_config = {
             "options": ["Option1", "Option2"],
             "validators": [],
             "required": False,
-            "default": "Option2"
+            "default": "Option2",
+            "description": "This is a radio field",
         },
         "select_input": {
             "input_type": "select",
@@ -135,7 +141,8 @@ example_form_config = {
             "options": ["Option1", "Option2", "Option3"],
             "validators": [],
             "required": False,
-            "default": "Option2"
+            "default": "Option2",
+            "description": "This is a select field",
         },
         "textarea_input": {
             "input_type": "textarea",
@@ -144,7 +151,8 @@ example_form_config = {
             "default": "Default textarea content.",
             "validators": [],
             "required": False,
-            "options": None
+            "options": None,
+            "description": "This is a textarea field",
         },
         "file_input": {
             "input_type": "file",
@@ -153,56 +161,14 @@ example_form_config = {
             "options": None,
             "validators": [],
             "required": False,
-            "default": None  # File inputs can't have default values
+            "default": None,  # File inputs can't have default values
+            "description": "This is a file field",
         },
     },
 }
 
-def generate_html_form(fields: dict) -> List[str]:
-    """
-    Generates a list of HTML form fields based on the input dictionary, supporting default values.
-
-    Params
-        Fields (dict), required: Dictionary of field data
-
-    Returns: List[str] of HTML elements for front-end
-    """
-    form_html = []
-    
-    for field_name, field_info in fields.items():
-        default = field_info.get("default")
-        if field_info['input_type'] in ['text', 'number', 'email', 'date']:
-            field_html = f'<label for="{field_name}">{field_name.capitalize()}:</label>' \
-                         f'<input type="{field_info["input_type"]}" id="{field_name}" name="{field_name}" value="{default or ""}"><br><br>'
-        elif field_info['input_type'] == 'textarea':
-            field_html = f'<label for="{field_name}">{field_name.capitalize()}:</label><br>' \
-                         f'<textarea id="{field_name}" name="{field_name}" rows="4" cols="50">{default or ""}</textarea><br><br>'
-        elif field_info['input_type'] in ['checkbox', 'radio']:
-            field_html = f'<label>{field_name.capitalize()}:</label><br>'
-            for option in field_info['options']:
-                checked = "checked" if default and option in default else ""
-                field_html += f'<input type="{field_info["input_type"]}" id="{option}" name="{field_name}" value="{option}" {checked}>' \
-                              f'<label for="{option}">{option}</label><br>'
-            field_html += '<br>'
-        elif field_info['input_type'] == 'select':
-            field_html = f'<label for="{field_name}">{field_name.capitalize()}:</label>' \
-                         f'<select id="{field_name}" name="{field_name}">'
-            for option in field_info['options']:
-                selected = "selected" if option == default else ""
-                field_html += f'<option value="{option}" {selected}>{option}</option>'
-            field_html += '</select><br><br>'
-        else:
-            continue  # Skip if the input type is not recognized
-        
-        form_html.append(field_html)
-    
-    return form_html
-
-def get_form_names(config_path=config.FORM_CONFIG_PATH):
-    """
-    Given a form config path, return a list of available forms, defaulting to the example 
-    dictionary provided above.
-    """
+def load_form_config(config_path=config.FORM_CONFIG_PATH):
+    """This is a quick abstraction to load the json form config"""
     # Try to open config_path and if not existent or empty, use example config
     form_config = example_form_config  # Default to example_form_config
 
@@ -215,7 +181,17 @@ def get_form_names(config_path=config.FORM_CONFIG_PATH):
             # print("Failed to load the JSON file. Falling back to the default configuration.")
     else:
         pass
-        # print("Config file does not exist. Using the default configuration.")
+
+    return form_config
+
+
+def get_form_names(config_path=config.FORM_CONFIG_PATH):
+    """
+    Given a form config path, return a list of available forms, defaulting to the example 
+    dictionary provided above.
+    """
+
+    form_config = load_form_config(config_path=config.FORM_CONFIG_PATH)
     return form_config.keys()
 
 
@@ -225,19 +201,7 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
 
     If update is set to True, all fields will be set to optional.
     """
-    # Try to open config_path and if not existent or empty, use example config
-    form_config = example_form_config  # Default to example_form_config
-
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as file:
-                form_config = json.load(file)
-        except json.JSONDecodeError:
-            pass
-            # print("Failed to load the JSON file. Falling back to the default configuration.")
-    else:
-        pass
-        # print("Config file does not exist. Using the default configuration.")
+    form_config = load_form_config(config_path=config.FORM_CONFIG_PATH)
 
     if form_name not in form_config:
         raise Exception(f"Form '{form_name}' not found in")
@@ -291,6 +255,71 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
             pass
 
     return model
+
+
+def get_form_html(
+        form_name:str, 
+        config_path:str=config.FORM_CONFIG_PATH,
+        current_document:dict=None
+    ) -> List[str]:
+    pass
+    """
+    Generates a list of HTML form fields based on the input config and form name, supporting default values.
+
+    Params:
+        current_document (dict): optional document containing the form's existing data. If passed, it will override
+            the default content of the form config.
+
+    Returns: List[str] of HTML elements for front-end
+    """
+    form_config = load_form_config(config_path=config.FORM_CONFIG_PATH)
+
+    if form_name not in form_config:
+        raise Exception(f"Form '{form_name}' not found in")
+
+
+    form_html = []
+    
+    for field_name, field_info in form_config[form_name].items():
+        
+        if current_document:
+            default = ""
+            if field_name in current_document['data'].keys():
+                default = current_document['data'][field_name]
+        else:
+            default = field_info.get("default")
+
+
+        if field_info['input_type'] in ['text', 'number', 'email', 'date']:
+            field_html = f'<label for="{field_name}">{field_name.capitalize()}:</label>' \
+                         f'<input type="{field_info["input_type"]}" id="{field_name}" name="{field_name}" value="{default or ""}"><br><br>'
+        elif field_info['input_type'] == 'textarea':
+            field_html = f'<label for="{field_name}">{field_name.capitalize()}:</label><br>' \
+                         f'<textarea id="{field_name}" name="{field_name}" rows="4" cols="50">{default or ""}</textarea><br><br>'
+        
+        elif field_info['input_type'] in ['checkbox', 'radio']:
+            field_html = f'<label>{field_name.capitalize()}:</label><br>'
+            for option in field_info['options']:
+                checked = "checked" if default and (option == default or option in default) else ""
+                field_html += f'<input type="{field_info["input_type"]}" id="{option}" name="{field_name}" value="{option}" {checked}>' \
+                              f'<label for="{option}">{option}</label><br>'
+            field_html += '<br>'
+
+        elif field_info['input_type'] == 'select':
+            field_html = f'<label for="{field_name}">{field_name.capitalize()}:</label>' \
+                         f'<select id="{field_name}" name="{field_name}">'
+            for option in field_info['options']:
+                selected = "selected" if default and (option == default or option in default) else ""
+                field_html += f'<option value="{option}" {selected}>{option}</option>'
+            field_html += '</select><br><br>'
+        else:
+            continue  # Skip if the input type is not recognized
+        
+        form_html.append(field_html)
+    
+    return form_html
+
+
 
 class HelpRequest(BaseModel):
     """A quick and dirty pydantic model for help request data"""

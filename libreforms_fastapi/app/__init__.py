@@ -113,6 +113,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     HelpRequest,
     get_form_config,
     get_form_names,
+    get_form_html,
 )
 
 # Here we set the application config using the get_config
@@ -1676,13 +1677,16 @@ async def api_auth_help(
 
     safe_message = escape(help_request.message)
     safe_category = escape(help_request.category)
+    shortened_safe_category = safe_category[:50]
 
-    full_safe_subject = f"[{config.SITE_NAME}][{user.username}][{safe_category}] {shortened_safe_subject}"
+    full_safe_subject = f"[{config.SITE_NAME}][{user.username}][{shortened_safe_category}] {shortened_safe_subject}"
 
-    full_safe_message = f"You are receiving this message because a user has submitted a request for help at {config.DOMAIN}. " \
-        f"You can see the request details below.\n\n****\nUser: {user.username}\nEmail: {user.email}\nTime of Submission:" \
-        f"{time_str}\nCategory: {safe_category}\nSubject: {safe_subject}\nMessage: {safe_message}\n****\n\nYou may reply " \
-        f"directly to the user who submitted this request by replying to this email."
+    full_safe_message = f"You are receiving this message because a user has submitted " \
+        f"a request for help at {config.DOMAIN}. You can see the request details below." \
+        f"\n\n****\nUser: {user.username}\nEmail: {user.email}\nTime of Submission:" \
+        f"{time_str}\nCategory: {shortened_safe_category}\nSubject: {safe_subject}\n" \
+        f"Message: {safe_message}\n****\n\nYou may reply directly to the user who " \
+        f"submitted this request by replying to this email."
 
     background_tasks.add_task(
         mailer.send_mail, 
@@ -1753,9 +1757,20 @@ async def ui_form_create(request: Request, form_name: str):
     if form_name not in get_form_names():
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
-    # Placeholder - generate form HTML
+    # generate_html_form
 
-    return {"asd":form_name}
+    form_html = get_form_html(form_name=form_name)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="create_form.html.jinja", 
+        context={
+            "form_name": form_name,
+            "form_html": form_html,
+            **build_ui_context(),
+        }
+    )
+
 
 
 # Read one form
