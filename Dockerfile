@@ -4,12 +4,10 @@ FROM python:3.10
 # Set the working directory in the container
 WORKDIR /
 
-COPY requirements/base.txt requirements.txt
+COPY . .
 
 # Install any needed packages specified in requirements/base.txt
-RUN pip3 install --no-cache-dir -r requirements.txt
-
-COPY . .
+RUN pip3 install --no-cache-dir -r requirements/base.txt
 
 # Create instance dir
 RUN mkdir -p /instance
