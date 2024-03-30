@@ -352,9 +352,18 @@ class ManageTinyDB(ManageDocumentDB):
                 self.approved_field: metadata.get(self.approved_field, None),
                 self.approved_by_field: metadata.get(self.approved_by_field, None),
                 self.approval_signature_field: metadata.get(self.approval_signature_field, None),
-                self.journal_field: []
             }
         }
+
+        # data_dict['metadata'][self.journal_field] = []
+        journal = []
+        journal.append (
+            {
+                "data": convert_data_to_dict.copy(),
+                "metadata": data_dict['metadata'].copy(),
+            }
+        )
+        data_dict['metadata'][self.journal_field] = journal
 
         # document_id = self.databases[form_name].insert(data_dict)
         _ = self.databases[form_name].insert(data_dict, document_id=document_id)
@@ -448,10 +457,14 @@ class ManageTinyDB(ManageDocumentDB):
         journal = document['metadata'].get(self.journal_field)
         journal.append (
             {
-                self.last_modified_field: current_timestamp.isoformat(),
-                self.last_editor_field: metadata.get(self.last_editor_field, None),
-                self.ip_address_field: metadata.get(self.ip_address_field, None),
-                **dropping_unchanged_data,
+                "data": {
+                    **dropping_unchanged_data,
+                },
+                "metadata": {
+                    self.last_modified_field: current_timestamp.isoformat(),
+                    self.last_editor_field: metadata.get(self.last_editor_field, None),
+                    self.ip_address_field: metadata.get(self.ip_address_field, None),
+                },
             }
         )
 
@@ -551,12 +564,15 @@ class ManageTinyDB(ManageDocumentDB):
         journal = document['metadata'].get(self.journal_field)
         journal.append (
             {
-                self.signature_field: signature,
-                self.last_modified_field: current_timestamp.isoformat(),
-                self.last_editor_field: metadata.get(self.last_editor_field, None),
-                self.ip_address_field: metadata.get(self.ip_address_field, None),
+                "metadata": {
+                    self.signature_field: signature,
+                    self.last_modified_field: current_timestamp.isoformat(),
+                    self.last_editor_field: metadata.get(self.last_editor_field, None),
+                    self.ip_address_field: metadata.get(self.ip_address_field, None),
+                },
             }
         )
+
 
 
         # Here we update only a few metadata fields ... fields like approval and signature should be
@@ -669,12 +685,17 @@ class ManageTinyDB(ManageDocumentDB):
         journal = document['metadata'].get(self.journal_field)
         journal.append (
             {
-                self.last_modified_field: current_timestamp.isoformat(),
-                self.last_editor_field: metadata.get(self.last_editor_field, None),
-                self.ip_address_field: metadata.get(self.ip_address_field, None),
-                self.is_deleted_field: restore==False, # Here we base the value for _is_deleted based on the `restore` param
+                "metadata": {
+                    self.last_modified_field: current_timestamp.isoformat(),
+                    self.last_editor_field: metadata.get(self.last_editor_field, None),
+                    self.ip_address_field: metadata.get(self.ip_address_field, None),
+                    self.is_deleted_field: restore==False, # Here we base the value for _is_deleted based on the `restore` param
+                },
             }
         )
+
+
+
 
         # Here we update only a few metadata fields ... fields like approval and signature should be
         # handled through separate API calls. The most important here are _is_deleted and _journal.
