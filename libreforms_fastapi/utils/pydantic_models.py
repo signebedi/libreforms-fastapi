@@ -11,6 +11,7 @@ from pydantic import (
     ConfigDict,
     EmailStr,
     constr,
+    SecretStr,
 )
 
 from pydantic.functional_validators import field_validator, model_validator
@@ -35,31 +36,40 @@ class PasswordMatchException(Exception):
 
 class CreateUserRequest(BaseModel):
     username: str = Field(..., min_length=2, max_length=100)
-    password: str = Field(..., min_length=8)
-    verify_password: str = Field(..., min_length=8)
+    # Added a little syntactic salt with the SecretStr, see https://stackoverflow.com/a/65277859/13301284
+    password: SecretStr = Field(..., min_length=8)
+    verify_password: SecretStr = Field(..., min_length=8)
     email: EmailStr
     opt_out: bool = False
 
-    @field_validator('username')
+    @validator('username')
     def username_pattern(cls, value):
         pattern = re.compile(config.USERNAME_REGEX)
         if not pattern.match(value):
             raise ValueError(config.USERNAME_HELPER_TEXT)
         return value.lower()
 
-    @field_validator('password')
+    # @validator('password', 'verify_password', pre=True)
+    # def coerce_to_secret_str(cls, value):
+    #     # This is somewhat redundant, as Pydantic handles coercion to SecretStr,
+    #     if not isinstance(value, SecretStr):
+    #         return SecretStr(value)
+    #     return value
+        
+    @validator('password', 'verify_password', pre=True, each_item=False)
     def password_pattern(cls, value):
+        # Since value is now of type SecretStr, we need to get its actual value
+        password = value.get_secret_value() if isinstance(value, SecretStr) else value
         pattern = re.compile(config.PASSWORD_REGEX)
-        if not pattern.match(value):
+        if not pattern.match(password):
             raise ValueError(config.PASSWORD_HELPER_TEXT)
         return value
 
-    # Custom method to validate that the two passwords match
-    @model_validator(mode='before')
-    def passwords_match(cls, data: Any) -> Any:
-        if data.get('password') != data.get('verify_password'):
+    @validator('verify_password', always=True)
+    def passwords_match(cls, v, values, **kwargs):
+        if 'password' in values and v.get_secret_value() != values['password'].get_secret_value():
             raise ValueError('Passwords do not match')
-        return data
+        return v
 
 # Example form configuration with default values set
 example_form_config = {

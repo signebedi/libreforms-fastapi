@@ -26,6 +26,7 @@ from fastapi.security import (
     OAuth2PasswordBearer,
     OAuth2PasswordRequestForm,
 )
+from fastapi.exceptions import RequestValidationError
 from starlette.middleware.authentication import AuthenticationMiddleware
 from starlette.authentication import (
     AuthCredentials, 
@@ -107,9 +108,9 @@ from libreforms_fastapi.utils.document_database import (
 )
 
 from libreforms_fastapi.utils.pydantic_models import (
+    CreateUserRequest,
     get_form_config,
     get_form_names,
-    CreateUserRequest,
 )
 
 # Here we set the application config using the get_config
@@ -312,6 +313,17 @@ app.mount("/static", StaticFiles(directory="libreforms_fastapi/app/static"), nam
 templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
 app.add_middleware(AuthenticationMiddleware, backend=BearerTokenAuthBackend())
 
+
+# Custom exception handler
+def validation_exception_handler(request: Request, exc: RequestValidationError):
+    # For simplicity, we are returning a generic error message
+    return JSONResponse(
+        status_code=422,
+        content={"detail": "Data validation error."},
+    )
+
+# Override the default request validation error handler with your custom handler
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 # Instantiate the Mailer object
 mailer = Mailer(
@@ -1396,6 +1408,9 @@ async def api_auth_create(
     session: SessionLocal = Depends(get_db)
 ):
 
+    # print("\n\n\n", user_request.model_dump())
+    # print("\n\n\n", user_request.password)
+
     if config.DISABLE_NEW_USERS:
         raise HTTPException(status_code=404)
 
@@ -1430,7 +1445,7 @@ async def api_auth_create(
     new_user = User(
         email=user_request.email, 
         username=user_request.username, 
-        password=generate_password_hash(user_request.password),
+        password=generate_password_hash(user_request.password.get_secret_value()),
         active=config.REQUIRE_EMAIL_VERIFICATION == False,
         opt_out=user_request.opt_out if config.COLLECT_USAGE_STATISTICS else True,
     ) 
