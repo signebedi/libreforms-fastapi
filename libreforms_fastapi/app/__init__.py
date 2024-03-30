@@ -1802,16 +1802,6 @@ async def ui_home(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
-    # print("\n\n\n", request.auth.scopes)
-    # if request.user.is_authenticated:
-    #     return JSONResponse({"a":request.user.username})
-
-    # if request.user.is_authenticated:
-    #     if "admin" in request.auth.scopes:
-    #         return JSONResponse({"v":request.user.username})
-    #     return JSONResponse({"a":request.user.username})
-
-
     return templates.TemplateResponse(
         request=request, 
         name="home.html.jinja", 
@@ -1848,6 +1838,22 @@ async def ui_auth_login(request: Request):
         }
     )
 
+@app.get("/ui/help", response_class=HTMLResponse)
+@requires(['authenticated'], status_code=404)
+async def ui_auth_help(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not config.HELP_PAGE_ENABLED or not config.SMTP_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="help.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
 
 @app.get("/ui/auth/logout", response_class=RedirectResponse)
 @requires(['authenticated'], status_code=404)

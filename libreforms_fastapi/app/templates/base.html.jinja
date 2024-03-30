@@ -52,6 +52,9 @@
                         <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Account</a>
                         <div class="dropdown-menu">
                             <a class="dropdown-item" href="{{ url_for( 'ui_auth_profile' ) }}">Profile</a>
+                            {% if config.HELP_PAGE_ENABLED %}
+                            <a class="dropdown-item" href="{{ url_for( 'ui_auth_help' ) }}">Request Help</a>
+                            {% endif %}
                             <a class="dropdown-item" href="{{ url_for( 'ui_auth_logout' ) }}">Logout</a>
                         </div>
                     </li>

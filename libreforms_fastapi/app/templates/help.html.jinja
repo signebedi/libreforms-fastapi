@@ -1,14 +1,14 @@
 {% extends "base.html.jinja" %}
 
 {% block title %}
-Help Request
+{{config.SITE_NAME}} — Help Request
 {% endblock %}
 
 {% block content %}
 <h1>Submit Help Request</h1>
 <p>When you experience issues with the application or want to request features, you can use this form to submit these requests to the application administrators.</p>
 
-<form id="helpRequestForm" method="POST" action="{{ url_for('help') }}">
+<form id="helpRequestForm">
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <label for="subject" class="form-check-label">Subject</label>
@@ -39,8 +39,57 @@ Help Request
     </fieldset>
 
     <fieldset style="padding-top: 10px;" class="form-check">
-        <button type="submit" class="btn btn-primary">Submit Request</button>
+        <button type="submit" id="submitButton" class="btn btn-primary">Submit Request</button>
     </fieldset>
 
 </form>
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+$(document).ready(function() {
+    $("#helpRequestForm").submit(function(event) {
+        // Prevent the default form submission behavior
+        event.preventDefault();
+
+        const submitButton = document.getElementById('submitButton')
+        submitButton.disabled=true; 
+
+        const apiKey = "{{ request.user.api_key }}";
+
+        // Gather form data
+        var formData = {
+            subject: $("#subject").val(),
+            category: $("#category").val(),
+            message: $("#message").val()
+        };
+
+        // Send the form data as JSON to the /api/auth/help endpoint
+        $.ajax({
+            type: "POST",
+            url: "/api/auth/help",
+            contentType: "application/json",
+            data: JSON.stringify(formData),
+            beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
+            success: function(response) {
+                // Use the custom flashMessage function for a success message
+                setFlashMessage("Help request submitted successfully.", AlertCategories.SUCCESS);
+
+                // Redirect the user to the homepage
+                window.location.href = "/ui/home";
+
+            },
+            error: function(xhr) {
+                // Use the custom flashMessage function to display error details
+                flashMessage(xhr.responseText, AlertCategories.WARNING);
+
+                submitButton.disabled=false; 
+
+            }
+        });
+    });
+});
+</script>
+
 {% endblock %}
