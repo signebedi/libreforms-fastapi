@@ -2,6 +2,7 @@ import ssl
 import smtplib 
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+from email.header import Header
 
 class Mailer():
     def __init__(self, mail_server=None, port=None, 
@@ -38,10 +39,9 @@ class Mailer():
                 with smtplib.SMTP(self.mail_server,self.port) as server:
 
                     msg = MIMEMultipart()
-                    msg['Subject'] = subject
+                    msg['Subject'] = Header(subject, 'utf-8')
                     msg['From'] = self.from_address
                     msg['To'] = to_address
-                    # print(cc_address_list)
                     msg['Cc'] = ", ".join(cc_address_list) if cc_conditions else None
                     msg['Reply-To'] = reply_to_addr if reply_to_addr else self.from_address
 

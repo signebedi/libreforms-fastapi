@@ -292,3 +292,8 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
 
     return model
 
+class HelpRequest(BaseModel):
+    """A quick and dirty pydantic model for help request data"""
+    subject: str
+    category: str
+    message: str

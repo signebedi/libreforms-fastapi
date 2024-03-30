@@ -13,6 +13,7 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     Query,
+    Form,
 )
 from fastapi.responses import (
     HTMLResponse, 
@@ -109,6 +110,7 @@ from libreforms_fastapi.utils.document_database import (
 
 from libreforms_fastapi.utils.pydantic_models import (
     CreateUserRequest,
+    HelpRequest,
     get_form_config,
     get_form_names,
 )
@@ -1645,6 +1647,55 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
     return response
 
 
+
+
+# This is a help route to submit a help request to the sysadmin
+@app.post("/api/auth/help", dependencies=[Depends(api_key_auth)], response_class=JSONResponse)
+async def api_auth_help(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    help_request: HelpRequest,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    if not config.HELP_PAGE_ENABLED or not config.SMTP_ENABLED:
+        raise HTTPException(status_code=404)
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user:
+        raise HTTPException(status_code=404)
+
+    time_str = datetime.now(config.TIMEZONE).strftime("%Y-%m-%d %H:%M:%S")
+
+    # We escape and shorten the message contents as needed
+    safe_subject = escape(help_request.subject)
+    shortened_safe_subject = safe_subject[:50]
+
+    safe_message = escape(help_request.message)
+    safe_category = escape(help_request.category)
+
+    full_safe_subject = f"[{config.SITE_NAME}][{user.username}][{safe_category}] {shortened_safe_subject}"
+
+    full_safe_message = f"You are receiving this message because a user has submitted a request for help at {config.DOMAIN}. " \
+        f"You can see the request details below.\n\n****\nUser: {user.username}\nEmail: {user.email}\nTime of Submission:" \
+        f"{time_str}\nCategory: {safe_category}\nSubject: {safe_subject}\nMessage: {safe_message}\n****\n\nYou may reply " \
+        f"directly to the user who submitted this request by replying to this email."
+
+    background_tasks.add_task(
+        mailer.send_mail, 
+        subject=full_safe_subject, 
+        content=full_safe_message, 
+        to_address=config.HELP_EMAIL,
+        reply_to_addr=user.email
+    )
+
+    return JSONResponse(
+        status_code=202,
+        content={"status": "success"},
+    )
 
 ##########################
 ### API Routes - Admin
