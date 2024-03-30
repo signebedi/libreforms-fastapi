@@ -172,7 +172,12 @@ class ManageDocumentDB(ABC):
     def _check_form_exists(self, form_name:str):
         """Checks if the form exists in the configuration."""
         pass
-    
+
+    @abstractmethod
+    def _get_existing_document_ids(self, form_name:str):
+        """Returns a list of document_id for the given form name."""
+        pass
+
     @abstractmethod
     def create_document(self, form_name:str, json_data):
         """Adds an entry to the specified form's database."""
@@ -273,6 +278,16 @@ class ManageTinyDB(ManageDocumentDB):
         # be able to work even when configuration data changes.
         if form_name not in self.databases.keys():
             self._initialize_database_collections()
+
+    def _get_existing_document_ids(self, form_name:str):
+        """Returns a list of document_id for the given form name."""
+        self._check_form_exists(form_name)
+
+        documents = self.databases[form_name].all()
+
+        document_id_list = [x.doc_id for x in documents]
+
+        return document_id_list
 
     def create_document(
         self, 
