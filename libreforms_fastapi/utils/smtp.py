@@ -22,10 +22,17 @@ class Mailer():
 
     # borrowed shamelessly from 
     # https://www.aabidsofi.com/posts/sending-emails-with-aws-ses-and-python/
-    def send_mail(self, subject=None, content=None, to_address=None, cc_address_list=[], logfile=None):
+    def send_mail(self, subject=None, content=None, to_address=None, cc_address_list=[], logfile=None, reply_to_addr=None):
 
         # only if we have enabled SMTP
         if self.enabled:
+
+            cc_conditions = all([
+                cc_address_list,
+                isinstance(cc_address_list, list),
+                    len(cc_address_list)>0
+            ])
+
             try:
                 # creating an unsecure smtp connection
                 with smtplib.SMTP(self.mail_server,self.port) as server:
@@ -35,7 +42,8 @@ class Mailer():
                     msg['From'] = self.from_address
                     msg['To'] = to_address
                     # print(cc_address_list)
-                    msg['Cc'] = ", ".join(cc_address_list) if cc_address_list and len(cc_address_list)>0 else None
+                    msg['Cc'] = ", ".join(cc_address_list) if cc_conditions else None
+                    msg['Reply-To'] = reply_to_addr if reply_to_addr else self.from_address
 
                     msg.attach(MIMEText(content))
 
