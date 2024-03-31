@@ -18,10 +18,17 @@ from sqlalchemy.orm import relationship, declarative_base, class_mapper
 
 from sqlalchemy_signing import create_signing_class
 
-from libreforms_fastapi.utils.config import get_config
 
+# This whole section where we need to import the config just to set the time
+# zone is very hackish and works against decoupling goals... Utils libraries
+# should not be dependent on one another... would a factory function make sense?
+# That approach could also allow us to generate the engine and session, because
+# we could pass the database uri as well...
+from libreforms_fastapi.utils.config import get_config
 _env = os.environ.get('ENVIRONMENT', 'development')
 config = get_config(_env)
+def tz_aware_datetime():
+    return datetime.now(config.TIMEZONE)
 
 Base = declarative_base()
 
@@ -31,9 +38,6 @@ user_group_association = Table('user_group_association', Base.metadata,
     Column('user_id', Integer, ForeignKey('user.id'), primary_key=True),
     Column('group_id', Integer, ForeignKey('group.id'), primary_key=True)
 )
-
-def tz_aware_datetime():
-    return datetime.now(config.TIMEZONE)
 
 class InsufficientPermissionsError(Exception):
     """Raised when users lack sufficient permissions"""
