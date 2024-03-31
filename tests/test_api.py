@@ -3,7 +3,8 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, StaticPool
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy_signing import Signatures
-from libreforms_fastapi.utils.sqlalchemy_models import Base, User, Signing, TransactionLog, Group
+from libreforms_fastapi.utils.sqlalchemy_models import Base, get_sqlalchemy_models
+
 from libreforms_fastapi.utils.config import get_config
 
 # os.environ["ENVIRONMENT"] = "testing"
@@ -12,16 +13,18 @@ config = get_config(_env="testing")
 # Define a session-scoped fixture for the TestClient and Signatures
 @pytest.fixture(scope="session")
 def setup_environment():
-    # Setup the in-memory SQLite database for testing
-    engine = create_engine(
-        config.SQLALCHEMY_DATABASE_URI,
-        connect_args={"check_same_thread": False},
-        isolation_level="READ UNCOMMITTED", 
-        poolclass=StaticPool,
-    )
-    TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-    Base.metadata.create_all(bind=engine)
+    from libreforms_fastapi.app import ( 
+        SessionLocal as TestingSessionLocal, 
+        User,
+        Group,
+        TransactionLog,
+        ApprovalChains,
+        Signing,
+        signatures,
+        engine,
+    )
+
 
     # Here we create a group with limited permissions to ensure that the API 
     # appropriately constrains access based on group.
@@ -46,35 +49,26 @@ def setup_environment():
     from libreforms_fastapi.app import app, get_db
     client = TestClient(app)
 
-    # Dependency override for the database
-    def override_get_db():
-        db = TestingSessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = override_get_db
-
-    yield client
+    yield client, signatures
 
     Base.metadata.drop_all(bind=engine)
 
 # Individual fixtures for client and signatures to separate concerns and improve readability
 @pytest.fixture(scope="session")
 def client(setup_environment):
-    return setup_environment
+    return setup_environment[0]
 
 @pytest.fixture(scope="session")
 def signatures(setup_environment):
-    return Signatures(
-        config.SQLALCHEMY_DATABASE_URI, byte_len=32, 
-        rate_limiting=config.RATE_LIMITS_ENABLED,
-        rate_limiting_period=config.RATE_LIMITS_PERIOD, 
-        rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
-        Base=Base,
-        Signing=Signing
-    )
+    # return Signatures(
+    #     config.SQLALCHEMY_DATABASE_URI, byte_len=32, 
+    #     rate_limiting=config.RATE_LIMITS_ENABLED,
+    #     rate_limiting_period=config.RATE_LIMITS_PERIOD, 
+    #     rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
+    #     Base=Base,
+    #     Signing=Signing
+    # )
+    return setup_environment[1]
 
 @pytest.fixture(scope="module")
 def test_api_key(client, signatures):

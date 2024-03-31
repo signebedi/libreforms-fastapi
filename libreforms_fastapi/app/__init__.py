@@ -43,11 +43,9 @@ from starlette.authentication import (
 from http.cookies import SimpleCookie
 
 
-from sqlalchemy import (
-    create_engine, 
-    desc,
-)
-from sqlalchemy.orm import sessionmaker, declarative_base
+from sqlalchemy import create_engine 
+from sqlalchemy.orm import sessionmaker
+
 from sqlalchemy_signing import (
     Signatures,
     RateLimitExceeded, 
@@ -73,14 +71,7 @@ from libreforms_fastapi.utils.config import (
     validate_and_write_configs,
 )
 
-from libreforms_fastapi.utils.sqlalchemy_models import (
-    Base,
-    User,
-    TransactionLog,
-    Signing,
-    Group,
-    ApprovalChains,
-)
+from libreforms_fastapi.utils.sqlalchemy_models import Base, get_sqlalchemy_models
 
 from libreforms_fastapi.utils.scripts import (
     check_configuration_assumptions,
@@ -349,6 +340,8 @@ mailer = Mailer(
 if config.SMTP_ENABLED:
     logger.info('SMTP has been initialized')
 
+
+
 # Create the database engine, see
 # https://fastapi.tiangolo.com/tutorial/sql-databases/#create-the-sqlalchemy-parts
 engine = create_engine(
@@ -360,17 +353,25 @@ engine = create_engine(
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Initialize the signing table
-signatures = Signatures(config.SQLALCHEMY_DATABASE_URI, byte_len=32, 
-    # Pass the rate limiting settings from the app config
+# Here we build our relational database model using a sqlalchemy factory, 
+# see https://github.com/signebedi/libreforms-fastapi/issues/136.
+models, _, signatures, _ = get_sqlalchemy_models(
+    sqlalchemy_database_uri = config.SQLALCHEMY_DATABASE_URI,
+    set_timezone = config.TIMEZONE,
+    create_all = True,
+    engine=engine,
+    SessionLocal=SessionLocal,
     rate_limiting=config.RATE_LIMITS_ENABLED,
-    rate_limiting_period=config.RATE_LIMITS_PERIOD, 
+    rate_limiting_period=config.RATE_LIMITS_PERIOD,
     rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
-    Base=Base, # Here we pass the base
-    Signing=Signing, # And Signing object we've overwritten
 )
 
-Base.metadata.create_all(bind=engine)
+User = models['User']
+Group = models['Group']
+TransactionLog = models['TransactionLog']
+ApprovalChains = models['ApprovalChains']
+Signing = models['Signing']
+
 
 logger.info('Relational database has been initialized')
 
