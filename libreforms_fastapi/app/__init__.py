@@ -1,6 +1,6 @@
 import re, os, json, tempfile, logging, sys, asyncio, jwt
 from datetime import datetime, timedelta
-from typing import Dict, Optional, Annotated
+from typing import Dict, Union, List, Optional, Annotated, get_origin, get_args
 from markupsafe import escape
 from bson import ObjectId
 
@@ -96,11 +96,12 @@ from libreforms_fastapi.utils.document_database import (
 )
 
 from libreforms_fastapi.utils.pydantic_models import (
-    get_user_model,
     HelpRequest,
+    get_user_model,
     get_form_model,
     get_form_names,
     get_form_html,
+    load_form_config,
 )
 
 # Here we set the application config using the get_config
@@ -1779,12 +1780,52 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request):
     if document_id not in doc_db._get_existing_document_ids(form_name):
         raise HTTPException(status_code=404)
 
+    # Here we create a mask of metadata field names for the UI
+    metadata_field_mask = {x: x.replace("_", " ").title() for x in doc_db.metadata_fields if x not in [doc_db.journal_field]}
+    # print("\n\n\n", metadata_field_mask)
+
+
+    # # Here we load the form config in order to render fields correctly
+    form_config = load_form_config(config.FORM_CONFIG_PATH)
+    this_form = form_config[form_name]
+    form_field_mask = {x: x.replace("_", " ").title() for x in this_form.keys()}
+
+    # # We don't need to pass the full config, just type in a serializable format
+
+    # def _set_field_types(item):
+    #     print ("\n\n", item)
+
+    #     origin = get_origin(item['output_type'])
+
+    #     if item['output_type'] in [dict, Dict] or all([
+    #         origin,
+    #         origin == Union,
+    #         any([arg in [dict, Dict] for arg in get_args(item['output_type'])]),
+    #     ]):
+    #         return "dict"
+
+    #     elif item['output_type'] in [list, List] or all([
+    #         origin,
+    #         origin == Union,
+    #         any([arg in [list, List] for arg in get_args(item['output_type'])]),
+    #     ]):
+    #         return "list"
+    #     return "other"
+    
+    # form_field_types = {
+    #     x: _set_field_types(y)
+    #     for x, y in this_form.items()
+    # }
+
     return templates.TemplateResponse(
         request=request, 
         name="read_one_form.html.jinja", 
         context={
             "form_name": form_name,
             "document_id": document_id,
+            "metadata_field_mask": metadata_field_mask,
+            "form_field_mask": form_field_mask,
+            # "form_field_types": form_field_types,
             **build_ui_context(),
         }
     )
@@ -1820,6 +1861,14 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request):
 ### UI Routes - Auth
 ##########################
 
+@app.get("/", response_class=RedirectResponse)
+async def ui_redirect_to_home(response: Response, request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # Redirect to the homepage
+    response = RedirectResponse(request.url_for("ui_home"), status_code=303)
+    return response
 
 # Homepage
 @app.get("/ui/home", response_class=HTMLResponse)

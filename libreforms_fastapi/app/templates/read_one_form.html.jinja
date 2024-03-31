@@ -41,23 +41,56 @@ $(document).ready(function() {
     var formName = "{{ form_name }}";
     var documentId = "{{ document_id }}";
 
-    function renderTable(data, tableName) {
+    // This var will allow us to (1) select the metadata fields to display and 
+    // (2) mask these fields in a human-readable format.
+    var metadataFieldMask = {{ metadata_field_mask | tojson }};
+
+    // This var will allow us to render certain data types in a human-readable format.
+    var formFieldMask = {{ form_field_mask | tojson }};
+
+    function formatValue(value) {
+        if (Array.isArray(value)) {
+            // Format array as comma-separated string
+            return value.join(', ');
+        } else if (typeof value === 'object' && value !== null) {
+            // Format object in a pretty way
+            var formattedObject = '<ul>';
+            for (var key in value) {
+                formattedObject += `<li>${key}: ${formatValue(value[key])}</li>`; // Recursive call for nested objects
+            }
+            formattedObject += '</ul>';
+            return formattedObject;
+        } else {
+            // Return other types (number, string) as is
+            return value;
+        }
+    }
+
+
+    function renderTable(data, tableName, fieldMappings = null) {
         var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
         table += '<th>Attribute</th><th>Value</th>';
         table += '</tr></thead><tbody>';
 
         for (var key in data) {
-            table += '<tr>';
-            table += '<td>' + key + '</td>';
-            var value = data[key];
+            if ( fieldMappings == null || key in fieldMappings ) {
+        
+                var attributeName = (fieldMappings && key in fieldMappings) ? fieldMappings[key] : key;
+        
+                table += '<tr>';
+                table += '<td>' + attributeName + '</td>';
+                var value = data[key];
 
-            // Check if the value is an array or object and convert it to a string
-            if (typeof value === 'object' && value !== null) {
-                value = JSON.stringify(value);
+                value = formatValue(value);
+
+                table += '<td>' + value + '</td>';
+                table += '</tr>';
+
+            } else {
+                console.log(key, fieldMappings)
+                continue;
+                
             }
-
-            table += '<td>' + value + '</td>';
-            table += '</tr>';
         }
 
         table += '</tbody></table>';
@@ -73,8 +106,8 @@ $(document).ready(function() {
             },
             dataType: 'json',
             success: function(response) {
-                var dataTable = renderTable(response.data, "dataTable");
-                var metadataTable = renderTable(response.metadata, "metadataTable");
+                var dataTable = renderTable(response.data, "dataTable", fieldMappings=formFieldMask);
+                var metadataTable = renderTable(response.metadata, "metadataTable", fieldMappings=metadataFieldMask);
                 $('#documentContent').html(dataTable);
                 $('#documentMetadata').html(metadataTable);
 
