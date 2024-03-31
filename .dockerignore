@@ -7,3 +7,5 @@ venv/
 ENV/
 venv
 __pycache__/
+*.egg*
+instance/

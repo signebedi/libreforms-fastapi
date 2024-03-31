@@ -355,7 +355,7 @@ class ManageTinyDB(ManageDocumentDB):
             }
         }
 
-        # data_dict['metadata'][self.journal_field] = []
+        # Here we an an initial dictionary
         journal = []
         journal.append (
             {

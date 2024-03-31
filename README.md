@@ -26,10 +26,13 @@ libreformsctl nginx production # Optional if you want a reverse proxy
 
 #### Running in Docker
 
+Follow the instructions below to run in docker. Creating a custom volume is optional but will give you control over the application configurations and, in the event you are using TinyDB and SQLite, you will also be able to access the database files.
+
 ```bash
 git clone https://github.com/signebedi/libreforms-fastapi.git
 cd libreforms-fastapi/
 sudo docker build -t libreforms-fastapi . # Please note this can take several minutes
-sudo docker run -d -p 8000:8000 libreforms-fastapi
+sudo docker volume create libreforms-volume # Create a volume for the instance directory
+sudo docker run -d -v libreforms-volume:/app/instance -p 8000:8000 libreforms-fastapi
 ```
 
