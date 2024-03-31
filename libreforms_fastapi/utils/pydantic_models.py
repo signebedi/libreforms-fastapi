@@ -1,6 +1,6 @@
 import re, os
 from datetime import datetime, date
-from typing import List, Optional, Dict, Type, Any
+from typing import List, Optional, Dict, Type, Any, Annotated
 
 from pydantic import (
     BaseModel,
@@ -77,7 +77,7 @@ example_form_config = {
             "validators": {
                 "_min_length": 25, # for number fields this will be treated as a min value
                 "_max_length": 47, # for number fields this will be treated as a max value
-                "_regex": None,
+                "_regex": r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
             },
             "required": False,
             "options": None,
@@ -249,53 +249,41 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
     class Config:
         arbitrary_types_allowed = True
 
-    validators_definitions = {}
-
     for field_name, field_info in fields.items():
         python_type = field_info["output_type"]
-        default = None if update else field_info.get("default", ...)
+        default_value = None if update else field_info.get("default", ...)
         required = field_info.get("required", False)
         validators = field_info.get("validators", {})
+        description = field_info.get("description", False)
 
+
+        field_params = {}
+        field_params["description"] = description
+        field_params["repr"] = True # Show this field in the __repr__
         if python_type == str:
-            min_length = validators.get("_min_length")
-            max_length = validators.get("_max_length")
-            python_type = constr(min_length=min_length, max_length=max_length) if min_length or max_length else python_type
-
-        elif python_type == int:
-            min_value = validators.get("_min_length")
-            max_value = validators.get("_max_length")
-            python_type = conint(ge=min_value, le=max_value)
-
-        elif python_type == float:
-            min_value = validators.get("_min_length")
-            max_value = validators.get("_max_length")
-            python_type = confloat(ge=min_value, le=max_value)
-
+            if "_min_length" in validators:
+                field_params["min_length"] = validators.get("_min_length", None)
+            if "_max_length" in validators:
+                field_params["max_length"] = validators.get("_max_length", None)
+            if "_regex" in validators:
+                field_params["pattern"] = validators.get("_regex", None)
+        
+        elif python_type in [int, float]:
+            if "_min_length" in validators:
+                field_params["ge"] = validators.get("_min_length", None)
+            if "_max_length" in validators:
+                field_params["le"] = validators.get("_max_length", None)
+        
         if not required or update:
             python_type = Optional[python_type]
-
-        field_definitions[field_name] = (python_type, default)
-
-        # Setup regex validator if specified
-        regex_pattern = validators.get("_regex")
-        if regex_pattern:
-            def create_validator(pattern):
-                def validate_regex(cls, value, field: str = field_name):
-                    if not re.match(pattern, value):
-                        raise ValueError(f"{field} must match regex pattern: {pattern}")
-                    return value
-                return validate_regex
-
-            validator_name = f"validate_{field_name}"
-            validators_definitions[validator_name] = validator(field_name, allow_reuse=True)(create_validator(regex_pattern))
+            field = Field(default=default_value, **field_params)
+        else:
+            field = Field(default=..., **field_params)
+        
+        field_definitions[field_name] = (python_type, field)
 
     # Create dynamic model
     dynamic_model = create_model(form_name, __config__=Config, **field_definitions)
-
-    # Add validators to the model
-    for name, func in validators_definitions.items():
-        setattr(dynamic_model, name, func)
 
     return dynamic_model
 
@@ -318,6 +306,9 @@ def get_form_html(form_name:str, config_path:str=config.FORM_CONFIG_PATH, curren
     form_html = []
     
     for field_name, field_info in form_config[form_name].items():
+
+        validators = field_info.get("validators", {})
+
         default = current_document['data'][field_name] if current_document and field_name in current_document['data'] else field_info.get("default")
         field_html = ""
 
