@@ -48,3 +48,32 @@ function getAndClearFlashMessages() {
     localStorage.removeItem('flashMessage'); // Clear all at once after reading
     return messages;
 }
+
+// These are a few functions for escaping content in the event the server side escaping
+// proves insufficient.
+function escapeHtml(text) {
+    return text
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#039;');
+  }
+
+  function escapeJsonData(data) {
+    if (typeof data === 'string') {
+      return escapeHtml(data);
+    } else if (Array.isArray(data)) {
+      return data.map(item => escapeJsonData(item));
+    } else if (typeof data === 'object' && data !== null) {
+      const escapedData = {};
+      for (const [key, value] of Object.entries(data)) {
+        escapedData[key] = escapeJsonData(value);
+      }
+      return escapedData;
+    } else {
+      // Return the data as-is if it's not a string, array, or object
+      return data;
+    }
+  }
+  

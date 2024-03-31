@@ -115,7 +115,7 @@ class Config(BaseSettings):
     SQLALCHEMY_TRACK_MODIFICATIONS:bool = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False') == 'True'
 
     USERNAME_REGEX: str = os.getenv('USERNAME_REGEX', r"^\w\w\w\w+$")
-    USERNAME_HELPER_TEXT: str = os.getenv('USERNAME_HELPER_TEXT', "Username must be 4-36 alphanumeric characters")
+    USERNAME_HELPER_TEXT: str = os.getenv('USERNAME_HELPER_TEXT', "Username must be 4-36 alphanumeric characters and underscores")
     PASSWORD_REGEX: str = os.getenv('PASSWORD_REGEX', r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+[\]{};\'\\:"|,.<>/?])[A-Za-z\d!@#$%^&*()_+[\]{};\'\\:"|,.<>/?]{8,}$')
     PASSWORD_HELPER_TEXT: str = os.getenv('PASSWORD_HELPER_TEXT', "Password must be 8+ characters, must include uppercase, lowercase, digit, and special character")
 
@@ -130,6 +130,10 @@ class Config(BaseSettings):
     # Here we specify a path to our JSON form config representation, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/37.
     FORM_CONFIG_PATH:str = os.getenv('FORM_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "form_config.json")))
+
+    # Here we allow admins to decide whether to enable site documentation 
+    DOCS_ENABLED:bool = os.getenv('DOCS_ENABLED', 'False') == 'True'
+    DOCS_PATH:str = os.getenv('DOCS_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "docs.md")))
 
     SMTP_ENABLED:bool = os.getenv('SMTP_ENABLED', 'False') == 'True'
     SMTP_MAIL_SERVER:str = os.getenv('SMTP_MAIL_SERVER', "")

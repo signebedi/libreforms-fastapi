@@ -3,6 +3,7 @@ from bson import ObjectId
 from fuzzywuzzy import fuzz
 from datetime import datetime
 from zoneinfo import ZoneInfo
+from markupsafe import escape
 
 from tinydb import (
     Query, 
@@ -10,6 +11,7 @@ from tinydb import (
 
 from typing import (
     Union,
+    Any,
 )
 from abc import ABC, abstractmethod
 
@@ -75,7 +77,6 @@ class NoChangesProvided(Exception):
         super().__init__(message)
 
 
-SignatureError
 # Pulled from https://github.com/signebedi/gita-api
 def fuzzy_search_normalized(text_string, search_term, segment_length=None):
     if segment_length is None:
@@ -89,6 +90,24 @@ def fuzzy_search_normalized(text_string, search_term, segment_length=None):
         if score > highest_score:
             highest_score = score
     return highest_score
+
+def escape_data_field(data: Any) -> Any:
+    """
+    Recursively escapes all string values in a data structure.
+    Supports dictionaries, lists, and basic stirngs.
+    """
+    if isinstance(data, dict):
+        # Escape each value in the dictionary
+        return {key: escape_data_field(value) for key, value in data.items()}
+    elif isinstance(data, list):
+        # Escape each item in the list
+        return [escape_data_field(item) for item in data]
+    elif isinstance(data, str):
+        # Escape string values
+        return escape(data)
+    else:
+        # Return non-string values unchanged
+        return data
 
 
 def get_document_database(
@@ -724,7 +743,13 @@ class ManageTinyDB(ManageDocumentDB):
 
         return documents
 
-    def get_all_documents(self, form_name:str, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
+    def get_all_documents(
+        self,
+        form_name:str, 
+        limit_users:Union[bool, str]=False, 
+        exclude_deleted:bool=True,
+        escape_output:bool=True
+    ):
 
         """Retrieves all entries from the specified form's database."""
         self._check_form_exists(form_name)
@@ -740,9 +765,21 @@ class ManageTinyDB(ManageDocumentDB):
         if exclude_deleted:
             documents = [x for x in documents if x['metadata'][self.is_deleted_field] == False]
 
+        # If we've opted to escape output, then do so here
+        if escape_output:
+            for document in documents:
+                document['data'] = escape_data_field(document['data'])
+
         return documents
 
-    def get_one_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, exclude_deleted:bool=True):
+    def get_one_document(
+        self, 
+        form_name:str,
+        document_id:str, 
+        limit_users:Union[bool, str]=False, 
+        exclude_deleted:bool=True,
+        escape_output:bool=True
+    ):
         """Retrieves a single entry that matches the search query."""
         self._check_form_exists(form_name)
 
@@ -756,6 +793,10 @@ class ManageTinyDB(ManageDocumentDB):
 
         if exclude_deleted and document['metadata'][self.is_deleted_field] == True:
             return None
+
+        # If we've opted to escape output, then do so here
+        if escape_output:
+            document['data'] = escape_data_field(document['data'])
 
         return document
 
