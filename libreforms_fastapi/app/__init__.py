@@ -111,9 +111,9 @@ from libreforms_fastapi.utils.document_database import (
 )
 
 from libreforms_fastapi.utils.pydantic_models import (
-    CreateUserRequest,
+    get_user_model,
     HelpRequest,
-    get_form_config,
+    get_form_model,
     get_form_names,
     get_form_html,
 )
@@ -156,7 +156,14 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
 # https://github.com/signebedi/libreforms-fastapi/issues/79
 site_key_pair = RuntimeKeypair(env=config.ENVIRONMENT)
 
-
+# Here we instantiate the user model, which we are using a factory
+# function for to avoid needing to import the config to pydantic...
+CreateUserRequest = get_user_model(
+    username_regex=config.USERNAME_REGEX,
+    username_helper_text=config.USERNAME_HELPER_TEXT,
+    password_regex=config.PASSWORD_REGEX,
+    password_helper_text=config.PASSWORD_HELPER_TEXT,
+)
 
 class LibreFormsUser(BaseUser):
     def __init__(
@@ -394,7 +401,6 @@ with SessionLocal() as session:
 
 
 # Initialize the document database
-
 doc_db = get_document_database(form_names_callable=get_form_names, timezone=config.TIMEZONE, env=config.ENVIRONMENT, use_mongodb=config.MONGODB_ENABLED, mongodb_uri=config.MONGODB_URI)
 logger.info('Document Database has been initialized')
 
@@ -507,11 +513,11 @@ async def api_form_create(
     body: Dict = Body(...)
 ):
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Yield the pydantic form model
-    FormModel = get_form_config(form_name=form_name)
+    FormModel = get_form_model(form_name=form_name, config_path=config.FORM_CONFIG_PATH)
 
 
     # Here we validate and coerce data into its proper type
@@ -599,7 +605,7 @@ async def api_form_read_one(
     key: str = Depends(X_API_KEY)
 ):
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -661,7 +667,7 @@ async def api_form_read_all(
     key: str = Depends(X_API_KEY)
 ):
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -724,7 +730,7 @@ async def api_form_update(
     body: Dict = Body(...)
 ):
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Yield the pydantic form model, setting update to True, which will mark
@@ -732,7 +738,7 @@ async def api_form_update(
     # including unchanged fields. The benefit is simplicity all over the 
     # application, because we can just pull the data, update fields as appropriate,
     # and pass the full payload to the document database to parse and clean up.
-    FormModel = get_form_config(form_name=form_name, update=True)
+    FormModel = get_form_model(form_name=form_name, config_path=config.FORM_CONFIG_PATH, update=True)
 
     # # Here we validate and coerce data into its proper type
     form_data = FormModel.model_validate(body)
@@ -835,7 +841,7 @@ async def api_form_delete(
     key: str = Depends(X_API_KEY)
 ):
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -924,7 +930,7 @@ async def api_form_restore(
     key: str = Depends(X_API_KEY)
 ):
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -1016,7 +1022,7 @@ async def api_form_search(
     search_term: str = Query(None, title="Search Term")
 ):
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     if search_term is None or len(search_term) == 0:
@@ -1028,7 +1034,7 @@ async def api_form_search(
 
     # Here we are working to unpack permissions across multiple forms.
     user_group_permissions = user.compile_permissions()
-    form_names = get_form_names()
+    form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
     limit_query_to = {}
 
     for form_name in form_names:
@@ -1088,7 +1094,7 @@ async def api_form_search_all(
 
     # Here we are working to unpack permissions across multiple forms.
     user_group_permissions = user.compile_permissions()
-    form_names = get_form_names()
+    form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
     limit_query_to = {}
 
     for form_name in form_names:
@@ -1143,7 +1149,7 @@ async def api_form_sign(
     # The underlying principle is that the user can only sign their own form. The question is what 
     # part of the application decides: the API, or the document database?
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -1239,7 +1245,7 @@ async def api_form_sign(
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
 ):
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -1347,7 +1353,7 @@ async def api_validate_signature(
     # The underlying principle is that the user can only sign their own form. The question is what 
     # part of the application decides: the API, or the document database?
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -1750,7 +1756,7 @@ def build_ui_context():
 
     kwargs["config"] = config.model_dump()
     kwargs["version"] = __version__
-    kwargs["available_forms"] = get_form_names()
+    kwargs["available_forms"] = get_form_names(config_path=config.FORM_CONFIG_PATH)
     kwargs["current_year"] = datetime.now().year
 
     return kwargs
@@ -1762,12 +1768,11 @@ async def ui_form_create(form_name:str, request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # generate_html_form
-
-    form_html = get_form_html(form_name=form_name)
+    form_html = get_form_html(form_name=form_name, config_path=config.FORM_CONFIG_PATH)
 
     return templates.TemplateResponse(
         request=request, 
@@ -1788,7 +1793,7 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
-    if form_name not in get_form_names():
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404)
 
     if document_id not in doc_db._get_existing_document_ids(form_name):

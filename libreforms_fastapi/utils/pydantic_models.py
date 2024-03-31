@@ -18,11 +18,6 @@ from pydantic import (
 
 from pydantic.functional_validators import field_validator, model_validator
 
-from libreforms_fastapi.utils.config import get_config
-
-_env = os.environ.get('ENVIRONMENT', 'development')
-config = get_config(_env)
-
 class ImproperUsernameFormat(Exception):
     """Raised when the username does not meet the regular expression defined in the app config"""
     pass
@@ -35,36 +30,44 @@ class PasswordMatchException(Exception):
     """Raised when the passwords provided do not match each other"""
     pass
 
+def get_user_model(
+    username_regex,
+    username_helper_text,
+    password_regex,
+    password_helper_text,
+):
 
-class CreateUserRequest(BaseModel):
-    username: str = Field(..., min_length=2, max_length=100)
-    # Added a little syntactic salt with the SecretStr, see https://stackoverflow.com/a/65277859/13301284
-    password: SecretStr = Field(..., min_length=8)
-    verify_password: SecretStr = Field(..., min_length=8)
-    email: EmailStr
-    opt_out: bool = False
+    class UserModel(BaseModel):
+        username: str = Field(..., min_length=2, max_length=100)
+        # Added a little syntactic salt with the SecretStr, see https://stackoverflow.com/a/65277859/13301284
+        password: SecretStr = Field(..., min_length=8)
+        verify_password: SecretStr = Field(..., min_length=8)
+        email: EmailStr
+        opt_out: bool = False
 
-    @validator('username')
-    def username_pattern(cls, value):
-        pattern = re.compile(config.USERNAME_REGEX)
-        if not pattern.match(value):
-            raise ValueError(config.USERNAME_HELPER_TEXT)
-        return value.lower()
+        @validator('username')
+        def username_pattern(cls, value):
+            pattern = re.compile(username_regex)
+            if not pattern.match(value):
+                raise ValueError(username_helper_text)
+            return value.lower()
 
-    @validator('password', 'verify_password', pre=True, each_item=False)
-    def password_pattern(cls, value):
-        # Since value is now of type SecretStr, we need to get its actual value
-        password = value.get_secret_value() if isinstance(value, SecretStr) else value
-        pattern = re.compile(config.PASSWORD_REGEX)
-        if not pattern.match(password):
-            raise ValueError(config.PASSWORD_HELPER_TEXT)
-        return value
+        @validator('password', 'verify_password', pre=True, each_item=False)
+        def password_pattern(cls, value):
+            # Since value is now of type SecretStr, we need to get its actual value
+            password = value.get_secret_value() if isinstance(value, SecretStr) else value
+            pattern = re.compile(password_regex)
+            if not pattern.match(password):
+                raise ValueError(password_helper_text)
+            return value
 
-    @validator('verify_password', always=True)
-    def passwords_match(cls, v, values, **kwargs):
-        if 'password' in values and v.get_secret_value() != values['password'].get_secret_value():
-            raise ValueError('Passwords do not match')
-        return v
+        @validator('verify_password', always=True)
+        def passwords_match(cls, v, values, **kwargs):
+            if 'password' in values and v.get_secret_value() != values['password'].get_secret_value():
+                raise ValueError('Passwords do not match')
+            return v
+
+    return UserModel
 
 # Example form configuration with default values set
 example_form_config = {
@@ -167,10 +170,13 @@ example_form_config = {
     },
 }
 
-def load_form_config(config_path=config.FORM_CONFIG_PATH):
+def load_form_config(config_path=None):
     """This is a quick abstraction to load the json form config"""
     # Try to open config_path and if not existent or empty, use example config
     form_config = example_form_config  # Default to example_form_config
+
+    if not config_path:
+        return form_config
 
     if os.path.exists(config_path):
         try:
@@ -185,17 +191,17 @@ def load_form_config(config_path=config.FORM_CONFIG_PATH):
     return form_config
 
 
-def get_form_names(config_path=config.FORM_CONFIG_PATH):
+def get_form_names(config_path=None):
     """
     Given a form config path, return a list of available forms, defaulting to the example 
     dictionary provided above.
     """
 
-    form_config = load_form_config(config_path=config.FORM_CONFIG_PATH)
+    form_config = load_form_config(config_path=config_path)
     return form_config.keys()
 
 
-def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False):
+def get_form_model(form_name, config_path=None, update=False):
     """
     Generates a Pydantic model based on the form configuration.
 
@@ -247,7 +253,7 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
 
     return dynamic_model
 
-def get_form_html(form_name:str, config_path:str=config.FORM_CONFIG_PATH, current_document:dict=None) -> List[str]:
+def get_form_html(form_name: str, config_path: str | None = None, current_document: dict | None = None) -> List[str]:
     """
     Generates a list of Bootstrap 5 styled HTML form fields based on the input config and form name,
     supporting default values.

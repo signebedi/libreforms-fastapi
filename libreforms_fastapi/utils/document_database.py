@@ -13,8 +13,6 @@ from typing import (
 )
 from abc import ABC, abstractmethod
 
-from libreforms_fastapi.utils.logging import set_logger
-
 # This import is used to afix digital signatures to records
 from libreforms_fastapi.utils.certificates import sign_record, verify_record_signature
 
@@ -268,6 +266,8 @@ class ManageTinyDB(ManageDocumentDB):
         self.use_logger = use_logger
 
         if self.use_logger:
+            from libreforms_fastapi.utils.logging import set_logger
+
             self.logger = set_logger(
                 environment=self.env, 
                 log_file_name=self.log_name, 
@@ -408,12 +408,6 @@ class ManageTinyDB(ManageDocumentDB):
             if self.use_logger:
                 self.logger.warning(f"Insufficient permissions to update document for {form_name} with document_id {document_id}")
             raise InsufficientPermissions(form_name, document_id, limit_users)
-
-        # Here we validate and coerce document into its proper types
-        # FormModel = get_form_config(form_name=form_name, update=True)
-        # _type_safe_data = FormModel.model_validate(document['data'])
-        # _data_dict = _type_safe_data.model_dump()
-
 
         current_timestamp = datetime.now(self.timezone)
 
