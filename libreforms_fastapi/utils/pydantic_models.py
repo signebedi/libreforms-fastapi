@@ -226,26 +226,13 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
 
         validators: dict = field_info.get("validators", {})
         if not isinstance(validators, dict):
-            raise ValueError(f"Form config is malformed. Form name: {form_name}. Field name: {field_name}.")
+            raise ValueError(f"Form config validators option is malformed. Form name: {form_name}. Field name: {field_name}.")
 
 
         field_params = {}
         field_params["description"] = description
         field_params["repr"] = True # Show this field in the __repr__
         field_params = {**field_params, **validators}
-        if python_type == str:
-            if "_min_length" in validators:
-                field_params["min_length"] = validators.get("_min_length", None)
-            if "_max_length" in validators:
-                field_params["max_length"] = validators.get("_max_length", None)
-            if "pattern" in validators:
-                field_params["pattern"] = validators.get("_regex", None)
-        
-        elif python_type in [int, float]:
-            if "_min_length" in validators:
-                field_params["ge"] = validators.get("_min_length", None)
-            if "_max_length" in validators:
-                field_params["le"] = validators.get("_max_length", None)
         
         if not required or update:
             python_type = Optional[python_type]
@@ -280,7 +267,28 @@ def get_form_html(form_name:str, config_path:str=config.FORM_CONFIG_PATH, curren
     
     for field_name, field_info in form_config[form_name].items():
 
-        validators = field_info.get("validators", {})
+        validators: dict = field_info.get("validators", {})
+        if not isinstance(validators, dict):
+            raise ValueError(f"Form config validators option is malformed. Form name: {form_name}. Field name: {field_name}.")
+
+
+        # Likely common validators
+        field_params = f""
+        if "gt" in validators:
+            field_params += f'min=\"{validators["gt"]-1}\" '
+        if "ge" in validators:
+            field_params += f'min=\"{validators["ge"]}\" '
+        if "lt" in validators:
+            field_params += f'max=\"{validators["lt"]+1}\" '
+        if "le" in validators:
+            field_params += f'max=\"{validators["le"]}\" '
+        if "max_length" in validators:
+            field_params += f'maxlength=\"{validators["max_length"]}\" '
+        if "min_length" in validators:
+            field_params += f'minlength=\"{validators["min_length"]}\" '
+        if "pattern" in validators:
+            field_params += f'pattern=\"{validators["pattern"]}\" '
+
 
         default = current_document['data'][field_name] if current_document and field_name in current_document['data'] else field_info.get("default")
         field_html = ""
@@ -292,7 +300,7 @@ def get_form_html(form_name:str, config_path:str=config.FORM_CONFIG_PATH, curren
                 <fieldset class="form-check" style="padding-top: 10px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
                     <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
-                    <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" value="{default or ''}">
+                    <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params} value="{default or ''}">
                     <div class="valid-feedback"></div>
                     <div class="invalid-feedback"></div>
                 </fieldset>'''
@@ -302,7 +310,7 @@ def get_form_html(form_name:str, config_path:str=config.FORM_CONFIG_PATH, curren
                 <fieldset class="form-check" style="padding-top: 10px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
                     <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
-                    <textarea class="form-control" id="{field_name}" name="{field_name}" rows="4">{default or ''}</textarea>
+                    <textarea class="form-control" id="{field_name}" name="{field_name}" {field_params} rows="4" style="resize: vertical; max-height: 300px;">{default or ''}</textarea>
                     <div class="valid-feedback"></div>
                     <div class="invalid-feedback"></div>
                 </fieldset>'''

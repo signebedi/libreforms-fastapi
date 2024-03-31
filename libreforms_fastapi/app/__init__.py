@@ -513,7 +513,6 @@ async def api_form_create(
     # Yield the pydantic form model
     FormModel = get_form_config(form_name=form_name)
 
-    print("\n\n\n", FormModel)
 
     # Here we validate and coerce data into its proper type
     try: 
@@ -846,7 +845,6 @@ async def api_form_delete(
     # Here we validate the user groups permit this level of access to the form
     try:
         user.validate_permission(form_name=form_name, required_permission="delete_own")
-        # print("\n\n\nUser has valid permissions\n\n\n")
     except Exception as e:
         raise HTTPException(status_code=403, detail=f"{e}")
 
@@ -1100,7 +1098,7 @@ async def api_form_search_all(
             else:
                 limit_query_to[form_name] = user.username
 
-    print("\n\n\n", limit_query_to)
+    # print("\n\n\n", limit_query_to)
 
     documents = doc_db.fuzzy_search_documents(
         search_term=search_term,
