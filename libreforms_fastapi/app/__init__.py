@@ -41,12 +41,7 @@ from starlette.authentication import (
 )
 from http.cookies import SimpleCookie
 
-
-from sqlalchemy import create_engine 
-from sqlalchemy.orm import sessionmaker
-
 from sqlalchemy_signing import (
-    Signatures,
     RateLimitExceeded, 
     KeyDoesNotExist, 
     KeyExpired,

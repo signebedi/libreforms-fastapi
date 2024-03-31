@@ -25,7 +25,6 @@ def setup_environment():
         engine,
     )
 
-
     # Here we create a group with limited permissions to ensure that the API 
     # appropriately constrains access based on group.
     with SessionLocal() as session:
