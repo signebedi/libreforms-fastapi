@@ -75,9 +75,9 @@ example_form_config = {
             "field_name": "text_input",
             "default": "Default Text",
             "validators": {
-                "_min_length": 25, # for number fields this will be treated as a min value
-                "_max_length": 47, # for number fields this will be treated as a max value
-                "_regex": r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$',
+                "min_length": 1, # These are drawn from:
+                "max_length": 200, # https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
+                "pattern": r'^[\s\S]*$',
             },
             "required": False,
             "options": None,
@@ -89,9 +89,8 @@ example_form_config = {
             "field_name": "number_input",
             "default": 42,
             "validators": {
-                "_min_length": None, # for number fields this will be treated as a min value
-                "_max_length": None, # for number fields this will be treated as a max value
-                "_regex": None,
+                "ge": 0, # These are drawn from:
+                "le": 10000, # https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
             },
             "required": False,
             "options": None,
@@ -102,11 +101,6 @@ example_form_config = {
             "output_type": str,
             "field_name": "email_input",
             "default": "user@example.com",
-            "validators": {
-                "_min_length": None, # for number fields this will be treated as a min value
-                "_max_length": None, # for number fields this will be treated as a max value
-                "_regex": None,
-            },
             "required": False,
             "options": None,
             "description": "This is an email field",
@@ -116,11 +110,6 @@ example_form_config = {
             "output_type": date,
             "field_name": "date_input",
             "default": "2024-01-01",
-            "validators": {
-                "_min_length": None, # for number fields this will be treated as a min value
-                "_max_length": None, # for number fields this will be treated as a max value
-                "_regex": None,
-            },
             "required": False,
             "options": None,
             "description": "This is a date field",
@@ -130,11 +119,6 @@ example_form_config = {
             "output_type": List[str],
             "field_name": "checkbox_input",
             "options": ["Option1", "Option2", "Option3"],
-            "validators": {
-                "_min_length": None, # for number fields this will be treated as a min value
-                "_max_length": None, # for number fields this will be treated as a max value
-                "_regex": None,
-            },
             "required": False,
             "default": ["Option1", "Option3"],
             "description": "This is a checkbox field",
@@ -144,11 +128,6 @@ example_form_config = {
             "output_type": str,
             "field_name": "radio_input",
             "options": ["Option1", "Option2"],
-            "validators": {
-                "_min_length": None, # for number fields this will be treated as a min value
-                "_max_length": None, # for number fields this will be treated as a max value
-                "_regex": None,
-            },
             "required": False,
             "default": "Option2",
             "description": "This is a radio field",
@@ -158,11 +137,6 @@ example_form_config = {
             "output_type": str,
             "field_name": "select_input",
             "options": ["Option1", "Option2", "Option3"],
-            "validators": {
-                "_min_length": None, # for number fields this will be treated as a min value
-                "_max_length": None, # for number fields this will be treated as a max value
-                "_regex": None,
-            },
             "required": False,
             "default": "Option2",
             "description": "This is a select field",
@@ -173,9 +147,9 @@ example_form_config = {
             "field_name": "textarea_input",
             "default": "Default textarea content.",
             "validators": {
-                "_min_length": None, # for number fields this will be treated as a min value
-                "_max_length": None, # for number fields this will be treated as a max value
-                "_regex": None,
+                "min_length": 1, # These are drawn from:
+                "max_length": 200, # https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
+                "pattern": r'^[\s\S]*$',
             },
             "required": False,
             "options": None,
@@ -186,11 +160,6 @@ example_form_config = {
             "output_type": bytes,
             "field_name": "file_input",
             "options": None,
-            "validators": {
-                "_min_length": None, # for number fields this will be treated as a min value
-                "_max_length": None, # for number fields this will be treated as a max value
-                "_regex": None,
-            },
             "required": False,
             "default": None,  # File inputs can't have default values
             "description": "This is a file field",
@@ -253,19 +222,23 @@ def get_form_config(form_name, config_path=config.FORM_CONFIG_PATH, update=False
         python_type = field_info["output_type"]
         default_value = None if update else field_info.get("default", ...)
         required = field_info.get("required", False)
-        validators = field_info.get("validators", {})
         description = field_info.get("description", False)
+
+        validators: dict = field_info.get("validators", {})
+        if not isinstance(validators, dict):
+            raise ValueError(f"Form config is malformed. Form name: {form_name}. Field name: {field_name}.")
 
 
         field_params = {}
         field_params["description"] = description
         field_params["repr"] = True # Show this field in the __repr__
+        field_params = {**field_params, **validators}
         if python_type == str:
             if "_min_length" in validators:
                 field_params["min_length"] = validators.get("_min_length", None)
             if "_max_length" in validators:
                 field_params["max_length"] = validators.get("_max_length", None)
-            if "_regex" in validators:
+            if "pattern" in validators:
                 field_params["pattern"] = validators.get("_regex", None)
         
         elif python_type in [int, float]:
