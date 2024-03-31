@@ -4,6 +4,8 @@ from typing import Dict, Optional, Annotated
 from markupsafe import escape
 from bson import ObjectId
 
+
+from pydantic import ValidationError
 from fastapi import (
     FastAPI,
     Body,
@@ -512,7 +514,12 @@ async def api_form_create(
     FormModel = get_form_config(form_name=form_name)
 
     # # Here we validate and coerce data into its proper type
-    form_data = FormModel.model_validate(body)
+    try: 
+        form_data = FormModel.model_validate(body)
+    except ValidationError as e:
+        raise HTTPException(status_code=422, detail=f"There was an error with one of your fields: {e}")
+
+    
     json_data = form_data.model_dump_json()
     data_dict = form_data.model_dump()
 
