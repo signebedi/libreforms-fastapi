@@ -28,7 +28,11 @@
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    var $createButton = $('#createButton').prop('disabled', true);
+    // var $createButton = $('#createButton').prop('disabled', true);
+
+    // Initialize Bootstrap tooltips
+    $('[data-bs-toggle="tooltip"]').tooltip();
+
 
     // Enable the Create button only if there's some data
     function toggleCreateButton() {
@@ -45,58 +49,87 @@ $(document).ready(function() {
     // Form submission event
     $('#dataForm').submit(function(event) {
         event.preventDefault(); // Prevent the form from submitting via the browser
-        
-        var formData = {};
-        
-        // Process all except checkboxes
-        $('#dataForm').find('input:not(:checkbox), textarea, select').each(function() {
-            formData[this.name] = $(this).val();
-        });
-        
-        // Process checkboxes: group them by name and gather checked values into arrays
-        $('#dataForm').find('input:checkbox').each(function() {
-            if (!formData.hasOwnProperty(this.name)) {
-                formData[this.name] = [];
-            }
-            if ($(this).is(':checked')) {
-                formData[this.name].push($(this).val() || true); // Push 'true' if value is unspecified
-            }
-        });
 
-        // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
-        var apiKey = "{{ request.user.api_key }}"; // Adjust based on actual access method
-        var formName = "{{ form_name }}";
 
-        $.ajax({
-            url: `/api/form/create/${formName}`,
-            type: 'POST',
-            headers: {
-                'X-API-KEY': apiKey,
-            },
-            data: JSON.stringify(formData),
-            contentType: 'application/json; charset=utf-8',
-            dataType: 'json',
-            success: function(response) {
-                // Redirect to the read_one page with the form_name and document_id from the response
-                setFlashMessage("Successfully created form submission", AlertCategories.SUCCESS);
-                
+        // Flag to track if the form is valid
+        let formIsValid = true;
 
-                // We purposefully delay for a second before relocating to the new document
-                setTimeout(function() {
-                    window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
-                }, 1000);
+        // Iterate over each required checkbox group
+        $('.required-checkbox-group[data-required="true"]').each(function() {
+            const $group = $(this);
+            const isChecked = $group.find('input[type="checkbox"]:checked').length > 0;
 
-            },
-            error: function(xhr) {
-                // Handle errors, e.g., show an error message
-                console.error('Form creation failed', xhr.responseText);
-                // Implement flashMessage or another way to show errors to the user
-                flashMessage(xhr.responseText, 'warning');
-                
-                // Optionally re-enable the Create button here
-                $createButton.prop('disabled', false);
+            if (!isChecked) {
+                formIsValid = false;
+
+                // Temporarily show the tooltip
+                $group.tooltip('dispose').tooltip({
+                    title: "Please select at least one option.",
+                    placement: 'right'
+                }).tooltip('show');
+
+                // Hide the tooltip after 2 seconds
+                setTimeout(function() { $group.tooltip('dispose'); }, 2000);
             }
         });
+
+        // Prevent form submission if validation fails
+        if (!formIsValid) {
+            event.preventDefault();
+            
+        } else {
+            var formData = {};
+            
+            // Process all except checkboxes
+            $('#dataForm').find('input:not(:checkbox), textarea, select').each(function() {
+                formData[this.name] = $(this).val();
+            });
+            
+            // Process checkboxes: group them by name and gather checked values into arrays
+            $('#dataForm').find('input:checkbox').each(function() {
+                if (!formData.hasOwnProperty(this.name)) {
+                    formData[this.name] = [];
+                }
+                if ($(this).is(':checked')) {
+                    formData[this.name].push($(this).val() || true); // Push 'true' if value is unspecified
+                }
+            });
+
+            // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
+            var apiKey = "{{ request.user.api_key }}"; // Adjust based on actual access method
+            var formName = "{{ form_name }}";
+
+            $.ajax({
+                url: `/api/form/create/${formName}`,
+                type: 'POST',
+                headers: {
+                    'X-API-KEY': apiKey,
+                },
+                data: JSON.stringify(formData),
+                contentType: 'application/json; charset=utf-8',
+                dataType: 'json',
+                success: function(response) {
+                    // Redirect to the read_one page with the form_name and document_id from the response
+                    setFlashMessage("Successfully created form submission", AlertCategories.SUCCESS);
+                    
+
+                    // We purposefully delay for a second before relocating to the new document
+                    setTimeout(function() {
+                        window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
+                    }, 1000);
+
+                },
+                error: function(xhr) {
+                    // Handle errors, e.g., show an error message
+                    console.error('Form creation failed', xhr.responseText);
+                    // Implement flashMessage or another way to show errors to the user
+                    flashMessage(xhr.responseText, 'warning');
+                    
+                    // Optionally re-enable the Create button here
+                    $createButton.prop('disabled', false);
+                }
+            });
+        }
     });
 });
 </script>

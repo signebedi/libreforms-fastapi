@@ -12,8 +12,6 @@ from pydantic import (
     EmailStr,
     constr,
     SecretStr,
-    conint, 
-    confloat,
 )
 
 from pydantic.functional_validators import field_validator, model_validator
@@ -82,7 +80,7 @@ example_form_config = {
                 "max_length": 200, # https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
                 "pattern": r'^[\s\S]*$',
             },
-            "required": False,
+            "required": True,
             "options": None,
             "description": "This is a text field",
         },
@@ -122,7 +120,7 @@ example_form_config = {
             "output_type": List[str],
             "field_name": "checkbox_input",
             "options": ["Option1", "Option2", "Option3"],
-            "required": False,
+            "required": True,
             "default": ["Option1", "Option3"],
             "description": "This is a checkbox field",
         },
@@ -272,6 +270,8 @@ def get_form_html(form_name: str, config_path: str | None = None, current_docume
     form_html = []
     
     for field_name, field_info in form_config[form_name].items():
+    
+        required: bool = field_info.get("required", False)
 
         validators: dict = field_info.get("validators", {})
         if not isinstance(validators, dict):
@@ -305,8 +305,8 @@ def get_form_html(form_name: str, config_path: str | None = None, current_docume
             field_html += f'''
                 <fieldset class="form-check" style="padding-top: 10px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
-                    <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
-                    <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params} value="{default or ''}">
+                    <span id="{description_id}" class="form-text">|{' Required.' if required else ''} {field_info["description"]}</span>
+                    <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params} value="{default or ''}"{' required' if required else ''}>
                     <div class="valid-feedback"></div>
                     <div class="invalid-feedback"></div>
                 </fieldset>'''
@@ -314,18 +314,18 @@ def get_form_html(form_name: str, config_path: str | None = None, current_docume
         elif field_info['input_type'] == 'textarea':
             field_html += f'''
                 <fieldset class="form-check" style="padding-top: 10px;">
-                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
-                    <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
-                    <textarea class="form-control" id="{field_name}" name="{field_name}" {field_params} rows="4" style="resize: vertical; max-height: 300px;">{default or ''}</textarea>
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}{' data-required="true"' if required else ''}</label>
+                    <span id="{description_id}" class="form-text">|{' Required.' if required else ''} {field_info["description"]}</span>
+                    <textarea class="form-control" id="{field_name}" name="{field_name}" {field_params} rows="4" style="resize: vertical; max-height: 300px;"{' required' if required else ''}>{default or ''}</textarea>
                     <div class="valid-feedback"></div>
                     <div class="invalid-feedback"></div>
                 </fieldset>'''
 
         elif field_info['input_type'] in ['checkbox', 'radio']:
             field_html += f'''
-                <fieldset class="form-check" style="padding-top: 10px;">
+                <fieldset class="form-check{' required-checkbox-group' if required else ''}" style="padding-top: 10px;"{' data-required="true"' if required else ''}>
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
-                    <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
+                    <span id="{description_id}" class="form-text">|{' Required.' if required else ''} {field_info["description"]}</span>
             '''
             for option in field_info['options']:
                 checked = "checked" if default and (option == default or option in default) else ""
@@ -343,8 +343,8 @@ def get_form_html(form_name: str, config_path: str | None = None, current_docume
             field_html += f'''
                 <fieldset class="form-check" style="padding-top: 10px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
-                    <span id="{description_id}" class="form-text">| {field_info["description"]}</span>
-                    <select class="form-control" id="{field_name}" name="{field_name}">'''
+                    <span id="{description_id}" class="form-text">|{' Required.' if required else ''} {field_info["description"]}</span>
+                    <select class="form-control" id="{field_name}" name="{field_name}"{' required' if required else ''}>'''
             for option in field_info['options']:
                 selected = "selected" if default and (option == default or option in default) else ""
                 field_html += f'<option value="{option}" {selected}>{option}</option>'
