@@ -4,7 +4,6 @@ from typing import Dict, Optional, Annotated
 from markupsafe import escape
 from bson import ObjectId
 
-
 from pydantic import ValidationError
 from fastapi import (
     FastAPI,
@@ -341,26 +340,12 @@ if config.SMTP_ENABLED:
     logger.info('SMTP has been initialized')
 
 
-
-# Create the database engine, see
-# https://fastapi.tiangolo.com/tutorial/sql-databases/#create-the-sqlalchemy-parts
-engine = create_engine(
-    config.SQLALCHEMY_DATABASE_URI,
-    connect_args={"check_same_thread": False},
-    # The following prevents caching from breaking our rate limitings system, 
-    # see https://stackoverflow.com/a/18225372/13301284 
-    isolation_level="READ UNCOMMITTED", 
-)
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
 # Here we build our relational database model using a sqlalchemy factory, 
 # see https://github.com/signebedi/libreforms-fastapi/issues/136.
-models, _, signatures, _ = get_sqlalchemy_models(
+models, SessionLocal, signatures, engine = get_sqlalchemy_models(
     sqlalchemy_database_uri = config.SQLALCHEMY_DATABASE_URI,
     set_timezone = config.TIMEZONE,
     create_all = True,
-    engine=engine,
-    SessionLocal=SessionLocal,
     rate_limiting=config.RATE_LIMITS_ENABLED,
     rate_limiting_period=config.RATE_LIMITS_PERIOD,
     rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
@@ -371,7 +356,6 @@ Group = models['Group']
 TransactionLog = models['TransactionLog']
 ApprovalChains = models['ApprovalChains']
 Signing = models['Signing']
-
 
 logger.info('Relational database has been initialized')
 

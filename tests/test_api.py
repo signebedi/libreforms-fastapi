@@ -15,7 +15,7 @@ config = get_config(_env="testing")
 def setup_environment():
 
     from libreforms_fastapi.app import ( 
-        SessionLocal as TestingSessionLocal, 
+        SessionLocal, 
         User,
         Group,
         TransactionLog,
@@ -28,7 +28,7 @@ def setup_environment():
 
     # Here we create a group with limited permissions to ensure that the API 
     # appropriately constrains access based on group.
-    with TestingSessionLocal() as session:
+    with SessionLocal() as session:
         bad_group = session.query(Group).get(2)
 
         if not bad_group:
