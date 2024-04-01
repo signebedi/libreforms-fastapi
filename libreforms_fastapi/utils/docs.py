@@ -117,47 +117,6 @@ def get_docs(
     
 
 
-def _get_docs(
-    docs_path, 
-    scrub_unsafe=True, 
-    init_doc_content=default_content, 
-    render_markdown=True,
-):
-    """
-    Factory function that returns the markdown content of the document,
-    creating the document and its parents if they don't exist.
-    
-    Args:
-        docs_path (str): Path to the markdown document.
-        scrub_unsafe (bool): If True, scrub unsafe HTML patterns from the content.
-    
-    Returns:
-        function: A function that when called, returns the document content or creates the document if it does not exist.
-    """
-    def read_markdown_content():
-        # Ensure the path is a Path object
-        path_obj = Path(docs_path)
-        try:
-            # Try to open and read the file
-            with open(path_obj, 'r', encoding='utf-8') as file:
-                content = file.read()
-                if scrub_unsafe:
-                    content = escape_unsafe_html(content)
-                if render_markdown:
-                    content = markdown.markdown(content)
-                return content
-        except FileNotFoundError:
-            # Create the parent directories and the file if it doesn't exist
-            path_obj.parent.mkdir(parents=True, exist_ok=True)
-            with open(path_obj, 'w', encoding='utf-8') as file:
-                # Create an empty file or initialize with some default content
-                file.write(init_doc_content)
-                return init_doc_content
-        except Exception as e:
-            raise e
-    
-    return read_markdown_content
-
 
 def write_docs(docs_path, content, scrub_unsafe=False):
     """

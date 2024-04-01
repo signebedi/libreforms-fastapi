@@ -229,13 +229,8 @@ class BearerTokenAuthBackend(AuthenticationBackend):
         except:
             return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
 
-        if not user:
-            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
-
-        if not user.active:
-            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
-
-        if not user.username == payload['sub']:
+        # If the user validation check fails or they don't exist, set them as unauthenticated
+        if any ([not user, not user.active, not user.username == payload['sub']]):
             return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
 
         user_to_return = LibreFormsUser(
@@ -491,6 +486,7 @@ if config.DEBUG:
 ##########################
 ### API Routes - Form
 ##########################
+
 
 # Create form
 @app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth)])
@@ -1591,10 +1587,12 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
             # Implement failed_password_attempts, see 
             # https://github.com/signebedi/libreforms-fastapi/issues/78
             user.failed_login_attempts += 1
+            _report_to_user = False
+
 
             # If the user has exceeded their failed password attemps, set them
             # as inactive.
-            if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS:
+            if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
                 _report_to_user = True
                 user.active = False
 
@@ -1733,6 +1731,11 @@ async def api_auth_help(
 
 # Delete group
 
+# Get docs
+
+
+# edit docs
+
 ##########################
 ### UI Routes - Forms
 ##########################
@@ -1857,7 +1860,7 @@ async def ui_form_update(form_name:str, document_id:str, request: Request):
 
 
 ##########################
-### UI Routes - Auth
+### UI Routes - Default Routes
 ##########################
 
 @app.get("/", response_class=RedirectResponse)
@@ -1883,7 +1886,7 @@ async def ui_home(request: Request):
         }
     )
 
-# Homepage
+# Privacy policy
 @app.get("/ui/privacy", response_class=HTMLResponse)
 async def ui_privacy(request: Request):
     if not config.UI_ENABLED:
@@ -1892,20 +1895,6 @@ async def ui_privacy(request: Request):
     return templates.TemplateResponse(
         request=request, 
         name="privacy.html.jinja", 
-        context={
-            **build_ui_context(),
-        }
-    )
-
-@app.get("/ui/auth/login", response_class=HTMLResponse)
-@requires(['unauthenticated'], status_code=404)
-async def ui_auth_login(request: Request):
-    if not config.UI_ENABLED:
-        raise HTTPException(status_code=404, detail="This page does not exist")
-
-    return templates.TemplateResponse(
-        request=request, 
-        name="login.html.jinja", 
         context={
             **build_ui_context(),
         }
@@ -1929,7 +1918,7 @@ async def ui_auth_help(request: Request):
     )
 
 
-@app.get("/ui/docs", response_class=HTMLResponse)
+@app.get("/ui/docs", response_class=HTMLResponse, include_in_schema=config.DOCS_ENABLED==True)
 @requires(['authenticated'], status_code=404)
 async def ui_docs(request: Request):
     if not config.UI_ENABLED:
@@ -1950,6 +1939,24 @@ async def ui_docs(request: Request):
     )
 
 
+##########################
+### UI Routes - Auth
+##########################
+
+@app.get("/ui/auth/login", response_class=HTMLResponse)
+@requires(['unauthenticated'], status_code=404)
+async def ui_auth_login(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="login.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
 @app.get("/ui/auth/logout", response_class=RedirectResponse)
 @requires(['authenticated'], status_code=404)
 def ui_auth_logout(response: Response, request: Request):
@@ -1964,7 +1971,7 @@ def ui_auth_logout(response: Response, request: Request):
 
 
 # Create user
-@app.get("/ui/auth/create", response_class=HTMLResponse)
+@app.get("/ui/auth/create", response_class=HTMLResponse, include_in_schema=config.DISABLE_NEW_USERS==False)
 @requires(['unauthenticated'], status_code=404)
 async def ui_auth_create(request: Request):
     if not config.UI_ENABLED:
@@ -1977,8 +1984,6 @@ async def ui_auth_create(request: Request):
             **build_ui_context(),
         }
     )
-
-
 
 
 # Forgot password
@@ -2000,10 +2005,6 @@ async def ui_auth_create(request: Request):
 @requires(['authenticated'], status_code=404)
 def ui_auth_profile(request: Request):
 
-    # requesting_user = session.query(User).filter_by(username=request.user.username).first()
-    # if not requesting_user:
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
-
     return templates.TemplateResponse(
         request=request, 
         name="profile.html.jinja", 
@@ -2016,20 +2017,7 @@ def ui_auth_profile(request: Request):
 @requires(['authenticated'], status_code=404)
 def ui_auth_profile_other(request: Request, id: int):
 
-    # requesting_user = session.query(User).filter_by(username=request.user.username).first()
-    # target_user = session.query(User).filter_by(id=id).first()
-
-    # print("\n\n\n", requesting_user.groups, target_user.groups)
-
-    # if any([
-    #     not requesting_user,
-    #     not target_user,
-    #     requesting_user.id != target_user.id and not config.OTHER_PROFILES_ENABLED,
-    # ]):
-    #     raise HTTPException(status_code=404, detail="This page does not exist")
-
-    # print("\n\n\n", request.user.id)
-
+    # If the user is requesting their own profile, redirect to the default profile view.
     if request.user.id == id:
         return RedirectResponse(request.url_for("ui_auth_profile"), status_code=303)
     elif not config.OTHER_PROFILES_ENABLED:
@@ -2057,6 +2045,33 @@ def ui_auth_profile_other(request: Request, id: int):
 
 
 # Edit docs
+@app.get("/ui/admin/edit_docs", response_class=HTMLResponse, include_in_schema=config.DOCS_ENABLED==True)
+@requires(['admin'], status_code=404)
+async def ui_admin_edit_docs(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not config.DOCS_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # return JSONResponse(status_code=200, content={})
+
+    docs_markdown = get_docs(
+        docs_path=config.DOCS_PATH, 
+        render_markdown=False,
+    ).strip()
+
+    print(docs_markdown)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_docs.html.jinja", 
+        context={
+            **build_ui_context(),
+            "docs_markdown": docs_markdown,
+        }
+    )
+
 
 
 # Manage users

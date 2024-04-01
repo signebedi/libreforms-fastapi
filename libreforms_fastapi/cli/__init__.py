@@ -408,7 +408,7 @@ def cli_useradd(username, password, email, opt_out, site_admin, environment):
 
     # Run our assumptions check
     assert check_configuration_assumptions(config=config)
-    
+
     # Here we build our relational database model using a sqlalchemy factory, 
     # see https://github.com/signebedi/libreforms-fastapi/issues/136.
     models, SessionLocal, signatures, engine = get_sqlalchemy_models(
@@ -488,6 +488,9 @@ def cli_useradd(username, password, email, opt_out, site_admin, environment):
         expiration = 365*24
         api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=email)
         new_user.api_key = api_key
+
+        group = session.query(Group).filter_by(name='default').first()
+        new_user.groups.append(group)
 
         # Add user to database
         try:
