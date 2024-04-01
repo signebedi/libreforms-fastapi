@@ -19,11 +19,8 @@ from sqlalchemy_signing import (
 
 from libreforms_fastapi.utils.config import get_config
 
-from libreforms_fastapi.utils.sqlalchemy_models import (
-    Base,
-    User,
-    TransactionLog,
-)
+from libreforms_fastapi.utils.sqlalchemy_models import Base, get_sqlalchemy_models
+
 
 from libreforms_fastapi.utils.scripts import (
     check_configuration_assumptions,
@@ -411,20 +408,50 @@ def cli_useradd(username, password, email, opt_out, site_admin, environment):
 
     # Run our assumptions check
     assert check_configuration_assumptions(config=config)
-
     
-    # Create the database engine, see
-    # https://fastapi.tiangolo.com/tutorial/sql-databases/#create-the-sqlalchemy-parts
-    engine = create_engine(
-        config.SQLALCHEMY_DATABASE_URI,
-        connect_args={"check_same_thread": False},
-        # The following prevents caching from breaking our rate limitings system, 
-        # see https://stackoverflow.com/a/18225372/13301284 
-        isolation_level="READ UNCOMMITTED", 
+    # Here we build our relational database model using a sqlalchemy factory, 
+    # see https://github.com/signebedi/libreforms-fastapi/issues/136.
+    models, SessionLocal, signatures, engine = get_sqlalchemy_models(
+        sqlalchemy_database_uri = config.SQLALCHEMY_DATABASE_URI,
+        set_timezone = config.TIMEZONE,
+        create_all = True,
+        rate_limiting=config.RATE_LIMITS_ENABLED,
+        rate_limiting_period=config.RATE_LIMITS_PERIOD,
+        rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
     )
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    User = models['User']
+    Group = models['Group']
+    TransactionLog = models['TransactionLog']
+    ApprovalChains = models['ApprovalChains']
+    Signing = models['Signing']
 
     Base.metadata.create_all(bind=engine)
+
+    # Create default group if it does not exist
+    with SessionLocal() as session:
+        # Check if a group with id 1 exists
+        default_group = session.query(Group).get(1)
+
+        if not default_group:
+            # If not, create and add the new default group
+            default_permissions = [
+                "example_form:create",
+                "example_form:read_own",
+                "example_form:read_all",
+                "example_form:update_own",
+                "example_form:update_all",
+                "example_form:delete_own",
+                "example_form:delete_all",
+                "example_form:sign_own"
+            ]
+            default_group = Group(id=1, name="default", permissions=default_permissions)
+            session.add(default_group)
+            session.commit()
+            click.echo("Default group created")
+        else:
+            # print(default_group.get_permissions())
+            click.echo("Default group already exists. Moving on.")
 
 
     # Initialize the signing table
@@ -491,27 +518,50 @@ def cli_usermod(username, password, new_email, opt_out, active, site_admin, head
     assert check_configuration_assumptions(config=config)
 
     
-    # Create the database engine, see
-    # https://fastapi.tiangolo.com/tutorial/sql-databases/#create-the-sqlalchemy-parts
-    engine = create_engine(
-        config.SQLALCHEMY_DATABASE_URI,
-        connect_args={"check_same_thread": False},
-        # The following prevents caching from breaking our rate limitings system, 
-        # see https://stackoverflow.com/a/18225372/13301284 
-        isolation_level="READ UNCOMMITTED", 
+    # Here we build our relational database model using a sqlalchemy factory, 
+    # see https://github.com/signebedi/libreforms-fastapi/issues/136.
+    models, SessionLocal, signatures, engine = get_sqlalchemy_models(
+        sqlalchemy_database_uri = config.SQLALCHEMY_DATABASE_URI,
+        set_timezone = config.TIMEZONE,
+        create_all = True,
+        rate_limiting=config.RATE_LIMITS_ENABLED,
+        rate_limiting_period=config.RATE_LIMITS_PERIOD,
+        rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
     )
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    User = models['User']
+    Group = models['Group']
+    TransactionLog = models['TransactionLog']
+    ApprovalChains = models['ApprovalChains']
+    Signing = models['Signing']
 
     Base.metadata.create_all(bind=engine)
 
+    # Create default group if it does not exist
+    with SessionLocal() as session:
+        # Check if a group with id 1 exists
+        default_group = session.query(Group).get(1)
 
-    # Initialize the signing table
-    signatures = Signatures(config.SQLALCHEMY_DATABASE_URI, byte_len=32, 
-        # Pass the rate limiting settings from the app config
-        rate_limiting=config.RATE_LIMITS_ENABLED,
-        rate_limiting_period=config.RATE_LIMITS_PERIOD, 
-        rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
-    )
+        if not default_group:
+            # If not, create and add the new default group
+            default_permissions = [
+                "example_form:create",
+                "example_form:read_own",
+                "example_form:read_all",
+                "example_form:update_own",
+                "example_form:update_all",
+                "example_form:delete_own",
+                "example_form:delete_all",
+                "example_form:sign_own"
+            ]
+            default_group = Group(id=1, name="default", permissions=default_permissions)
+            session.add(default_group)
+            session.commit()
+            click.echo("Default group created")
+        else:
+            # print(default_group.get_permissions())
+            click.echo("Default group already exists. Moving on.")
+
 
     with SessionLocal() as session:
         user = session.query(User).filter(User.username.ilike(username)).first()
@@ -577,19 +627,51 @@ def cli_id(username, environment):
     # Run our assumptions check
     assert check_configuration_assumptions(config=config)
 
-    
-    # Create the database engine, see
-    # https://fastapi.tiangolo.com/tutorial/sql-databases/#create-the-sqlalchemy-parts
-    engine = create_engine(
-        config.SQLALCHEMY_DATABASE_URI,
-        connect_args={"check_same_thread": False},
-        # The following prevents caching from breaking our rate limitings system, 
-        # see https://stackoverflow.com/a/18225372/13301284 
-        isolation_level="READ UNCOMMITTED", 
+
+    # Here we build our relational database model using a sqlalchemy factory, 
+    # see https://github.com/signebedi/libreforms-fastapi/issues/136.
+    models, SessionLocal, signatures, engine = get_sqlalchemy_models(
+        sqlalchemy_database_uri = config.SQLALCHEMY_DATABASE_URI,
+        set_timezone = config.TIMEZONE,
+        create_all = True,
+        rate_limiting=config.RATE_LIMITS_ENABLED,
+        rate_limiting_period=config.RATE_LIMITS_PERIOD,
+        rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
     )
-    SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+    User = models['User']
+    Group = models['Group']
+    TransactionLog = models['TransactionLog']
+    ApprovalChains = models['ApprovalChains']
+    Signing = models['Signing']
 
     Base.metadata.create_all(bind=engine)
+
+    # Create default group if it does not exist
+    with SessionLocal() as session:
+        # Check if a group with id 1 exists
+        default_group = session.query(Group).get(1)
+
+        if not default_group:
+            # If not, create and add the new default group
+            default_permissions = [
+                "example_form:create",
+                "example_form:read_own",
+                "example_form:read_all",
+                "example_form:update_own",
+                "example_form:update_all",
+                "example_form:delete_own",
+                "example_form:delete_all",
+                "example_form:sign_own"
+            ]
+            default_group = Group(id=1, name="default", permissions=default_permissions)
+            session.add(default_group)
+            session.commit()
+            click.echo("Default group created")
+        else:
+            # print(default_group.get_permissions())
+            click.echo("Default group already exists. Moving on.")
+
 
     with SessionLocal() as session:
         user = session.query(User).filter(User.username.ilike(username)).first()
