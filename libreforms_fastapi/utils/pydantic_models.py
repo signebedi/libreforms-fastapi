@@ -148,8 +148,8 @@ example_form_config = {
             "field_name": "textarea_input",
             "default": "Default textarea content.",
             "validators": {
-                "min_length": 1, # These are drawn from:
-                "max_length": 200, # https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
+                "min_length": 1, # A note about min-length: https://stackoverflow.com/a/10294291/13301284. Better to set a pattern and set required.
+                "max_length": 200, # These are drawn from: https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
                 "pattern": r'^[\s\S]*$',
             },
             "required": False,
@@ -232,6 +232,8 @@ def get_form_model(form_name, config_path=None, update=False):
         if not isinstance(validators, dict):
             raise ValueError(f"Form config validators option is malformed. Form name: {form_name}. Field name: {field_name}.")
 
+        if "min_length" in validators.keys() and validators["min_length"] > 0 and not required:
+            raise Exception(f"You've set a minlength without making the field required, which will just cause validation errors in the backend. Have you considered either making the field required or adding a regex 'pattern' instead? See the params we accept at: https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field. See an explanation of the problem at: https://stackoverflow.com/a/10294291/13301284. Field name: {field_name}. Form name: {form_name}.")
 
         field_params = {}
         field_params["description"] = description
