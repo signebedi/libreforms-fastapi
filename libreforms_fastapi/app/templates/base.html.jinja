@@ -59,6 +59,19 @@
                         </div>
                     </li>
 
+
+                    {% if request.user.site_admin %}
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Admin</a>
+                        <div class="dropdown-menu">
+                            {% if config.DOCS_ENABLED %}
+                            <a class="dropdown-item" href="{{ url_for( 'ui_admin_edit_docs' ) }}">Edit Docs</a>
+                            {% endif %}
+                        </div>
+                    </li>
+                    {% endif %}
+
+
                     {% else %}
 
                     <li class="nav-item">
