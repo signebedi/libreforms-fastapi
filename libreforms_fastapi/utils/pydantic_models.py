@@ -300,17 +300,14 @@ def get_form_html(
         if "pattern" in validators:
             field_params += f'pattern=\"{validators["pattern"]}\" '
 
-        if all([
-            current_document,
-            field_name in current_document['data']
-        ]):
+        if current_document and field_name in current_document['data']:
             default = current_document['data'][field_name] 
         else:
             default = field_info.get("default")
 
         if update:
             default = ""
-            
+
         field_html = ""
 
         description_id = f"{field_name}HelpInline"

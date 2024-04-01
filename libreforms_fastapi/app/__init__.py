@@ -1814,10 +1814,29 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request):
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 # Update form
-    # @app.get("/ui/form/update/{form_name}")
-    # async def ui_form_update():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/form/update/{form_name}/{document_id}", response_class=HTMLResponse)
+@requires(['authenticated'], status_code=404)
+async def ui_form_update(form_name:str, document_id:str, request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # generate_html_form
+    form_html = get_form_html(form_name=form_name, config_path=config.FORM_CONFIG_PATH, update=True)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="update_form.html.jinja", 
+        context={
+            "form_name": form_name,
+            "document_id": document_id,
+            "form_html": form_html,
+            **build_ui_context(),
+        }
+    )
+
 
 # Delete form
     # @app.get("/ui/form/delete/{form_name}")
