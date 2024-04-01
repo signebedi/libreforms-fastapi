@@ -165,6 +165,7 @@ class LibreFormsUser(BaseUser):
         groups: list[str], 
         api_key: str,
         site_admin:bool,
+        permissions: dict,
     ) -> None:
     
         self.username = username
@@ -173,6 +174,7 @@ class LibreFormsUser(BaseUser):
         self.groups = groups
         self.api_key = api_key
         self.site_admin = site_admin
+        self.permissions = permissions
 
     @property
     def is_authenticated(self) -> bool:
@@ -236,12 +238,14 @@ class BearerTokenAuthBackend(AuthenticationBackend):
         if not user.username == payload['sub']:
             return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
 
-        user_to_return = LibreFormsUser(username=user.username,
+        user_to_return = LibreFormsUser(
+            username=user.username,
             id=user.id,
             email=user.email,
             groups=_groups,
             api_key=user.api_key,
             site_admin=user.site_admin,
+            permissions=user.compile_permissions(),
         )
 
         if user.site_admin:

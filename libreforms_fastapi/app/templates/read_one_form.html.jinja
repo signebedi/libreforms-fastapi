@@ -9,27 +9,51 @@
 {% endblock %}
 
 {% block content %}
-<h1>Read Form: {{form_name | replace("_", " ") | title}}</h1>
 
-<div class="container">
-    <div id="documentContent">
-        <!-- Data will be populated here -->
-    </div>
-    <div class="accordion" id="metadataAccordion">
-        <div class="accordion-item">
-            <h2 class="accordion-header" id="headingMetadata">
-                <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseMetadata" aria-expanded="false" aria-controls="collapseMetadata">
-                    Metadata
-                </button>
-            </h2>
-            <div id="collapseMetadata" class="accordion-collapse collapse" aria-labelledby="headingMetadata" data-bs-parent="#metadataAccordion">
-                <div class="accordion-body" id="documentMetadata">
-                    <!-- Metadata will be populated here -->
-                </div>
-            </div>
+<ul class="nav nav-tabs" role="tablist">
+    <li class="nav-item">
+        <a class="nav-link disabled" href="#" aria-selected="false" role="tab">
+            Read Form: {{form_name | replace("_", " ") | title}}
+        </a>
+    </li>
+
+    <li class="nav-item" role="presentation">
+        <a class="nav-link active" data-bs-toggle="tab" href="#documentContent" aria-selected="true" role="tab">Data</a>
+    </li>
+
+    <li class="nav-item" role="presentation">
+        <a class="nav-link" data-bs-toggle="tab" href="#documentMetadata" aria-selected="false" role="tab">Metadata</a>
+    </li>
+
+    <li class="nav-item dropdown">
+        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-gear" viewBox="0 0 16 16">
+                <path d="M8 4.754a3.246 3.246 0 1 0 0 6.492 3.246 3.246 0 0 0 0-6.492M5.754 8a2.246 2.246 0 1 1 4.492 0 2.246 2.246 0 0 1-4.492 0"/>
+                <path d="M9.796 1.343c-.527-1.79-3.065-1.79-3.592 0l-.094.319a.873.873 0 0 1-1.255.52l-.292-.16c-1.64-.892-3.433.902-2.54 2.541l.159.292a.873.873 0 0 1-.52 1.255l-.319.094c-1.79.527-1.79 3.065 0 3.592l.319.094a.873.873 0 0 1 .52 1.255l-.16.292c-.892 1.64.901 3.434 2.541 2.54l.292-.159a.873.873 0 0 1 1.255.52l.094.319c.527 1.79 3.065 1.79 3.592 0l.094-.319a.873.873 0 0 1 1.255-.52l.292.16c1.64.893 3.434-.902 2.54-2.541l-.159-.292a.873.873 0 0 1 .52-1.255l.319-.094c1.79-.527 1.79-3.065 0-3.592l-.319-.094a.873.873 0 0 1-.52-1.255l.16-.292c.893-1.64-.902-3.433-2.541-2.54l-.292.159a.873.873 0 0 1-1.255-.52zm-2.633.283c.246-.835 1.428-.835 1.674 0l.094.319a1.873 1.873 0 0 0 2.693 1.115l.291-.16c.764-.415 1.6.42 1.184 1.185l-.159.292a1.873 1.873 0 0 0 1.116 2.692l.318.094c.835.246.835 1.428 0 1.674l-.319.094a1.873 1.873 0 0 0-1.115 2.693l.16.291c.415.764-.42 1.6-1.185 1.184l-.291-.159a1.873 1.873 0 0 0-2.693 1.116l-.094.318c-.246.835-1.428.835-1.674 0l-.094-.319a1.873 1.873 0 0 0-2.692-1.115l-.292.16c-.764.415-1.6-.42-1.184-1.185l.159-.291A1.873 1.873 0 0 0 1.945 8.93l-.319-.094c-.835-.246-.835-1.428 0-1.674l.319-.094A1.873 1.873 0 0 0 3.06 4.377l-.16-.292c-.415-.764.42-1.6 1.185-1.184l.292.159a1.873 1.873 0 0 0 2.692-1.115z"/>
+            </svg> 
+        </a>
+        <div class="dropdown-menu" id="linkList" style="">
+            <h6 class="dropdown-header">Form Management</h6>
+            <a class="dropdown-item disabled" id="editLink" href="{{ url_for ('ui_form_update', form_name=form_name, document_id=document_id) }}">Edit Form</a>
+            <a class="dropdown-item disabled" id="signLink" href="#">Sign Form</a>
+            <a class="dropdown-item" id="historyLink" href="#">View Form History</a>
+            <a class="dropdown-item" id="duplicateLink" href="#">Duplicate Form</a>
+            <a class="dropdown-item disabled" id="deleteLink" href="#">Delete Form</a>
+            <a class="dropdown-item" id="downloadLink" href="#">Download Form</a>
+            <div class="dropdown-divider"></div>
+            <h6 class="dropdown-header">Review and Approval</h6>
+            <a class="dropdown-item disabled" id="approveLink" href="#">Go to Approval</a>
         </div>
-    </div>
+    </li>
+</ul>
+
+
+<div id="myTabContent" class="tab-content">
+  <div class="tab-pane fade active show" id="documentContent" role="tabpanel"></div>
+  <div class="tab-pane fade" id="documentMetadata" role="tabpanel"></div>
 </div>
+
+
 {% endblock %}
 
 {% block scripts %}
@@ -40,6 +64,8 @@ $(document).ready(function() {
     var apiKey = "{{ request.user.api_key }}";
     var formName = "{{ form_name }}";
     var documentId = "{{ document_id }}";
+    var currentUser = "{{ request.user.username }}";
+    var userPermissions = {{ request.user.permissions[form_name] | tojson }};
 
     // This var will allow us to (1) select the metadata fields to display and 
     // (2) mask these fields in a human-readable format.
@@ -87,7 +113,7 @@ $(document).ready(function() {
                 table += '</tr>';
 
             } else {
-                console.log(key, fieldMappings)
+                // console.log(key, fieldMappings)
                 continue;
                 
             }
@@ -95,6 +121,41 @@ $(document).ready(function() {
 
         table += '</tbody></table>';
         return table;
+    }
+
+    function setActionElements(owner) {
+
+        // Enable the edit form link
+        if (owner === currentUser && userPermissions.includes("update_own")) {
+            $('#editLink').removeClass('disabled');
+        }
+
+        // Enable the edit form link
+        if (owner !== currentUser && userPermissions.includes("update_all")) {
+            $('#editLink').removeClass('disabled');
+        }
+
+        // Enable the sign form link
+        if (owner === currentUser && userPermissions.includes("sign_own")) {
+            $('#signLink').removeClass('disabled');
+        }
+
+        // Enable the delete form link
+        if (owner === currentUser && userPermissions.includes("delete_own")) {
+            $('#deleteLink').removeClass('disabled');
+        }
+
+        // Enable the delete form link
+        if (owner !== currentUser && userPermissions.includes("delete_all")) {
+            $('#deleteLink').removeClass('disabled');
+        }
+
+        // Placeholder for logic for approval
+
+        // var container = document.getElementById("linkList");
+        // var content = container.innerHTML;
+        // container.innerHTML= content; 
+
     }
 
     function fetchDocument() {
@@ -111,11 +172,14 @@ $(document).ready(function() {
                 $('#documentContent').html(dataTable);
                 $('#documentMetadata').html(metadataTable);
 
+                setActionElements(response.metadata.created_by)
+
                 $('#dataTable').DataTable({
                     "ordering": false,
                     "info": false,
                     "paging": false,
-                    "searching": false 
+                    "searching": false, 
+                    "autoWidth": false
                 });
 
                 
