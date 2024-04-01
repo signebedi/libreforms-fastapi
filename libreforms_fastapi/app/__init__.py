@@ -97,6 +97,7 @@ from libreforms_fastapi.utils.document_database import (
 
 from libreforms_fastapi.utils.pydantic_models import (
     HelpRequest,
+    DocsEditRequest,
     get_user_model,
     get_form_model,
     get_form_names,
@@ -1492,6 +1493,20 @@ async def api_auth_create(
         )
 
 
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=new_user.api_key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"user":new_user.username},
+        )
+
     return {
         "status": "success", 
         "api_key": api_key,
@@ -1544,6 +1559,20 @@ async def api_auth_get(
         profile_data["api_key"] = target_user.api_key
         profile_data["opt_out"] = target_user.opt_out
         profile_data["site_admin"] = target_user.site_admin
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"id": id},
+        )
 
     return profile_data
 
@@ -1646,6 +1675,21 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
         max_age=config.PERMANENT_SESSION_LIFETIME.total_seconds(),
         expires=config.PERMANENT_SESSION_LIFETIME.total_seconds(),
     )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=user.api_key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"user": user.username},
+        )
+
     return response
 
 
@@ -1697,6 +1741,20 @@ async def api_auth_help(
         reply_to_addr=user.email
     )
 
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"category": shortened_safe_category},
+        )
+
     return JSONResponse(
         status_code=202,
         content={"status": "success"},
@@ -1731,10 +1789,63 @@ async def api_auth_help(
 
 # Delete group
 
-# Get docs
+
+# Edit docs
+@app.post(
+    "/api/admin/edit_docs", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+    include_in_schema=config.DOCS_ENABLED==True
+)
+async def api_admin_edit_docs(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    docs_content: DocsEditRequest,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    if not config.DOCS_ENABLED:
+        raise HTTPException(status_code=404)
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user:
+        raise HTTPException(status_code=404)
+
+    if not user.site_admin:
+        raise HTTPException(status_code=404)
 
 
-# edit docs
+    background_tasks.add_task(
+        write_docs, 
+            docs_path=config.DOCS_PATH, 
+            content=docs_content.content, 
+            scrub_unsafe=True,
+    )
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=202,
+        content={"status": "success"},
+    )
+
+
 
 ##########################
 ### UI Routes - Forms
