@@ -251,7 +251,12 @@ def get_form_model(form_name, config_path=None, update=False):
 
     return dynamic_model
 
-def get_form_html(form_name: str, config_path: str | None = None, current_document: dict | None = None) -> List[str]:
+def get_form_html(
+    form_name: str, 
+    config_path: str | None = None, 
+    current_document: dict | None = None,
+    update=False,
+) -> List[str]:
     """
     Generates a list of Bootstrap 5 styled HTML form fields based on the input config and form name,
     supporting default values.
@@ -295,8 +300,17 @@ def get_form_html(form_name: str, config_path: str | None = None, current_docume
         if "pattern" in validators:
             field_params += f'pattern=\"{validators["pattern"]}\" '
 
+        if all([
+            current_document,
+            field_name in current_document['data']
+        ]):
+            default = current_document['data'][field_name] 
+        else:
+            default = field_info.get("default")
 
-        default = current_document['data'][field_name] if current_document and field_name in current_document['data'] else field_info.get("default")
+        if update:
+            default = ""
+            
         field_html = ""
 
         description_id = f"{field_name}HelpInline"
