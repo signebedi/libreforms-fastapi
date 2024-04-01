@@ -1,0 +1,17 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+{{config.SITE_NAME}} — Docs
+{% endblock %}
+
+
+{% block content %}
+<h1>Documentation</h1>
+<hr>
+
+{{ docs_markdown|safe }}
+
+{% endblock %}
+
+{% block scripts %}
+{% endblock %}

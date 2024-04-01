@@ -104,6 +104,11 @@ from libreforms_fastapi.utils.pydantic_models import (
     load_form_config,
 )
 
+from libreforms_fastapi.utils.docs import (
+    get_docs,
+    write_docs,
+)
+
 # Here we set the application config using the get_config
 # factory pattern defined in libreforms_fastapi.utis.config.
 _env = os.environ.get('ENVIRONMENT', 'development')
@@ -1900,6 +1905,28 @@ async def ui_auth_help(request: Request):
         }
     )
 
+
+@app.get("/ui/docs", response_class=HTMLResponse)
+@requires(['authenticated'], status_code=404)
+async def ui_docs(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not config.DOCS_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    docs_markdown = get_docs(docs_path=config.DOCS_PATH)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="docs.html.jinja", 
+        context={
+            **build_ui_context(),
+            "docs_markdown": docs_markdown,
+        }
+    )
+
+
 @app.get("/ui/auth/logout", response_class=RedirectResponse)
 @requires(['authenticated'], status_code=404)
 def ui_auth_logout(response: Response, request: Request):
@@ -2004,6 +2031,9 @@ def ui_auth_profile_other(request: Request, id: int):
 # https://github.com/signebedi/libreforms-fastapi/issues/19.
 # if current_user.group != "admin":
 #     raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+# Edit docs
 
 
 # Manage users

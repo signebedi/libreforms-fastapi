@@ -3,6 +3,7 @@ email_validator
 fastapi
 fuzzywuzzy
 Jinja2
+Markdown
 passlib[bcrypt]
 pydantic-settings
 PyJWT

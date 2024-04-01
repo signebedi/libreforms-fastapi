@@ -120,6 +120,9 @@
                     <div>
                         <a href="{{config['SITE_SOURCE_URL']}}" class="text-light">Source</a> |
                         <a href="{{ url_for('ui_privacy') }}" class="text-light">Privacy</a>
+                        {% if config["DOCS_ENABLED"] %}
+                         | <a href="{{ url_for('ui_docs') }}" class="text-light">Docs</a>
+                        {% endif %}
                     </div>
                 </div>
             </div>
@@ -160,14 +163,12 @@
                 moonIcon.style.display = 'none';
                 sunIcon.style.display = 'block';
                 document.body.setAttribute('data-theme', 'dark'); 
-                updateCaptchaTheme('dark');
             } else {
                 lightTheme.removeAttribute('disabled');
                 darkTheme.setAttribute('disabled', 'true');
                 moonIcon.style.display = 'block';
                 sunIcon.style.display = 'none';
                 document.body.removeAttribute('data-theme'); 
-                updateCaptchaTheme('light');
             }
         }
 
@@ -198,31 +199,6 @@
             }
         });
 
-        function updateCaptchaTheme(theme) {
-            // Find the existing hCaptcha container and its parent
-            let captchaContainer = document.querySelector('.h-captcha');
-            if (captchaContainer) {
-
-                let parentElement = captchaContainer.parentNode;
-
-                // Remove the existing hCaptcha container
-                parentElement.removeChild(captchaContainer);
-
-                // Create a new hCaptcha container with the updated theme
-                let newCaptchaContainer = document.createElement('div');
-                newCaptchaContainer.className = 'h-captcha';
-                newCaptchaContainer.setAttribute('data-theme', theme);
-                newCaptchaContainer.setAttribute('data-sitekey', '{{ config['HCAPTCHA_SITE_KEY'] }}'); 
-
-                // Append the new container to the parent element
-                parentElement.appendChild(newCaptchaContainer);
-
-                // Reinitialize hCaptcha on the new container
-                if (window.hcaptcha) {
-                    hcaptcha.render(newCaptchaContainer);
-                }
-            }
-        }
 
         window.addEventListener('DOMContentLoaded', initializeTheme);
 
