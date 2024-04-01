@@ -27,7 +27,7 @@ class ImproperPasswordFormat(Exception):
 class PasswordMatchException(Exception):
     """Raised when the passwords provided do not match each other"""
     pass
-min_length
+
 def get_user_model(
     username_regex,
     username_helper_text,

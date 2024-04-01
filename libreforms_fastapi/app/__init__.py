@@ -1821,10 +1821,9 @@ async def api_admin_edit_docs(
     background_tasks.add_task(
         write_docs, 
             docs_path=config.DOCS_PATH, 
-            content=docs_content.content, 
+            content=docs_content.docs, 
             scrub_unsafe=True,
     )
-
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:

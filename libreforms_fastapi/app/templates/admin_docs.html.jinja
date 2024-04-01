@@ -16,7 +16,7 @@
 </h1>
 <hr>
 
-<form>
+<form id="docsForm">
 
     <fieldset class="form-check" style="padding-top: 10px;">
         <label aria-labelledby="docsDescription" for="docs" class="form-check-label">Documentation</label>
@@ -32,5 +32,46 @@
 </form>
 {% endblock %}
 
+
 {% block scripts %}
+<script>
+$(document).ready(function() {
+    // Form submission event
+    $('#docsForm').submit(function(event) {
+
+        event.preventDefault();
+
+        var formData = {
+            "docs": $('#docs').val()
+        };
+
+        console.log(formData)
+
+        // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
+        var apiKey = "{{ request.user.api_key }}"; // Adjust based on actual access method
+
+        $.ajax({
+            url: `/api/admin/edit_docs`,
+            type: 'POST',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            data: JSON.stringify(formData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                // Flash success on screen
+                flashMessage("Successfully updated documentation", AlertCategories.SUCCESS);
+                
+            },
+            error: function(xhr) {
+                // Handle errors, e.g., show an error message
+                console.error('Form creation failed', xhr.responseText);
+                // Implement flashMessage or another way to show errors to the user
+                flashMessage(xhr.responseText, 'warning');
+            }
+        });
+    });
+});
+</script>
 {% endblock %}
