@@ -148,7 +148,7 @@ example_form_config = {
             "field_name": "textarea_input",
             "default": "Default textarea content.",
             "validators": {
-                "min_length": 1, # A note about min-length: https://stackoverflow.com/a/10294291/13301284. Better to set a pattern and set required.
+                "min_length": 0, # A note about min-length: https://stackoverflow.com/a/10294291/13301284. Better to set a pattern and set required.
                 "max_length": 200, # These are drawn from: https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
                 "pattern": r'^[\s\S]*$',
             },
