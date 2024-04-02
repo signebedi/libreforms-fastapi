@@ -1,0 +1,97 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+{{config.SITE_NAME}} — Manage Users
+{% endblock %}
+
+{% block header %}
+    <link href="{{ url_for('static', path='css/datatables.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<h1>
+    Manage Users
+    <sup title="This is an admin page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star-fill" viewBox="0 0 16 16">
+            <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
+        </svg>
+    </sup>
+</h1>
+<hr>
+
+<div class="container" id="manageUsers">
+
+</div>
+
+{% endblock %}
+
+
+{% block scripts %}
+<script src="{{url_for('static', path='js/datatables.js')}}"></script>
+
+<script>
+$(document).ready(function() {
+
+    var apiKey = "{{ request.user.api_key }}";
+
+
+
+    function renderTable(users, tableName) {
+        var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
+        // Define the headers based on the required attributes
+        table += '<th>ID</th><th>Username</th><th>Email</th><th>Groups</th><th>Active</th><th>Created Date</th><th>Last Login</th><th>Site Admin</th>';
+        table += '</tr></thead><tbody>';
+
+        // Iterate over the array of users
+        users.forEach(function(user) {
+            table += '<tr>';
+            table += '<td>' + user.id + '</td>';
+            table += '<td>' + user.username + '</td>';
+            table += '<td>' + user.email + '</td>';
+            table += '<td>' + user.groups.join(', ') + '</td>'; // Eventually make these links
+            table += '<td>' + user.active + '</td>';
+            table += '<td>' + user.created_date + '</td>';
+            table += '<td>' + user.last_login + '</td>';
+            table += '<td>' + user.site_admin + '</td>';
+            table += '</tr>';
+        });
+
+        table += '</tbody></table>';
+        return table;
+    }
+
+    function fetchDocument() {
+        $.ajax({
+            url: `/api/admin/get_users`,
+            type: 'GET',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            dataType: 'json',
+
+            success: function(response) {
+                var usersTable = renderTable(response.users, "usersTable"); // Pass the array of users
+                $('#manageUsers').html(usersTable);
+
+                $('#usersTable').DataTable({
+                    "scrollX": true
+                });
+            },
+
+            error: function(xhr) {
+                // Handle errors
+                console.error('Failed to fetch document', xhr.responseText);
+                // Display error message to the user
+                flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+            }
+        });
+    }
+
+    fetchDocument();
+
+
+
+
+});
+</script>
+{% endblock %}

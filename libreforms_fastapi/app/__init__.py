@@ -2210,7 +2210,8 @@ async def ui_admin_edit_docs(request: Request):
     if not config.DOCS_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
-    # return JSONResponse(status_code=200, content={})
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     docs_markdown = get_docs(
         docs_path=config.DOCS_PATH, 
@@ -2231,10 +2232,24 @@ async def ui_admin_edit_docs(request: Request):
 
 
 # Manage users
-    # @app.get("/ui/admin/manage_users")
-    # async def ui_admin_manage_users():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/admin/manage_users", response_class=HTMLResponse, include_in_schema=config.DOCS_ENABLED==True)
+@requires(['admin'], status_code=404)
+async def ui_admin_manage_users(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_manage_users.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
 
 # Add new user
 
