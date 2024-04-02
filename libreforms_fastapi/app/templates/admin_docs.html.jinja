@@ -19,9 +19,9 @@
 <form id="docsForm">
 
     <fieldset class="form-check" style="padding-top: 10px;">
-        <label aria-labelledby="docsDescription" for="docs" class="form-check-label">Documentation</label>
+        <label aria-labelledby="docsDescription" for="content" class="form-check-label">Documentation</label>
         <span id="docsDescription" class="form-text">| Update the documentation for the site using this page</span>
-        <textarea class="form-control" id="docs" name="docs" rows="10" style="resize: vertical; max-height: 50%;" required>{{ docs_markdown }}</textarea>
+        <textarea class="form-control" id="content" name="content" rows="10" style="resize: vertical; max-height: 50%;" required>{{ docs_markdown }}</textarea>
     </fieldset>
 
     <fieldset style="padding-top: 10px;" class="form-check">
@@ -42,7 +42,7 @@ $(document).ready(function() {
         event.preventDefault();
 
         var formData = {
-            "docs": $('#docs').val()
+            "content": $('#content').val()
         };
 
         console.log(formData)

@@ -1808,7 +1808,7 @@ async def api_auth_help(
 async def api_admin_edit_docs(
     request: Request,
     background_tasks: BackgroundTasks,
-    docs_content: DocsEditRequest,
+    docs: DocsEditRequest,
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -1829,7 +1829,7 @@ async def api_admin_edit_docs(
     background_tasks.add_task(
         write_docs, 
             docs_path=config.DOCS_PATH, 
-            content=docs_content.docs, 
+            content=docs.content, 
             scrub_unsafe=True,
     )
 
@@ -1848,7 +1848,7 @@ async def api_admin_edit_docs(
         )
 
     return JSONResponse(
-        status_code=202,
+        status_code=200,
         content={"status": "success"},
     )
 

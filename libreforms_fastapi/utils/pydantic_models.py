@@ -382,4 +382,4 @@ class HelpRequest(BaseModel):
 
 class DocsEditRequest(BaseModel):
     """Another quick and dirty model for managing admin edit docs API calls"""
-    docs: str
+    content: str
