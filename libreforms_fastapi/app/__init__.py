@@ -317,16 +317,18 @@ templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
 app.add_middleware(AuthenticationMiddleware, backend=BearerTokenAuthBackend())
 
 
-# Custom exception handler
-def validation_exception_handler(request: Request, exc: RequestValidationError):
-    # For simplicity, we are returning a generic error message
-    return JSONResponse(
-        status_code=422,
-        content={"detail": "Data validation error."},
-    )
+# Add obfuscating validation error handlers in production
+if not config.DEBUG:
+    # Custom exception handler
+    def validation_exception_handler(request: Request, exc: RequestValidationError):
+        # For simplicity, we are returning a generic error message
+        return JSONResponse(
+            status_code=422,
+            content={"detail": "Data validation error."},
+        )
 
-# Override the default request validation error handler with your custom handler
-app.add_exception_handler(RequestValidationError, validation_exception_handler)
+    # Override the default request validation error handler with your custom handler
+    app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
 # Instantiate the Mailer object
 mailer = Mailer(
@@ -474,12 +476,12 @@ if config.DEBUG:
 
     # These routes help debug the auth backend
 
-    @app.get("/test/auth", response_class=HTMLResponse)
+    @app.get("/test/auth", response_class=HTMLResponse, include_in_schema=False)
     @requires(['authenticated'], status_code=404)
     async def test_auth_scope(request: Request):
         return JSONResponse({"a": "blargh"})
 
-    @app.get("/test/admin", response_class=HTMLResponse)
+    @app.get("/test/admin", response_class=HTMLResponse, include_in_schema=False)
     @requires(['authenticated', 'admin'], status_code=404)
     async def test_admin_scope(request: Request):
         return JSONResponse({"a": "blargh"})
@@ -1911,7 +1913,7 @@ def build_ui_context():
     return kwargs
 
 # Create form
-@app.get("/ui/form/create/{form_name}", response_class=HTMLResponse)
+@app.get("/ui/form/create/{form_name}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_form_create(form_name:str, request: Request):
     if not config.UI_ENABLED:
@@ -1936,7 +1938,7 @@ async def ui_form_create(form_name:str, request: Request):
 
 
 # Read one form
-@app.get("/ui/form/read_one/{form_name}/{document_id}", response_class=HTMLResponse)
+@app.get("/ui/form/read_one/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_form_read_one(form_name:str, document_id:str, request: Request):
     if not config.UI_ENABLED:
@@ -1971,13 +1973,13 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request):
 
 
 # Read all forms
-    # @app.get("/ui/form/read_all/{form_name}")
+    # @app.get("/ui/form/read_all/{form_name}", include_in_schema=False)
     # async def ui_form_read_all():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 # Update form
-@app.get("/ui/form/update/{form_name}/{document_id}", response_class=HTMLResponse)
+@app.get("/ui/form/update/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_form_update(form_name:str, document_id:str, request: Request):
     if not config.UI_ENABLED:
@@ -2002,13 +2004,13 @@ async def ui_form_update(form_name:str, document_id:str, request: Request):
 
 
 # Delete form
-    # @app.get("/ui/form/delete/{form_name}")
+    # @app.get("/ui/form/delete/{form_name}", include_in_schema=False)
     # async def ui_form_delete():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 # Approve form
-    # @app.get("/ui/form/approve/{form_name}")
+    # @app.get("/ui/form/approve/{form_name}", include_in_schema=False)
     # async def ui_form_approve():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -2019,7 +2021,7 @@ async def ui_form_update(form_name:str, document_id:str, request: Request):
 ### UI Routes - Default Routes
 ##########################
 
-@app.get("/", response_class=RedirectResponse)
+@app.get("/", response_class=RedirectResponse, include_in_schema=False)
 async def ui_redirect_to_home(response: Response, request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -2029,7 +2031,7 @@ async def ui_redirect_to_home(response: Response, request: Request):
     return response
 
 # Homepage
-@app.get("/ui/home", response_class=HTMLResponse)
+@app.get("/ui/home", response_class=HTMLResponse, include_in_schema=False)
 async def ui_home(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -2043,7 +2045,7 @@ async def ui_home(request: Request):
     )
 
 # Privacy policy
-@app.get("/ui/privacy", response_class=HTMLResponse)
+@app.get("/ui/privacy", response_class=HTMLResponse, include_in_schema=False)
 async def ui_privacy(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -2056,7 +2058,7 @@ async def ui_privacy(request: Request):
         }
     )
 
-@app.get("/ui/help", response_class=HTMLResponse)
+@app.get("/ui/help", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_auth_help(request: Request):
     if not config.UI_ENABLED:
@@ -2074,7 +2076,7 @@ async def ui_auth_help(request: Request):
     )
 
 
-@app.get("/ui/docs", response_class=HTMLResponse, include_in_schema=config.DOCS_ENABLED==True)
+@app.get("/ui/docs", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_docs(request: Request):
     if not config.UI_ENABLED:
@@ -2099,7 +2101,7 @@ async def ui_docs(request: Request):
 ### UI Routes - Auth
 ##########################
 
-@app.get("/ui/auth/login", response_class=HTMLResponse)
+@app.get("/ui/auth/login", response_class=HTMLResponse, include_in_schema=False)
 @requires(['unauthenticated'], status_code=404)
 async def ui_auth_login(request: Request):
     if not config.UI_ENABLED:
@@ -2113,7 +2115,7 @@ async def ui_auth_login(request: Request):
         }
     )
 
-@app.get("/ui/auth/logout", response_class=RedirectResponse)
+@app.get("/ui/auth/logout", response_class=RedirectResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 def ui_auth_logout(response: Response, request: Request):
 
@@ -2127,7 +2129,7 @@ def ui_auth_logout(response: Response, request: Request):
 
 
 # Create user
-@app.get("/ui/auth/create", response_class=HTMLResponse, include_in_schema=config.DISABLE_NEW_USERS==False)
+@app.get("/ui/auth/create", response_class=HTMLResponse, include_in_schema=False)
 @requires(['unauthenticated'], status_code=404)
 async def ui_auth_create(request: Request):
     if not config.UI_ENABLED:
@@ -2143,21 +2145,21 @@ async def ui_auth_create(request: Request):
 
 
 # Forgot password
-    # @app.get("/ui/auth/forgot_password")
+    # @app.get("/ui/auth/forgot_password", include_in_schema=False)
     # async def ui_auth_forgot_password():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
 # Verify email
-    # @app.get("/ui/auth/verify_email")
+    # @app.get("/ui/auth/verify_email", include_in_schema=False)
     # async def ui_auth_verify_email():
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
 # View profile
-@app.get("/ui/auth/profile/", response_class=HTMLResponse)
+@app.get("/ui/auth/profile/", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 def ui_auth_profile(request: Request):
 
@@ -2169,7 +2171,7 @@ def ui_auth_profile(request: Request):
         }
     )
 
-@app.get("/ui/auth/profile/{id}", response_class=HTMLResponse)
+@app.get("/ui/auth/profile/{id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 def ui_auth_profile_other(request: Request, id: int):
 
@@ -2201,7 +2203,7 @@ def ui_auth_profile_other(request: Request, id: int):
 
 
 # Edit docs
-@app.get("/ui/admin/edit_docs", response_class=HTMLResponse, include_in_schema=config.DOCS_ENABLED==True)
+@app.get("/ui/admin/edit_docs", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_edit_docs(request: Request):
     if not config.UI_ENABLED:
@@ -2232,7 +2234,7 @@ async def ui_admin_edit_docs(request: Request):
 
 
 # Manage users
-@app.get("/ui/admin/manage_users", response_class=HTMLResponse, include_in_schema=config.DOCS_ENABLED==True)
+@app.get("/ui/admin/manage_users", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_manage_users(request: Request):
     if not config.UI_ENABLED:

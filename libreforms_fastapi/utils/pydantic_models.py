@@ -36,10 +36,10 @@ def get_user_model(
 ):
 
     class UserModel(BaseModel):
-        username: str = Field(..., min_length=2, max_length=100)
+        username: str = Field(...)
         # Added a little syntactic salt with the SecretStr, see https://stackoverflow.com/a/65277859/13301284
-        password: SecretStr = Field(..., min_length=8)
-        verify_password: SecretStr = Field(..., min_length=8)
+        password: SecretStr = Field(...)
+        verify_password: SecretStr = Field(...)
         email: EmailStr
         opt_out: bool = False
 
