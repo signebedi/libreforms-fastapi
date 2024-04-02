@@ -1517,6 +1517,8 @@ async def api_auth_create(
 @app.get("/api/auth/get/{id}", dependencies=[Depends(api_key_auth)])
 async def api_auth_get(
     id:int, 
+    request: Request,
+    background_tasks: BackgroundTasks,
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -1604,31 +1606,36 @@ async def api_auth_get(
 # Login, uses OAUTH and current_user functionality, see
 # https://github.com/signebedi/libreforms-fastapi/issues/19
 @app.post('/api/auth/login')
-async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
-    with SessionLocal() as session:
-        user = session.query(User).filter_by(username=form_data.username.lower()).first()
+async def api_auth_login(
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], 
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db),
+):
 
-        if not user:
-            raise HTTPException(status_code=400, detail="Incorrect username or password")
+    user = session.query(User).filter_by(username=form_data.username.lower()).first()
 
-        if not check_password_hash(user.password, form_data.password):
+    if not user:
+        raise HTTPException(status_code=400, detail="Incorrect username or password")
 
-            # Implement failed_password_attempts, see 
-            # https://github.com/signebedi/libreforms-fastapi/issues/78
-            user.failed_login_attempts += 1
-            _report_to_user = False
+    if not check_password_hash(user.password, form_data.password):
+
+        # Implement failed_password_attempts, see 
+        # https://github.com/signebedi/libreforms-fastapi/issues/78
+        user.failed_login_attempts += 1
+        _report_to_user = False
 
 
-            # If the user has exceeded their failed password attemps, set them
-            # as inactive.
-            if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
-                _report_to_user = True
-                user.active = False
+        # If the user has exceeded their failed password attemps, set them
+        # as inactive.
+        if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
+            _report_to_user = True
+            user.active = False
 
-            session.add(user)
-            session.commit()
+        session.add(user)
+        session.commit()
 
-            raise HTTPException(status_code=400, detail=f"Incorrect username or password{'. Max password failures exceeded. User account locked.' if _report_to_user else ''}")
+        raise HTTPException(status_code=400, detail=f"Incorrect username or password{'. Max password failures exceeded. User account locked.' if _report_to_user else ''}")
 
     if not user.active:
         raise HTTPException(status_code=400, detail="User authentication failed")
@@ -1642,6 +1649,7 @@ async def api_auth_login(form_data: Annotated[OAuth2PasswordRequestForm, Depends
     # https://github.com/signebedi/libreforms-fastapi/issues/78.
     else:
         user.failed_login_attempts = 0
+        user.last_login = datetime.now(config.TIMEZONE)
 
         session.add(user)
         session.commit()
