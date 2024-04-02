@@ -1775,6 +1775,48 @@ async def api_auth_help(
 # Get all users
     # > paired with manage users admin UI route
 
+
+@app.get(
+    "/api/admin/get_users", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_get_users(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    users = [x.to_dict() for x in session.query(User).all()]
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "users": users},
+    )
+
+
+
 # Add new user
     # > paired with add newadmin UI route
 
@@ -1819,12 +1861,8 @@ async def api_admin_edit_docs(
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
-    if not user:
+    if not user or not user.site_admin:
         raise HTTPException(status_code=404)
-
-    if not user.site_admin:
-        raise HTTPException(status_code=404)
-
 
     background_tasks.add_task(
         write_docs, 
