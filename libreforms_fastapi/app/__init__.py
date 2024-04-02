@@ -501,6 +501,11 @@ async def api_form_create(
     key: str = Depends(X_API_KEY), 
     body: Dict = Body(...)
 ):
+    """
+    Creates and submits a form with given data. The form name is specified in the URL,
+    and the data for the form should be provided in the request body. It checks for the
+    form's existence, validates user permissions, writes it to db, and logs the submission.
+    """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -594,6 +599,12 @@ async def api_form_read_one(
     key: str = Depends(X_API_KEY)
 ):
 
+    """
+    Retrieves a specific form document by its name and document ID, provided in the URL.
+    It checks for the form's existence, validates user permissions, fetches the document 
+    from the database, and logs the access.
+    """
+
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
@@ -655,6 +666,11 @@ async def api_form_read_all(
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
+    """
+    Retrieves all documents of a specified form type, identified by the form name in the URL.
+    It verifies the form's existence, checks user permissions, retrieves documents from the 
+    database, and logs the query.
+    """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -718,6 +734,12 @@ async def api_form_update(
     key: str = Depends(X_API_KEY), 
     body: Dict = Body(...)
 ):
+
+    """
+    Updates a specified document within a form. It checks the document's existence, validates user permissions, 
+    updates the document with provided changes, and logs the operation.
+    """
+
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -829,6 +851,10 @@ async def api_form_delete(
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
+    """
+    Deletes a specific document from a form based on the form name and document ID in the URL.
+    Validates the existence of the document, user permissions, and logs the deletion.
+    """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -918,6 +944,10 @@ async def api_form_restore(
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
+    """
+    Restores a previously deleted document in a form, identified by form name and document ID in the URL.
+    Checks document existence, validates user permissions, and logs the restoration.
+    """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -1010,6 +1040,10 @@ async def api_form_search(
     key: str = Depends(X_API_KEY),
     search_term: str = Query(None, title="Search Term")
 ):
+    """
+    Performs a search for documents within a specific form based on a 
+    search term. Validates form existence and user permissions.
+    """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -1074,6 +1108,12 @@ async def api_form_search_all(
     search_term: str = Query(None, title="Search Term")
 ):
 
+    """
+    Performs a global search across all forms using a provided search term. 
+    Validates user permissions for each form.
+    """
+
+
     if search_term is None:
         return {"error": "No search term provided"}
 
@@ -1134,6 +1174,10 @@ async def api_form_sign(
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
 ):
+    """
+    Digitally signs a specific document in a form, verifying user permissions 
+    and form existence. Logs the signing action.
+    """
 
     # The underlying principle is that the user can only sign their own form. The question is what 
     # part of the application decides: the API, or the document database?
@@ -1234,6 +1278,12 @@ async def api_form_sign(
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
 ):
+    """
+    Removes a digital signature from a specific document, subject to user permissions 
+    and form validation. Logs the unsigning action.
+    """
+
+
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
@@ -1339,6 +1389,12 @@ async def api_validate_signature(
     key: str = Depends(X_API_KEY),
 ):
 
+    """
+    Validates the digital signature of a document, confirming authenticity and integrity. 
+    Logs the validation attempt.
+    """
+
+
     # The underlying principle is that the user can only sign their own form. The question is what 
     # part of the application decides: the API, or the document database?
 
@@ -1413,8 +1469,11 @@ async def api_auth_create(
     session: SessionLocal = Depends(get_db)
 ):
 
-    # print("\n\n\n", user_request.model_dump())
-    # print("\n\n\n", user_request.password)
+    """
+    Registers a new user with provided details, handling email uniqueness and optional user statistics. 
+    Sends email confirmation when SMTP is enabled and configured.
+    """
+
 
     if config.DISABLE_NEW_USERS:
         raise HTTPException(status_code=404)
@@ -1525,6 +1584,12 @@ async def api_auth_get(
     key: str = Depends(X_API_KEY)
 ):
 
+    """
+    Retrieves detailed profile information for a specified user ID, respecting privacy 
+    settings and administrative permissions. When user is requesting their own details,
+    more information is provided.
+    """
+
     # We have already validated the API key, so if they have come this far, they have system access. As
     # such, if no user comes back (eh, that might happen if an admin hacks together an API key without a 
     # user account attached to it .. for system purposes) or if there is a user, but they are not a site
@@ -1614,6 +1679,12 @@ async def api_auth_login(
     background_tasks: BackgroundTasks,
     session: SessionLocal = Depends(get_db),
 ):
+
+    """
+    Authenticates a user based on username and password, issuing a JWT for session management. 
+    Tracks and limits failed attempts.
+    """
+
 
     user = session.query(User).filter_by(username=form_data.username.lower()).first()
 
@@ -1706,7 +1777,7 @@ async def api_auth_login(
 
 
 # This is a help route to submit a help request to the sysadmin
-@app.post("/api/auth/help", dependencies=[Depends(api_key_auth)], response_class=JSONResponse)
+@app.post("/api/auth/help", dependencies=[Depends(api_key_auth)], response_class=JSONResponse, include_in_schema=config.HELP_PAGE_ENABLED)
 async def api_auth_help(
     request: Request,
     background_tasks: BackgroundTasks,
@@ -1714,6 +1785,12 @@ async def api_auth_help(
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
+
+    """
+    Submits a help request from a user to the system administrator via email, including user details 
+    and the message content.
+    """
+
 
     if not config.HELP_PAGE_ENABLED or not config.SMTP_ENABLED:
         raise HTTPException(status_code=404)
@@ -1790,6 +1867,11 @@ async def api_admin_get_users(
     key: str = Depends(X_API_KEY)
 ):
 
+    """
+    Lists all users in the system for administrative purposes. Requires site admin permissions. 
+    Logs the action for audit purposes.
+    """
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -1856,6 +1938,9 @@ async def api_admin_edit_docs(
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
+    """
+    Allows site administrators to edit system documentation. This operation is logged for audit purposes.
+    """
 
     if not config.DOCS_ENABLED:
         raise HTTPException(status_code=404)
