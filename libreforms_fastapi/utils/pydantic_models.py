@@ -388,3 +388,16 @@ class HelpRequest(BaseModel):
 class DocsEditRequest(BaseModel):
     """Another quick and dirty model for managing admin edit docs API calls"""
     content: str
+
+
+class GroupModel(BaseModel):
+    """This model will be used for validating change to Groups through the admin API"""
+    id: int
+    name: constr(max_length=1000)
+    permissions: List[str]
+
+    @validator('permissions', each_item=True)
+    def check_colon_in_permission(cls, v):
+        if ':' not in v:
+            raise ValueError('Each permission must contain a ":" character')
+        return v
