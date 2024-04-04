@@ -36,12 +36,17 @@ def get_user_model(
 ):
 
     class UserModel(BaseModel):
+        """
+        This is the model used to validate new user requests. It requires a username, 
+        password, verify_password, and email field, and a bool field for the user's 
+        opt-out status for detailed usage tracking.
+        """
         username: str = Field(...)
         # Added a little syntactic salt with the SecretStr, see https://stackoverflow.com/a/65277859/13301284
         password: SecretStr = Field(...)
         verify_password: SecretStr = Field(...)
-        email: EmailStr
-        opt_out: bool = False
+        email: EmailStr = Field(...)
+        opt_out: bool = Field(False)
 
         @validator('username')
         def username_pattern(cls, value):

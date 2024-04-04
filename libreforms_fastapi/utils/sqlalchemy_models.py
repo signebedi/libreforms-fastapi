@@ -200,6 +200,21 @@ def get_sqlalchemy_models(
             return unpack_permissions
 
 
+        def to_dict(self, exclude_password=True):
+            """
+            Converts the Group instance into a dictionary format, with users represented
+            by their names as a list of strings.
+            """
+
+            group_dict = {
+                'id': self.id,
+                'name': self.name,
+                'permissions': self.permissions,
+                'users': [user.username for user in self.users],
+            }
+
+            return group_dict
+
     # Many to one relationship with User table
     class TransactionLog(Base):
         __tablename__ = 'transaction_log'
