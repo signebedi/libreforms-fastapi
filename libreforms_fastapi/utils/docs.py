@@ -128,13 +128,17 @@ def write_docs(docs_path, content, scrub_unsafe=False):
         scrub_unsafe (bool): Whether to scrub unsafe HTML from the content.
     """
     docs_path = Path(docs_path)
-    if docs_path.exists():
-        # Generate a timestamped backup file name
-        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_path = docs_path.with_name(f"{docs_path.stem}_{timestamp}{docs_path.suffix}")
-        docs_path.rename(backup_path)
-        # print(f"Original document backed up to: {backup_path}")
+    backup_dir = Path('instance/docs_backups')  # Define the backup directory path
 
+    if docs_path.exists():
+        # Ensure the backup directory exists
+        backup_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Generate a timestamped backup file name and ensure it is placed in the backup directory
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_path = backup_dir / (docs_path.stem + f"_{timestamp}" + docs_path.suffix)
+        docs_path.rename(backup_path)
+        
     if scrub_unsafe:
         content = escape_unsafe_html(content)
 
