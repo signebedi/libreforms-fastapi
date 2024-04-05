@@ -45,9 +45,34 @@
 <script src="{{url_for('static', path='js/datatables.js')}}"></script>
 
 <script>
-$(document).ready(function() {
 
     var apiKey = "{{ request.user.api_key }}";
+
+    function deleteForm(id) {
+        $.ajax({
+            url: `/api/admin/delete_group/${id}`,
+            type: 'DELETE',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            dataType: 'json',
+
+            success: function(response) {
+                setFlashMessage("Successfully deleted group", AlertCategories.SUCCESS);
+                window.location.reload();
+
+            },
+
+            error: function(xhr) {
+                // Handle errors
+                console.error('Failed to delete form', xhr.responseText);
+                // Display error message to the user
+                flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+            }
+        });
+    }
+
+$(document).ready(function() {
 
     function renderTable(groups, tableName) {
         var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
@@ -65,7 +90,7 @@ $(document).ready(function() {
                 <div class="dropdown-menu">
                     <!-- <div class="dropdown-header">Group Management</div> -->
                     <a class="dropdown-item" href="/ui/admin/update_group/${group.id}">Edit Group</a>
-                    <a class="dropdown-item" href="#">Delete Group</a>
+                    <a class="dropdown-item" href="#" onclick="deleteForm(${group.id});">Delete Group</a>
                 </div>
             </td>`;
 
