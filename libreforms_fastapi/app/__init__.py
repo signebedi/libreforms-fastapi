@@ -1987,8 +1987,6 @@ async def api_admin_create_group(
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
 
-    group = session.query(Group).filter_by(name='default').first()
-
     existing_group = session.query(Group).filter_by(name=group_request.name).first()
     if existing_group:
         # Consider adding IP tracking to failed attempt
@@ -2026,6 +2024,55 @@ async def api_admin_create_group(
 
 
 # Update group
+@app.post(
+    "/api/admin/update_group/{id}", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_update_group(
+    group_request: GroupModel, 
+    id:str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY),
+):
+    """
+    Updates existing group with provided details, handling group validation using a predefined pydantic
+    model as middleware between the data and the ORM. 
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    existing_group = session.query(Group).filter_by(id=id).first()
+    if not existing_group:
+        raise HTTPException(status_code=404, detail="Could not update group. Does not exist.")
+    
+    # Create and write the new group
+    existing_group.name=group_request.name
+    existing_group.permissions=group_request.permissions
+    session.add(existing_group)
+    session.commit()
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=request.url.path, 
+            remote_addr=request.client.host, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Successfully modified group {group_request.name} with id {id}"},
+    )
 
 # Delete group
 

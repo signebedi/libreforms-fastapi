@@ -392,6 +392,7 @@ class DocsEditRequest(BaseModel):
 
 class GroupModel(BaseModel):
     """This model will be used for validating change to Groups through the admin API"""
+    # id: int = Field(None)
     name: str = Field(...)
     permissions: List[str] = Field(...)
 
