@@ -23,45 +23,65 @@ class Mailer():
 
     # borrowed shamelessly from 
     # https://www.aabidsofi.com/posts/sending-emails-with-aws-ses-and-python/
-    def send_mail(self, subject=None, content=None, to_address=None, cc_address_list=[], logfile=None, reply_to_addr=None):
+    def send_mail(
+        self, 
+        subject=None, 
+        content=None, 
+        to_address:str=None, 
+        # to_address:str|list=None, 
+        cc_address_list:list=[], 
+        logfile=None, 
+        reply_to_addr=None
+    ):
 
-        # only if we have enabled SMTP
-        if self.enabled:
+        # only proceed if we have enabled SMTP
+        if not self.enabled:
+            return
 
-            cc_conditions = all([
-                cc_address_list,
-                isinstance(cc_address_list, list),
-                    len(cc_address_list)>0
-            ])
 
-            try:
-                # creating an unsecure smtp connection
-                with smtplib.SMTP(self.mail_server,self.port) as server:
+        # We want to verify the to address
+        # if isinstance(to_address, list):
+        #     to_address = ", ".join(to_address)
 
-                    msg = MIMEMultipart()
-                    msg['Subject'] = Header(subject, 'utf-8')
-                    msg['From'] = self.from_address
-                    msg['To'] = to_address
-                    msg['Cc'] = ", ".join(cc_address_list) if cc_conditions else None
-                    msg['Reply-To'] = reply_to_addr if reply_to_addr else self.from_address
 
-                    msg.attach(MIMEText(content))
+        # We want to verify the type of the cc list
+        if all([
+            cc_address_list,
+            isinstance(cc_address_list, list),
+            len(cc_address_list)>0
+        ]):
+            final_cc_address_list = ", ".join(cc_address_list)
+        else:
+            final_cc_address_list = None
 
-                    # securing using tls
-                    server.starttls(context=self.context)
+        try:
+            # creating an unsecure smtp connection
+            with smtplib.SMTP(self.mail_server,self.port) as server:
 
-                    # authenticating with the server to prove our identity
-                    server.login(self.username, self.password)
+                msg = MIMEMultipart()
+                msg['Subject'] = Header(subject, 'utf-8')
+                msg['From'] = self.from_address
+                msg['To'] = to_address
+                msg['Cc'] = final_cc_address_list
+                msg['Reply-To'] = reply_to_addr if reply_to_addr else self.from_address
 
-                    # sending a plain text email
-                    server.sendmail(self.from_address, [to_address]+cc_address_list, msg.as_string())
-                    # server.send_message(msg.as_string())
+                msg.attach(MIMEText(content))
 
-                    if logfile: logfile.info(f'successfully sent an email to {to_address}')
-                    
-                    return True
+                # securing using tls
+                server.starttls(context=self.context)
 
-            except Exception as e: 
-                if logfile: logfile.error(f'could not send an email to {to_address} - {e}')
+                # authenticating with the server to prove our identity
+                server.login(self.username, self.password)
+
+                # sending a plain text email
+                server.sendmail(self.from_address, [to_address]+cc_address_list, msg.as_string())
+                # server.send_message(msg.as_string())
+
+                if logfile: logfile.info(f'successfully sent an email to {to_address}')
                 
-                return False
+                return True
+
+        except Exception as e: 
+            if logfile: logfile.error(f'could not send an email to {to_address} - {e}')
+            
+            return False

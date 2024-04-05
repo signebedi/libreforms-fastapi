@@ -6,6 +6,10 @@ separate source to help preserve the generalizability of this logic.
 
 import os, shutil
 from markupsafe import Markup
+from typing import (
+    List,
+)
+
 from dotenv import (
     load_dotenv, 
     dotenv_values, 
@@ -19,7 +23,8 @@ from pydantic_settings import BaseSettings
 from pydantic import (
     validator, 
     ValidationError, 
-    constr
+    constr,
+    EmailStr,
 )
 from pydantic.networks import MongoDsn
 from pydantic.functional_validators import field_validator
@@ -170,7 +175,15 @@ class Config(BaseSettings):
 
     # Set help page information
     HELP_PAGE_ENABLED:bool = os.getenv('HELP_PAGE_ENABLED', 'False') == 'True'
-    HELP_EMAIL:str = os.getenv('HELP_EMAIL', "")
+    HELP_EMAIL:EmailStr|None = os.getenv('HELP_EMAIL', None)
+    # HELP_EMAIL:EmailStr|List[EmailStr] = os.getenv('HELP_EMAIL', "")
+
+
+    # @validator('HELP_EMAIL', pre=True)
+    # def split_str_to_list(cls, v):
+    #     if isinstance(v, str) and "," in v:
+    #         return v.split(",")
+    #     return v
 
     # Set site cookie configs, see https://github.com/signebedi/gita-api/issues/109
     SESSION_COOKIE_SECURE:bool = os.getenv('SESSION_COOKIE_SECURE', 'False') == 'True'
