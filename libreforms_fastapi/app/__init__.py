@@ -2024,7 +2024,7 @@ async def api_admin_create_group(
 
 
 # Update group
-@app.post(
+@app.put(
     "/api/admin/update_group/{id}", 
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
@@ -2052,9 +2052,22 @@ async def api_admin_update_group(
     if not existing_group:
         raise HTTPException(status_code=404, detail="Could not update group. Does not exist.")
     
-    # Create and write the new group
+    if all ([
+        existing_group.name == group_request.name,
+        existing_group.permissions == group_request.permissions,
+    ]):
+        # If no change has been passed, return
+        return JSONResponse(
+            status_code=200,
+            content={"status": "no change", "message": f"No change made to group with id {id}"},
+        )
+        # raise HTTPException(status_code=304, detail=f"No change made to group with id {id}")
+
+
+    # Updating group fields
     existing_group.name=group_request.name
     existing_group.permissions=group_request.permissions
+    
     session.add(existing_group)
     session.commit()
 
