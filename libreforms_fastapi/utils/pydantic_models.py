@@ -392,9 +392,8 @@ class DocsEditRequest(BaseModel):
 
 class GroupModel(BaseModel):
     """This model will be used for validating change to Groups through the admin API"""
-    id: int
-    name: constr(max_length=1000)
-    permissions: List[str]
+    name: str = Field(...)
+    permissions: List[str] = Field(...)
 
     @validator('permissions', each_item=True)
     def check_colon_in_permission(cls, v):

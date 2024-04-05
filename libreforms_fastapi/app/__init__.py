@@ -98,6 +98,7 @@ from libreforms_fastapi.utils.document_database import (
 from libreforms_fastapi.utils.pydantic_models import (
     HelpRequest,
     DocsEditRequest,
+    GroupModel,
     get_user_model,
     get_form_model,
     get_form_names,
@@ -1916,8 +1917,6 @@ async def api_admin_get_users(
 
 
 # Get all groups
-
-
 @app.get(
     "/api/admin/get_groups", 
     dependencies=[Depends(api_key_auth)], 
@@ -1963,8 +1962,68 @@ async def api_admin_get_groups(
     )
 
 
-
 # Add new group
+@app.post(
+    "/api/admin/create_group", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_create_group(
+    group_request: GroupModel, 
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    """
+    Creates a new group with provided details, handling group validation using a predefined pydantic
+    model as middleware between the data and the ORM. 
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    group = session.query(Group).filter_by(name='default').first()
+
+    existing_group = session.query(Group).filter_by(name=group_request.name).first()
+    if existing_group:
+        # Consider adding IP tracking to failed attempt
+        logger.warning(f'Attempt to create group {group_request.name} but group already exists. Did you mean to modify the group?')
+
+        raise HTTPException(status_code=409, detail="Could not create group. Already exists.")
+    
+    # Create and write the new group
+    new_group = Group(
+        name=group_request.name, 
+        permissions=group_request.permissions,
+    )
+    session.add(new_group)
+    session.commit()
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Successfully created new group {group_request.name}"},
+    )
+
+
 
 # Update group
 
