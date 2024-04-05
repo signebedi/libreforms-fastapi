@@ -440,7 +440,14 @@ def get_column_length(model, column_name):
         return column.type.length
     return None
 
-def write_api_call_to_transaction_log(api_key, endpoint, remote_addr=None, query_params:Optional[str]=None):
+def write_api_call_to_transaction_log(
+    api_key, 
+    endpoint, 
+    remote_addr=None, 
+    query_params:Optional[str]=None,
+    # Adding option below per https://github.com/signebedi/libreforms-fastapi/issues/152
+    send_mail_on_failure:bool=config.HELP_PAGE_ENABLED, 
+):
     """This function writes an API call to the TransactionLog"""
 
     if query_params is not None:
@@ -457,11 +464,13 @@ def write_api_call_to_transaction_log(api_key, endpoint, remote_addr=None, query
         # logger.info(api_key, endpoint, remote_addr, query_params)
 
     with SessionLocal() as session:
+
+        current_time = datetime.now(config.TIMEZONE)
         user = session.query(User).filter_by(api_key=api_key).first()
         if user:
             new_log = TransactionLog(
                 user_id=user.id if not user.opt_out else None,
-                timestamp=datetime.now(config.TIMEZONE),
+                timestamp=current_time,
                 endpoint=endpoint,
                 query_params=query_params,
                 remote_addr=remote_addr if not user.opt_out else None,
@@ -471,6 +480,14 @@ def write_api_call_to_transaction_log(api_key, endpoint, remote_addr=None, query
                 session.commit()
             except Exception as e:
                 session.rollback()
+
+                if send_mail_on_failure:
+                    mailer.send_mail( 
+                        subject=f"Transaction Log Error", 
+                        content=f"You are receiving this message because you are the designated help email for {config.SITE_NAME}. This message is to notify you that there was an error when writing the following transaction to the transaction log for {config.SITE_NAME}:\n\n***\n\nUser: {user.username if not user.opt_out else 'N/A'}\nTimestamp: {current_time}\nEndpoint: {endpoint}\nQuery Params: {query_params if query_params else 'N/A'}\nRemote Address: {remote_addr if not user.opt_out else 'N/A'}", 
+                        to_address=config.HELP_EMAIL,
+                    )
+
 
 
 if config.DEBUG:

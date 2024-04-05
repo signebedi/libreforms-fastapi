@@ -178,7 +178,6 @@ class Config(BaseSettings):
     HELP_EMAIL:EmailStr|None = os.getenv('HELP_EMAIL', None)
     # HELP_EMAIL:EmailStr|List[EmailStr] = os.getenv('HELP_EMAIL', "")
 
-
     # @validator('HELP_EMAIL', pre=True)
     # def split_str_to_list(cls, v):
     #     if isinstance(v, str) and "," in v:
