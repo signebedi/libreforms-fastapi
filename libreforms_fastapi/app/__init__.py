@@ -1915,6 +1915,54 @@ async def api_admin_get_users(
 
 # Trigger site reload
 
+# Get group
+@app.get(
+    "/api/admin/get_group/{id}", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_get_group(
+    id:str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    """
+    Lists single group by ID for administrative purposes. Requires site admin permissions. 
+    Logs the action for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    group = session.query(Group).filter_by(id=id).first()
+    if not group:
+        raise HTTPException(status_code=404, detail="Could not find group. Does not exist.")
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "group": group.to_dict()},
+    )
+
 
 # Get all groups
 @app.get(
