@@ -2061,7 +2061,7 @@ async def api_admin_create_group(
     
     # Create and write the new group
     new_group = Group(
-        name=group_request.name, 
+        name=escape(group_request.name), 
         permissions=group_request.permissions,
     )
     session.add(new_group)
@@ -2665,10 +2665,25 @@ async def ui_admin_create_group(request: Request):
     if not request.user.site_admin:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
+    form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
+    available_permissions = [
+        "create",
+        "read_own",
+        "read_all",
+        "update_own",
+        "update_all",
+        "delete_own",
+        "delete_all",
+        "sign_own",
+    ]
+
+
     return templates.TemplateResponse(
         request=request, 
         name="admin_create_group.html.jinja", 
         context={
+            "form_names": form_names,
+            "available_permissions": available_permissions,
             **build_ui_context(),
         }
     )

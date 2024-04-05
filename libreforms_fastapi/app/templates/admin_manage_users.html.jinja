@@ -68,8 +68,6 @@ $(document).ready(function() {
                     <a class="dropdown-item" href="#">Rotate API Key</a>
                 </div>
             </td>`;
-            // table += `<td><a href="/ui/auth/profile/${user.id}">` + user.username + '</td>';
-            // table += '<td>' + user.username + '</td>';
             table += '<td>' + user.email + '</td>';
             table += '<td>' + user.groups.join(', ') + '</td>'; // Eventually make these links
             table += '<td>' + user.active + '</td>';
@@ -97,7 +95,6 @@ $(document).ready(function() {
                 $('#manageUsers').html(usersTable);
 
                 $('#usersTable').DataTable({
-                    "scrollX": true,
                     autoWidth: false
                 });
             },

@@ -66,6 +66,7 @@
                         <div class="dropdown-menu">
                             <a class="dropdown-item" href="{{ url_for( 'ui_admin_manage_users' ) }}">Manage Users</a>
                             <a class="dropdown-item" href="{{ url_for( 'ui_admin_manage_groups' ) }}">Manage Groups</a>
+                            <a class="dropdown-item" href="{{ url_for( 'ui_admin_create_group' ) }}">Create Group</a>
                             {% if config.DOCS_ENABLED %}
                             <a class="dropdown-item" href="{{ url_for( 'ui_admin_edit_docs' ) }}">Edit Docs</a>
                             {% endif %}
