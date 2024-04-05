@@ -64,6 +64,8 @@
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Admin</a>
                         <div class="dropdown-menu">
+                            <a class="dropdown-item" href="{{ url_for( 'ui_admin_manage_users' ) }}">Manage Users</a>
+                            <a class="dropdown-item" href="{{ url_for( 'ui_admin_manage_groups' ) }}">Manage Groups</a>
                             {% if config.DOCS_ENABLED %}
                             <a class="dropdown-item" href="{{ url_for( 'ui_admin_edit_docs' ) }}">Edit Docs</a>
                             {% endif %}
