@@ -64,8 +64,10 @@ $(document).ready(function() {
                     <a class="dropdown-item" href="#">Edit Profile</a>
                     <div class="dropdown-header">Modify User</div>
                     <a class="dropdown-item" href="#">Reset Password</a>
-                    <a class="dropdown-item" href="#">Toggle Active Status</a>
+                    <a class="dropdown-item" href="#">${user.active == true ? 'Disable' : 'Enable'} User</a>
                     <a class="dropdown-item" href="#">Rotate API Key</a>
+
+
                 </div>
             </td>`;
             table += '<td>' + user.email + '</td>';
