@@ -2544,7 +2544,7 @@ def ui_auth_profile_other(request: Request, id: int):
     if request.user.id == id:
         return RedirectResponse(request.url_for("ui_auth_profile"), status_code=303)
     elif not config.OTHER_PROFILES_ENABLED:
-        raise HTTPException(status_code=404, detail="This page does not existasdasddas")
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     return templates.TemplateResponse(
         request=request, 
@@ -2637,5 +2637,57 @@ async def ui_admin_manage_users(request: Request):
 # Edit form config
 
 # Manage groups
+@app.get("/ui/admin/manage_groups", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_manage_groups(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_manage_groups.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
+# Create group
+@app.get("/ui/admin/create_group", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_create_group(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_create_group.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
+# Edit Group
+@app.get("/ui/admin/update_group/{id}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_update_group(id:str, request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_update_group.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
 
 # Manage approval chains
