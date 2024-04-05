@@ -2548,6 +2548,10 @@ def ui_auth_profile_other(request: Request, id: int):
     elif not config.OTHER_PROFILES_ENABLED and not request.user.site_admin:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
+    user = session.query(User).get(id)
+    if not user:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     return templates.TemplateResponse(
         request=request, 
         name="profile_other.html.jinja", 
@@ -2698,10 +2702,32 @@ async def ui_admin_update_group(id:str, request: Request):
     if not request.user.site_admin:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
+    group = session.query(Group).get(id)
+    if not group:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
+    available_permissions = [
+        "create",
+        "read_own",
+        "read_all",
+        "update_own",
+        "update_all",
+        "delete_own",
+        "delete_all",
+        "sign_own",
+    ]
+
+    # These are the permissions already assigned to the group
+    group_details = group.to_dict()
+
     return templates.TemplateResponse(
         request=request, 
         name="admin_update_group.html.jinja", 
         context={
+            "form_names": form_names,
+            "available_permissions": available_permissions,
+            "group_details": group_details,
             **build_ui_context(),
         }
     )
