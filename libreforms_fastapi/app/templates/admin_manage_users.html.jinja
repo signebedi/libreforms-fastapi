@@ -48,11 +48,28 @@ $(document).ready(function() {
         table += '<th>ID</th><th>Username</th><th>Email</th><th>Groups</th><th>Active</th><th>Created Date</th><th>Last Login</th><th>Site Admin</th>';
         table += '</tr></thead><tbody>';
 
+
+
+
+
         // Iterate over the array of users
         users.forEach(function(user) {
             table += '<tr>';
             table += '<td>' + user.id + '</td>';
-            table += '<td>' + user.username + '</td>';
+            table += `<td title="View user actions" class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">${user.username}</a>
+                <div class="dropdown-menu">
+                    <div class="dropdown-header">Profile Settings</div>
+                    <a class="dropdown-item" href="/ui/auth/profile/${user.id}">View Profile</a>
+                    <a class="dropdown-item" href="#">Edit Profile</a>
+                    <div class="dropdown-header">Modify User</div>
+                    <a class="dropdown-item" href="#">Reset Password</a>
+                    <a class="dropdown-item" href="#">Toggle Active Status</a>
+                    <a class="dropdown-item" href="#">Rotate API Key</a>
+                </div>
+            </td>`;
+            // table += `<td><a href="/ui/auth/profile/${user.id}">` + user.username + '</td>';
+            // table += '<td>' + user.username + '</td>';
             table += '<td>' + user.email + '</td>';
             table += '<td>' + user.groups.join(', ') + '</td>'; // Eventually make these links
             table += '<td>' + user.active + '</td>';

@@ -2543,7 +2543,9 @@ def ui_auth_profile_other(request: Request, id: int):
     # If the user is requesting their own profile, redirect to the default profile view.
     if request.user.id == id:
         return RedirectResponse(request.url_for("ui_auth_profile"), status_code=303)
-    elif not config.OTHER_PROFILES_ENABLED:
+
+    # If other profile views are disabled or the requesting user is not an admin
+    elif not config.OTHER_PROFILES_ENABLED and not request.user.site_admin:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
     return templates.TemplateResponse(
@@ -2607,7 +2609,6 @@ async def ui_admin_manage_users(request: Request):
 
     if not request.user.site_admin:
         raise HTTPException(status_code=404, detail="This page does not exist")
-
 
     return templates.TemplateResponse(
         request=request, 
