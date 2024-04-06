@@ -33,6 +33,7 @@ def get_user_model(
     username_helper_text,
     password_regex,
     password_helper_text,
+    admin:bool=False,
 ):
 
     class UserModel(BaseModel):
@@ -69,6 +70,25 @@ def get_user_model(
             if 'password' in values and v.get_secret_value() != values['password'].get_secret_value():
                 raise ValueError('Passwords do not match')
             return v
+
+    class AdminUserModel(BaseModel):
+        """
+        This is the model used to validate new users created by adins. It requires a username, 
+        groups, and email field.
+        """
+        username: str = Field(...)
+        groups: List = Field(...)
+        email: EmailStr = Field(...)
+
+        @validator('username')
+        def username_pattern(cls, value):
+            pattern = re.compile(username_regex)
+            if not pattern.match(value):
+                raise ValueError(username_helper_text)
+            return value.lower()
+
+    if admin:
+        return AdminUserModel
 
     return UserModel
 
