@@ -159,6 +159,15 @@ CreateUserRequest = get_user_model(
     password_helper_text=config.PASSWORD_HELPER_TEXT,
 )
 
+AdminCreateUserRequest = get_user_model(
+    username_regex=config.USERNAME_REGEX,
+    username_helper_text=config.USERNAME_HELPER_TEXT,
+    password_regex=config.PASSWORD_REGEX,
+    password_helper_text=config.PASSWORD_HELPER_TEXT,
+    admin=True,
+)
+
+
 class LibreFormsUser(BaseUser):
     def __init__(
         self, 
@@ -1917,9 +1926,100 @@ async def api_admin_get_users(
     )
 
 
-
 # Add new user
-    # > paired with add newadmin UI route
+    # > paired with add new user admin UI route
+
+
+
+@app.post(
+    "/api/admin/create_user", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_create_user(
+    user_request: AdminCreateUserRequest, 
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Create a user, as an admin. Logs the action for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    existing_user = session.query(User).filter(User.username.ilike(user_request.username)).first()
+    if existing_user:
+        raise HTTPException(status_code=409, detail="Registration failed. Username already exists.")
+
+    existing_email = session.query(User).filter(User.email.ilike(user_request.email)).first()
+    if existing_email:
+        raise HTTPException(status_code=409, detail="Registration failed. Email already in use.")
+
+    new_user = User(
+        email=user_request.email, 
+        username=user_request.username, 
+        active=True,
+    ) 
+
+    # Create the users API key with a 365 day expiry
+    expiration = 8760
+    api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=user_request.email)
+    new_user.api_key = api_key
+
+    password = percentage_alphanumeric_generate_password(config.PASSWORD_REGEX, 16, .65)
+    new_user.password = generate_password_hash(password)
+
+    # Here we add user key pair information, namely, the path to the user private key, and the
+    # contents of the public key, see https://github.com/signebedi/libreforms-fastapi/issues/71.
+    ds_manager = DigitalSignatureManager(username=user_request.username, env=config.ENVIRONMENT)
+    ds_manager.generate_rsa_key_pair()
+    new_user.private_key_ref = ds_manager.get_private_key_file()
+    new_user.public_key = ds_manager.public_key_bytes
+
+    # Add the user to the default group
+    for group_str in user_request.groups:
+        group = session.query(Group).filter_by(name=group_str).first()
+        if group:
+            new_user.groups.append(group)
+
+    session.add(new_user)
+    session.commit()
+
+    # Email notification
+    if config.SMTP_ENABLED:
+
+        subject=f"{config.SITE_NAME} User Registered"
+        content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}. Your user has been given the following temporary password:\n\n{password}\n\nPlease login to the system and update this password at your earliest convenience."
+
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject=subject, 
+            content=content, 
+            to_address=user_request.email,
+        )
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=request.url.path, 
+            remote_addr=request.client.host, 
+            query_params={"user":new_user.username},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"New user \"{user_request.username}\" created with the temporary password {password}"},
+    )
+
 
 # User setting toggles
 @app.patch(
@@ -1957,7 +2057,7 @@ async def api_admin_modify_user(
     # Here we set the relevant value to change
     if field in ["active", "site_admin"]:
         if user.id == user_to_change.id:
-            raise HTTPException(status_code=418, detail=f"You really shouldn't try to toggle the {field} status of the current user...")
+            raise HTTPException(status_code=418, detail=f"You really shouldn't be performing these operations against yourself...")
         new_value = not getattr(user_to_change, field)
         setattr(user_to_change, field, new_value)
     elif field == "password":
@@ -2688,12 +2788,31 @@ async def ui_admin_manage_users(request: Request):
 
 
 # Add new user
+# Create group
+@app.get("/ui/admin/create_user", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_create_user(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    available_groups = [g.name for g in session.query(Group).all()]
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_create_user.html.jinja", 
+        context={
+            "available_groups": available_groups,
+            **build_ui_context(),
+        }
+    )
+
 
 # Transaction Statistics
 # *** We would pull this from the TransactionLog. This can also be the basis 
 # for a "recent activity" UI route.
-
-# Toggle user active status
 
 # Site Config
 
