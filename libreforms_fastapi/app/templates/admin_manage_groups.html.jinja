@@ -48,7 +48,7 @@
 
     var apiKey = "{{ request.user.api_key }}";
 
-    function deleteForm(id) {
+    function deleteGroup(id) {
         $.ajax({
             url: `/api/admin/delete_group/${id}`,
             type: 'DELETE',
@@ -90,7 +90,7 @@ $(document).ready(function() {
                 <div class="dropdown-menu">
                     <!-- <div class="dropdown-header">Group Management</div> -->
                     <a class="dropdown-item" href="/ui/admin/update_group/${group.id}">Edit Group</a>
-                    <a class="dropdown-item" href="#" onclick="deleteForm(${group.id});">Delete Group</a>
+                    <a class="dropdown-item" href="#" onclick="deleteGroup(${group.id});">Delete Group</a>
                 </div>
             </td>`;
 

@@ -36,11 +36,34 @@
 <script src="{{url_for('static', path='js/datatables.js')}}"></script>
 
 <script>
+
+var apiKey = "{{ request.user.api_key }}";
+
+function toggleUser(id, field) {
+    $.ajax({
+        url: `/api/admin/toggle/${field}/${id}`,
+        type: 'PATCH',
+        headers: {
+            'X-API-KEY': apiKey,
+        },
+        dataType: 'json',
+
+        success: function(response) {
+            setFlashMessage(response.message, AlertCategories.SUCCESS);
+            window.location.reload();
+
+        },
+
+        error: function(xhr) {
+            // Handle errors
+            console.error('Failed to perform action.', xhr.responseText);
+            // Display error message to the user
+            flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+        }
+    });
+}
+
 $(document).ready(function() {
-
-    var apiKey = "{{ request.user.api_key }}";
-
-
 
     function renderTable(users, tableName) {
         var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
@@ -63,10 +86,10 @@ $(document).ready(function() {
                     <a class="dropdown-item" href="/ui/auth/profile/${user.id}">View Profile</a>
                     <a class="dropdown-item" href="#">Edit Profile</a>
                     <div class="dropdown-header">Modify User</div>
-                    <a class="dropdown-item" href="#">Reset Password</a>
-                    <a class="dropdown-item" href="#">${user.active == true ? 'Disable' : 'Enable'} User</a>
-                    <a class="dropdown-item" href="#">Rotate API Key</a>
-
+                    <a class="dropdown-item" onclick="toggleUser(${user.id}, 'password');" href="#">Reset Password</a>
+                    <a class="dropdown-item" onclick="toggleUser(${user.id}, 'active');" href="#">${user.active == true ? 'Disable' : 'Enable'} User</a>
+                    <a class="dropdown-item" onclick="toggleUser(${user.id}, 'site_admin');" href="#">${user.site_admin == true ? 'Remove Admin Status' : 'Make Site Admin'}</a>
+                    <a class="dropdown-item" onclick="toggleUser(${user.id}, 'api_key');" href="#">Rotate API Key</a>
 
                 </div>
             </td>`;
