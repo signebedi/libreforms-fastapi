@@ -1,3 +1,4 @@
+import re
 from passlib.context import CryptContext
 
 # Create a password context
@@ -8,6 +9,42 @@ def generate_password_hash(password: str):
 
 def check_password_hash(hash: str, password: str):
     return pwd_context.verify(password, hash)
+
+# this is a password generation script that takes a password length
+# and regex, returning a password string. It also takes a alphanumeric_percentage
+# parameter, between 0 and 1, which scopes the percentage of alphanumeric
+# chars that will be used in the password generated
+def percentage_alphanumeric_generate_password(
+    regex:str, 
+    length:int, 
+    alphanumeric_percentage:float
+):
+    def random_char_from_class(class_name):
+        if class_name == '\\d':
+            return random.choice(string.digits)
+        elif class_name == '\\w':
+            return random.choice(string.ascii_letters + string.digits)
+        elif class_name == '\\s':
+            return random.choice(string.whitespace)
+        else:
+            return random.choice(string.printable)
+
+    # here we validate that `alphanumeric_percentage` is a float between 0 and 1
+    if not ( 0 <= alphanumeric_percentage <= 1 ):
+        raise Exception("You must pass an alphanumeric percentage between 0 and 1, inclusive")
+
+    pattern = re.compile(regex)
+
+    alphanumeric_count = int(length * alphanumeric_percentage)
+    non_alphanumeric_count = length - alphanumeric_count
+
+    while True:
+        alphanumeric_part = [random_char_from_class('\\w') for _ in range(alphanumeric_count)]
+        non_alphanumeric_part = [random_char_from_class(c) if c in ('\\d', '\\w', '\\s') else c for c in random.choices(regex, k=non_alphanumeric_count)]
+        password = ''.join(random.sample(alphanumeric_part + non_alphanumeric_part, length))
+        if pattern.fullmatch(password):
+            return password
+
 
 
 # Wrote an exception for configuration errors
