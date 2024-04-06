@@ -1593,7 +1593,7 @@ async def api_auth_create(
             api_key=new_user.api_key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params={"user":new_user.username},
+            query_params={"user":user_request.username},
         )
 
     return {
@@ -1928,9 +1928,6 @@ async def api_admin_get_users(
 
 # Add new user
     # > paired with add new user admin UI route
-
-
-
 @app.post(
     "/api/admin/create_user", 
     dependencies=[Depends(api_key_auth)], 
@@ -2012,12 +2009,63 @@ async def api_admin_create_user(
             api_key=key, 
             endpoint=request.url.path, 
             remote_addr=request.client.host, 
-            query_params={"user":new_user.username},
+            query_params={"user":user_request.username},
         )
 
     return JSONResponse(
         status_code=200,
         content={"status": "success", "message": f"New user \"{user_request.username}\" created with the temporary password {password}"},
+    )
+
+# This is a glorified "update groups" route..
+@app.put(
+    "/api/admin/update_user/{id}", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_update_user(
+    id: str,
+    user_request: AdminCreateUserRequest, 
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Update a user, as an admin. Mainly for modifying groups. Logs the action for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    user_to_change = session.query(User).get(id)
+
+    # Really, it's just groups we want to change
+    user_to_change.groups = []
+    for group_str in user_request.groups:
+        group = session.query(Group).filter_by(name=group_str).first()
+        if group:
+            user_to_change.groups.append(group)
+
+    session.add(user_to_change)
+    session.commit()
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=request.url.path, 
+            remote_addr=request.client.host, 
+            query_params={"user":user_request.username, "groups":user_request.groups},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Successfully modified user with id {id}"},
     )
 
 
@@ -2788,7 +2836,6 @@ async def ui_admin_manage_users(request: Request):
 
 
 # Add new user
-# Create group
 @app.get("/ui/admin/create_user", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_create_user(request: Request):
@@ -2805,6 +2852,30 @@ async def ui_admin_create_user(request: Request):
         name="admin_create_user.html.jinja", 
         context={
             "available_groups": available_groups,
+            **build_ui_context(),
+        }
+    )
+
+
+# Edit user
+@app.get("/ui/admin/update_user/{id}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_update_user(id: str, request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    available_groups = [g.name for g in session.query(Group).all()]
+    existing_user = session.query(User).get(id)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_update_user.html.jinja", 
+        context={
+            "available_groups": available_groups,
+            "existing_user": existing_user.to_dict(),
             **build_ui_context(),
         }
     )

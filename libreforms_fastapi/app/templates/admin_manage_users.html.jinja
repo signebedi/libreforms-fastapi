@@ -84,7 +84,7 @@ $(document).ready(function() {
                 <div class="dropdown-menu">
                     <div class="dropdown-header">Profile Settings</div>
                     <a class="dropdown-item" href="/ui/auth/profile/${user.id}">View Profile</a>
-                    <a class="dropdown-item" href="#">Edit Profile</a>
+                    <a class="dropdown-item" href="/ui/admin/update_user/${user.id}">Edit User</a>
                     <div class="dropdown-header">Modify User</div>
                     <a class="dropdown-item" onclick="toggleUser(${user.id}, 'password');" href="#">Reset Password</a>
                     <a class="dropdown-item" onclick="toggleUser(${user.id}, 'active');" href="#">${user.active == true ? 'Disable' : 'Enable'} User</a>

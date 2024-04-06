@@ -80,12 +80,12 @@ def get_user_model(
         groups: List = Field(...)
         email: EmailStr = Field(...)
 
-        @validator('username')
-        def username_pattern(cls, value):
-            pattern = re.compile(username_regex)
-            if not pattern.match(value):
-                raise ValueError(username_helper_text)
-            return value.lower()
+        # @validator('username')
+        # def username_pattern(cls, value):
+        #     pattern = re.compile(username_regex)
+        #     if not pattern.match(value):
+        #         raise ValueError(username_helper_text)
+        #     return value.lower()
 
     if admin:
         return AdminUserModel
