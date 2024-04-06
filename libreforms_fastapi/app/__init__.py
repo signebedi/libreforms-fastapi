@@ -71,6 +71,7 @@ from libreforms_fastapi.utils.scripts import (
     check_configuration_assumptions,
     generate_password_hash,
     check_password_hash,
+    percentage_alphanumeric_generate_password,
 )
 
 # Import the tools used to generate signatures
@@ -1545,7 +1546,7 @@ async def api_auth_create(
     new_user.public_key = ds_manager.public_key_bytes
 
     # Add the user to the default group
-    group = session.query(Group).filter_by(name='default').first()
+    group = session.query(Group).filter_by(id=1).first()
     new_user.groups.append(group)
 
     session.add(new_user)
@@ -1870,9 +1871,7 @@ async def api_auth_help(
 ##########################
 
 # Get all users
-    # > paired with manage users admin UI route
-
-
+# > paired with manage users admin UI route
 @app.get(
     "/api/admin/get_users", 
     dependencies=[Depends(api_key_auth)], 
@@ -1922,11 +1921,76 @@ async def api_admin_get_users(
 # Add new user
     # > paired with add newadmin UI route
 
-# Modify user *** including disable user 
+# User setting toggles
+@app.patch(
+    "/api/admin/toggle/{field}/{id}", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_modify_user(
+    field:str,
+    id:str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Toggles a user field by ID. In the case of passwords, it resets them. Requires site admin permissions. 
+    Logs the action for audit purposes.
+    """
 
-# Get Transaction Statistics
-    # Paired with the Transaction Statistics admin UI route
+    if field not in ["active", "site_admin", "password", "api_key"]:
+        raise HTTPException(status_code=404)
 
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+
+    user_to_change = session.query(User).get(id)
+    if not user_to_change:
+        raise HTTPException(status_code=404, detail="Could not find user. Are you sure they exist?")
+
+    # Here we set the relevant value to change
+    if field in ["active", "site_admin"]:
+        if user.id == user_to_change.id:
+            raise HTTPException(status_code=418, detail=f"You really shouldn't try to toggle the {field} status of the current user...")
+        new_value = not getattr(user_to_change, field)
+        setattr(user_to_change, field, new_value)
+    elif field == "password":
+        new_value = percentage_alphanumeric_generate_password(config.PASSWORD_REGEX, 16, .65)
+        user_to_change.password = generate_password_hash(new_value)
+    elif field == "api_key":
+        # Rotate the user's API key 
+        new_value = signatures.rotate_key(user_to_change.api_key)
+        user_to_change.api_key = new_value
+
+    session.add(user_to_change)
+    session.commit()
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=request.url.path, 
+            remote_addr=request.client.host, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"{field} set to {new_value} for user id {id}"},
+    )
+
+
+
+
+# Get Transaction Log
+    # Paired with the Transaction Data admin UI route
 
 # Update application config
 

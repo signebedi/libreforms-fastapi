@@ -1,4 +1,4 @@
-import re
+import re, random, string
 from passlib.context import CryptContext
 
 # Create a password context
