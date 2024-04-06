@@ -11,7 +11,7 @@
     <fieldset style="padding-top: 10px;" class="form-check">
         <label aria-labelledby="usernameHelpInline" for="username" class="form-check-label">Username</label>
          <span id="usernameHelpInline" class="form-text">
-        | Username should be 5-15 characters long and contain only letters, numbers, and underscores.
+        | {{config['USERNAME_HELPER_TEXT']}}
         </span>
         <input type="text" id="username" name="username" class="form-control" 
             onchange="validateField('username', /^[a-z0-9_]{5,15}$/, 'Invalid username. Username should be 5-15 characters long and contain only letters, numbers, and underscores.')" required>
@@ -23,7 +23,7 @@
     <fieldset style="padding-top: 10px;" class="form-check">
         <label aria-labelledby="emailHelpInline" for="email" class="form-check-label">Email</label>
          <span id="emailHelpInline" class="form-text">
-        | Please enter your email.
+        | Please enter your email
         </span>
         <input type="email" class="form-control" id="email" name="email" 
             onchange="validateField('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email.')" required>
@@ -34,7 +34,7 @@
     <fieldset style="padding-top: 10px;" class="form-check">
         <label aria-labelledby="passwordHelpInline" for="password" class="form-check-label">Password</label>
         <span id="passwordHelpInline" class="form-text">
-        | Passwords must be at least 8 characters long, and include at least one uppercase letter, one lowercase letter, one symbol, and one number.
+        | {{config['PASSWORD_HELPER_TEXT']}}
         </span>
         <input type="password" id="password" name="password" class="form-control" 
             onchange="validateField('password', /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 'Invalid password. Password must be at least 8 characters long, and include at least one uppercase letter, one lowercase letter, one symbol, and one number.')" required>
@@ -46,7 +46,7 @@
     <fieldset style="padding-top: 10px;" class="form-check">
         <label aria-labelledby="confirmPasswordHelpInline" for="confirmPassword" class="form-check-label">Confirm Password</label>
         <span id="confirmPasswordHelpInline" class="form-text">
-        | Please re-enter your password here.
+        | Please re-enter your password here
         </span>
         <input type="password" id="confirmPassword" class="form-control" onchange="validateConfirmPassword()" required>
         <div class="valid-feedback">Passwords match!</div>

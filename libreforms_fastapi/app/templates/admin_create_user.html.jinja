@@ -1,0 +1,138 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+    <link href="{{ url_for('static', path='css/datatables.css') }}" rel="stylesheet">
+{% endblock %}
+
+
+{% block title %}
+{{config.SITE_NAME}} — Create User
+{% endblock %}
+
+{% block content %}
+<h1>
+    Create User
+    <sup title="This is an admin page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star-fill" viewBox="0 0 16 16">
+            <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
+        </svg>
+    </sup>
+</h1>
+<hr>
+
+<form id="registrationForm">
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="usernameHelpInline" for="username" class="form-check-label">Username</label>
+         <span id="usernameHelpInline" class="form-text">
+        | {{ config['USERNAME_HELPER_TEXT'] }}
+        </span>
+        <input type="text" id="username" name="username" class="form-control" 
+            onchange="validateField('username', /^[a-z0-9_]{5,15}$/, 'Invalid username. Username should be 5-15 characters long and contain only letters, numbers, and underscores.')" required>
+        {# Username should be 3-15 characters long and contain only lowercase letters, numbers, and underscores. #}
+        <div class="valid-feedback" id="username-is-valid" style="display: none;">This field is valid!</div>
+        <div class="invalid-feedback" id="username-is-invalid" style="display: none;"></div>
+    </fieldset>
+    
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="emailHelpInline" for="email" class="form-check-label">Email</label>
+         <span id="emailHelpInline" class="form-text">
+        | Please enter an email for this user
+        </span>
+        <input type="email" class="form-control" id="email" name="email" 
+            onchange="validateField('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email.')" required>
+        <div class="valid-feedback" id="email-is-valid" style="display: none;">This field is valid!</div>
+        <div class="invalid-feedback" id="email-is-invalid" style="display: none;"></div>
+    </fieldset>
+
+
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="groupsHelpInline" for="groups" class="form-label">Groups</label>
+        <span id="groupsHelpInline" class="form-text">
+            | Please select which groups this user will be added to
+        </span>
+        {% for group in available_groups %}
+        <div class="form-check">
+            <input type="checkbox" class="form-check-input" id="group-{{ loop.index }}" name="groups" value="{{ group }}">
+            <label class="form-check-label" for="group-{{ loop.index }}">{{ group }}</label>
+        </div>
+        {% endfor %}
+    </fieldset>
+
+
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="submit" class="btn btn-primary" id="createButton">Create</button>
+    </fieldset>
+
+</form>
+
+{% endblock %}
+
+
+{% block scripts %}
+<script src="{{url_for('static', path='js/datatables.js')}}"></script>
+<script>
+    $(document).ready(function() {
+
+        var apiKey = "{{ request.user.api_key }}";
+
+        $('#registrationForm').on('submit', function(event) {
+            event.preventDefault(); // Stop the form from submitting normally
+
+            const createButton = document.getElementById('createButton')
+            createButton.disabled=true; 
+            createButton.value='Creating...';
+
+
+            // Prepare form data
+            var groups = [];
+            $('input[type="checkbox"]:checked').each(function() {
+                groups.push(this.value);
+            });
+
+            // Prepare form data
+            var formData = {
+                username: $('#username').val().trim(),
+                email: $('#email').val().trim(),
+                groups: groups
+            };
+
+            // AJAX POST request to the API endpoint
+            $.ajax({
+                url: '/api/admin/create_user',
+                type: 'POST',
+                headers: {
+                    'X-API-KEY': apiKey,
+                },
+                contentType: 'application/json', // Ensure to set the content type
+                data: JSON.stringify(formData), // Convert formData to JSON format
+                success: function(response) {
+                    // Handle success
+                    console.log('User created successfully', response);
+                    
+                    // Stash a flashed success message and redirect
+                    setFlashMessage(response.message, "success");
+                    window.location.href = '/ui/admin/manage_users';
+                },
+                error: function(xhr) {
+                    // Handle errors
+                    console.error('Group creation failed.', xhr.responseText);
+                    // Display error message
+                    flashMessage(xhr.responseText, AlertCategories.WARNING); 
+                }
+            });
+
+            // Here we restore the submit button
+            createButton.disabled = false;
+            createButton.value='Create';
+
+
+        });
+
+
+
+    });
+</script>
+{% endblock %}
