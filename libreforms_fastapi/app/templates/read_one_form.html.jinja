@@ -35,7 +35,10 @@
         <div class="dropdown-menu" id="linkList" style="">
             <h6 class="dropdown-header">Form Management</h6>
             <a class="dropdown-item disabled" id="editLink" href="{{ url_for ('ui_form_update', form_name=form_name, document_id=document_id) }}">Edit Form</a>
-            <a class="dropdown-item disabled" id="signLink" href="#">Sign Form</a>
+            {% if "sign_own" in request.user.permissions[form_name] | tojson %}
+            
+            <a class="dropdown-item disabled" id="signLink" onclick="signForm();" href="#">Sign Form</a>
+            {% endif %}
             <a class="dropdown-item" id="historyLink" href="#">View Form History</a>
             <a class="dropdown-item" id="duplicateLink" href="#">Duplicate Form</a>
             <a class="dropdown-item disabled" id="deleteLink" href="#">Delete Form</a>
@@ -60,12 +63,39 @@
 <script src="{{url_for('static', path='js/datatables.js')}}"></script>
 
 <script>
+
+var apiKey = "{{ request.user.api_key }}";
+var formName = "{{ form_name }}";
+var documentId = "{{ document_id }}";
+var currentUser = "{{ request.user.username }}";
+var userPermissions = {{ request.user.permissions[form_name] | tojson }};
+
+function signForm() {
+    $.ajax({
+        url: `/api/form/sign/${formName}/${documentId}`,
+        type: 'PATCH',
+        headers: {
+            'X-API-KEY': apiKey,
+        },
+        dataType: 'json',
+
+        success: function(response) {
+            setFlashMessage("Successfully signed form", AlertCategories.SUCCESS);
+            window.location.reload();
+
+        },
+
+        error: function(xhr) {
+            // Handle errors
+            console.error('Failed to sign form', xhr.responseText);
+            // Display error message to the user
+            flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+        }
+    });
+}
+
+
 $(document).ready(function() {
-    var apiKey = "{{ request.user.api_key }}";
-    var formName = "{{ form_name }}";
-    var documentId = "{{ document_id }}";
-    var currentUser = "{{ request.user.username }}";
-    var userPermissions = {{ request.user.permissions[form_name] | tojson }};
 
     // This var will allow us to (1) select the metadata fields to display and 
     // (2) mask these fields in a human-readable format.
