@@ -73,6 +73,7 @@
                             <div class="dropdown-header">Settings</div>
                             {% if config.DOCS_ENABLED %}
                             <a class="dropdown-item" href="{{ url_for( 'ui_admin_edit_docs' ) }}">Edit Docs</a>
+                            <a class="dropdown-item" href="{{ url_for( 'ui_admin_log' ) }}">Transaction Log</a>
                             {% endif %}
                         </div>
                     </li>

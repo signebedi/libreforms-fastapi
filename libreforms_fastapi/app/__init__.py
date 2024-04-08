@@ -454,24 +454,27 @@ def write_api_call_to_transaction_log(
     api_key, 
     endpoint, 
     remote_addr=None, 
-    query_params:Optional[str]=None,
+    query_params:Optional[dict]=None,
     # Adding option below per https://github.com/signebedi/libreforms-fastapi/issues/152
     send_mail_on_failure:bool=config.HELP_PAGE_ENABLED, 
 ):
     """This function writes an API call to the TransactionLog"""
 
-    if query_params is not None:
+    # if query_params is not None:
 
-        # Get the max length of the query_params column
-        max_length = get_column_length(TransactionLog, 'query_params')
+    #     # Get the max length of the query_params column
+    #     max_length = get_column_length(TransactionLog, 'query_params')
 
-        # Super hackish but I want to make sure we don't run into an issue where 
-        if len(query_params) >= max_length:
-            logger.error(f"Query params for {endpoint} exceeded max length of {max_length} characters")
-            # Truncate to avoid unpredictable behavior
-            query_params = query_params[:max_length]
+    #     # Super hackish but I want to make sure we don't run into an issue where 
+    #     if len(query_params) >= max_length:
+    #         logger.error(f"Query params for {endpoint} exceeded max length of {max_length} characters")
+    #         # Truncate to avoid unpredictable behavior
+    #         query_params = query_params[:max_length]
 
-        # logger.info(api_key, endpoint, remote_addr, query_params)
+    #     # logger.info(api_key, endpoint, remote_addr, query_params)
+
+    if not query_params:
+        query_params={}
 
     with SessionLocal() as session:
 
@@ -607,7 +610,7 @@ async def api_form_create(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params=json_data,
+            query_params=data_dict,
         )
 
     return {
@@ -671,7 +674,7 @@ async def api_form_read_one(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params="{}",
+            query_params={},
         )
 
     if not document:
@@ -737,7 +740,7 @@ async def api_form_read_all(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params="{}",
+            query_params={},
         )
 
     if not documents:
@@ -1112,7 +1115,7 @@ async def api_form_search(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params="{}",
+            query_params={},
         )
 
     if not documents or len(documents) == 0:
@@ -1179,7 +1182,7 @@ async def api_form_search_all(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params="{}",
+            query_params={},
         )
 
     if not documents or len(documents) == 0:
@@ -2779,11 +2782,6 @@ def ui_auth_profile_other(request: Request, id: int):
 ### UI Routes - Admin
 ##########################
 
-# Admin logic requires us to implement current_user logic, see
-# https://github.com/signebedi/libreforms-fastapi/issues/19.
-# if current_user.group != "admin":
-#     raise HTTPException(status_code=404, detail="This page does not exist")
-
 
 # Edit docs
 @app.get("/ui/admin/edit_docs", response_class=HTMLResponse, include_in_schema=False)
@@ -2882,9 +2880,37 @@ async def ui_admin_update_user(id: str, request: Request):
     )
 
 
-# Transaction Statistics
+# Transaction Statistics / Logs
 # *** We would pull this from the TransactionLog. This can also be the basis 
 # for a "recent activity" UI route.
+@app.get("/ui/admin/log", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_log(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    log_list = session.query(TransactionLog).all()
+
+    log_list_as_dict = [l.to_dict() for l in log_list]
+
+
+    # log_list_as_dict = log_list_as_dict[::-1] # If we want to reverse the order...
+    # log_list_as_dict = log_list_as_dict[:10000] # Limit to the last 10,000 items...    log_list_as_dict = log_list_as_dict[:10000] # Limit to the 
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_log.html.jinja", 
+        context={
+            "log": log_list_as_dict,
+            **build_ui_context(),
+        }
+    )
+
+
 
 # Site Config
 
@@ -2988,3 +3014,4 @@ async def ui_admin_update_group(id:str, request: Request):
     )
 
 # Manage approval chains
+
