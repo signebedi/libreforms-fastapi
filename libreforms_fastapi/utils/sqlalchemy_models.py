@@ -228,6 +228,25 @@ def get_sqlalchemy_models(
 
         user = relationship("User", back_populates="transaction_log")
 
+        def to_dict(self):
+            """
+            Converts the Log instance into a dictionary format.
+            """
+
+            log_dict = {
+                "id":self.id,
+                "user_id":self.user_id,
+                "timestamp":self.timestamp,
+                "endpoint":self.endpoint,
+                "remote_addr":self.remote_addr,
+                "query_params":self.query_params,
+            }
+
+            if self.user:
+                log_dict["user_details"] = self.user.to_dict()
+
+            return log_dict
+
 
 
     # Allow custom approval chains to be defined here
