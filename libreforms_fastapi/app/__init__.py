@@ -2876,6 +2876,7 @@ async def ui_admin_update_user(id: str, request: Request):
         context={
             "available_groups": available_groups,
             "existing_user": existing_user.to_dict(),
+            "id": id,
             **build_ui_context(),
         }
     )

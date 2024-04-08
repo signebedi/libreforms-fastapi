@@ -70,7 +70,7 @@
     $(document).ready(function() {
 
         var apiKey = "{{ request.user.api_key }}";
-        var userId = "{{ request.user.id }}";
+        var userId = "{{ id }}";
 
         $('#registrationForm').on('submit', function(event) {
             event.preventDefault(); // Stop the form from submitting normally
