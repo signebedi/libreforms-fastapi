@@ -1079,8 +1079,8 @@ async def api_form_search(
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
-    if search_term is None or len(search_term) == 0:
-        return {"error": "No search term provided"}
+    if search_term is None or len(search_term) < 1:
+        return HTTPException(status_code=420, detail="No search term provided")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
@@ -1145,8 +1145,8 @@ async def api_form_search_all(
     """
 
 
-    if search_term is None:
-        return {"error": "No search term provided"}
+    if search_term is None or len(search_term) < 1:
+        return HTTPException(status_code=420, detail="No search term provided")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
@@ -2621,6 +2621,29 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request):
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
 
+
+# Search forms
+@app.get("/ui/form/search", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], status_code=404)
+async def ui_admin_update_group(
+    request: Request,
+    search_term: str = Query(None, title="Search Term"),
+):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # search_term = body.get('search_term', None)
+    if not search_term:
+        raise HTTPException(status_code=404)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="search_forms.html.jinja", 
+        context={
+            "search_term": search_term,
+            **build_ui_context(),
+        }
+    )
 
 ##########################
 ### UI Routes - Default Routes

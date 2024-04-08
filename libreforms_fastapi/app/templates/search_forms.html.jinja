@@ -1,0 +1,81 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+    <link href="{{ url_for('static', path='css/datatables.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+{{config.SITE_NAME}} — Search "{{ search_term }}"
+{% endblock %}
+
+{% block content %}
+<h1>Search "{{ search_term }}"</h1>
+<div class="container table-responsive">
+    <div class="spinner-border spinner-border-sm loading-circle" role="status"></div>
+    <table id="searchTable" class="table table-hover table-striped table-light" style="display: none;">
+        <thead>
+            <tr>
+                <th>Record</th>
+                <th>Details</th>
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{url_for('static', path='js/datatables.js')}}"></script>
+<script>
+$(document).ready(function () {
+
+    const spinner = document.querySelector('.loading-circle');
+    const searchTable = document.getElementById('searchTable');
+    const apiKey = "{{ request.user.api_key }}";
+    const searchTerm = "{{ search_term }}";
+
+    // https://www.geeksforgeeks.org/how-to-truncate-a-string-in-javascript/
+    function GFG(str, maxLength) {
+        if (str.length > maxLength) {
+            return str.substring(0, maxLength) + '...';
+        }
+        return str;
+    }
+
+    $.ajax({
+        url: `/api/form/search?search_term=${encodeURIComponent(searchTerm)}`,
+        type: "GET",
+        dataType: 'json',
+        beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
+        success: function(formData) {
+
+            console.log(formData);
+
+            formData.documents.forEach(form => {
+
+                let row = `<tr>
+                                <td><a href="/ui/form/read_one/${form['metadata']['form_name']}/${form['metadata']['document_id']}">${form['metadata']['document_id']}</a></td>
+                                <td>${GFG(JSON.stringify(form['data']), 60)}</td>
+                            </tr>`;
+
+                $("#searchTable tbody").append(row);
+            });
+
+            spinner.style.display = 'none'; // Hide the spinner
+            searchTable.style.display = ''; // Show the profile table
+
+            $('#searchTable').DataTable();
+        },
+        error: function(error) {
+            // console.error("Error fetching search data:", error);
+            spinner.style.display = 'none'; // Hide the spinner
+
+            flashMessage("No results found", AlertCategories.WARNING); 
+            // window.history.back();
+        }
+    });
+});
+</script>
+
+{% endblock %}
