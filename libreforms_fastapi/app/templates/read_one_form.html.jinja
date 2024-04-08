@@ -41,7 +41,7 @@
             {% endif %}
             <a class="dropdown-item" id="historyLink" href="#">View Form History</a>
             <a class="dropdown-item" id="duplicateLink" href="#">Duplicate Form</a>
-            <a class="dropdown-item disabled" id="deleteLink" href="#">Delete Form</a>
+            <a class="dropdown-item disabled" id="deleteLink" onclick="deleteForm();" href="#">Delete Form</a>
             <a class="dropdown-item" id="downloadLink" href="#">Download Form</a>
             <div class="dropdown-divider"></div>
             <h6 class="dropdown-header">Review and Approval</h6>
@@ -93,6 +93,31 @@ function signForm() {
         }
     });
 }
+
+function deleteForm() {
+    $.ajax({
+        url: `/api/form/delete/${formName}/${documentId}`,
+        type: 'DELETE',
+        headers: {
+            'X-API-KEY': apiKey,
+        },
+        dataType: 'json',
+
+        success: function(response) {
+            setFlashMessage("Successfully deleted form", AlertCategories.SUCCESS);
+            window.location.href = '/ui/home';
+
+        },
+
+        error: function(xhr) {
+            // Handle errors
+            console.error('Failed to delete form', xhr.responseText);
+            // Display error message to the user
+            flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+        }
+    });
+}
+
 
 
 $(document).ready(function() {
