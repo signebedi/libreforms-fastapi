@@ -224,9 +224,11 @@ def get_sqlalchemy_models(
         # date = Column(Date, nullable=False, default=lambda: datetime.utcnow().date())
         endpoint = Column(String(1000))
         remote_addr = Column(String(50), nullable=True)
-        query_params = Column(String(2000), nullable=True) # Can we find a way to make this a JSON string or similar format?
+        query_params = Column(JSON, nullable=True) 
 
         user = relationship("User", back_populates="transaction_log")
+
+
 
     # Allow custom approval chains to be defined here
     class ApprovalChains(Base):
