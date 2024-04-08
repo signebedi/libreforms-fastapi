@@ -28,6 +28,10 @@ from libreforms_fastapi.utils.scripts import (
     check_password_hash,
 )
 
+from libreforms_fastapi.utils.certificates import (
+    DigitalSignatureManager,
+)
+
 project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 sys.path.append(project_root)
 
@@ -488,6 +492,14 @@ def cli_useradd(username, password, email, opt_out, site_admin, environment):
         expiration = 365*24
         api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=email)
         new_user.api_key = api_key
+
+        # Here we add user key pair information, namely, the path to the user private key, and the
+        # contents of the public key, see https://github.com/signebedi/libreforms-fastapi/issues/71.
+        # Added this bit in response to this issue: https://github.com/signebedi/libreforms-fastapi/issues/161
+        ds_manager = DigitalSignatureManager(username=username.lower(), env=environment)
+        ds_manager.generate_rsa_key_pair()
+        new_user.private_key_ref = ds_manager.get_private_key_file()
+        new_user.public_key = ds_manager.public_key_bytes
 
         group = session.query(Group).filter_by(name='default').first()
         new_user.groups.append(group)
