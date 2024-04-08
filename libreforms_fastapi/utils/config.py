@@ -132,6 +132,10 @@ class Config(BaseSettings):
     # profile data, see https://github.com/signebedi/libreforms-fastapi/issues/54.
     OTHER_PROFILES_ENABLED:bool = os.getenv('OTHER_PROFILES_ENABLED', 'True') == 'True'
 
+    # Here we determine whether the search bar will show in the UI, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/164.
+    SEARCH_BAR_ENABLED:bool = os.getenv('SEARCH_BAR_ENABLED', 'True') == 'True'
+
     # Here we specify a path to our JSON form config representation, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/37.
     FORM_CONFIG_PATH:str = os.getenv('FORM_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "form_config.json")))

@@ -77,6 +77,14 @@
                             {% endif %}
                         </div>
                     </li>
+
+                    {% if config['SEARCH_BAR_ENABLED'] %}
+                    <form id="searchForm" class="d-flex">
+                        <input class="form-control me-sm-2" type="search" id="searchTerm" placeholder="Search">
+                        <button class="btn btn-secondary my-2 my-sm-0" onclick="searchQuery(this.value);" type="submit">Search</button>
+                    </form>
+                    {% endif %}
+
                     {% endif %}
 
 
@@ -163,12 +171,20 @@
 
     <script>
 
+        function searchQuery(searchTerm) {
+        }
 
         $(document).ready(function() {
             // Execute any stashed messages
             var flashMessages = getAndClearFlashMessages();
             flashMessages.forEach(function(data) {
                 flashMessage(data.message, data.category);
+            });
+
+            $('#searchForm').submit(function(event) {
+                event.preventDefault(); // Prevent the form from submitting via the browser
+                searchTerm = document.getElementById("searchTerm");
+                location.href = `/ui/form/search?search_term=${encodeURIComponent(searchTerm.value)}`;
             });
         });
 
