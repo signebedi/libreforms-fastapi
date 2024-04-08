@@ -2583,6 +2583,31 @@ async def ui_form_update(form_name:str, document_id:str, request: Request):
     )
 
 
+@app.get("/ui/form/duplicate/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], status_code=404)
+async def ui_form_duplicate(form_name:str, document_id:str, request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # generate_html_form
+    form_html = get_form_html(form_name=form_name, config_path=config.FORM_CONFIG_PATH, update=True)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="duplicate_form.html.jinja", 
+        context={
+            "form_name": form_name,
+            "document_id": document_id,
+            "form_html": form_html,
+            **build_ui_context(),
+        }
+    )
+
+
+
 # Delete form
     # @app.get("/ui/form/delete/{form_name}", include_in_schema=False)
     # async def ui_form_delete():
