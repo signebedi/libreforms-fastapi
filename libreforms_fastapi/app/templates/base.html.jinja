@@ -171,10 +171,36 @@
 
     <script>
 
-        function searchQuery(searchTerm) {
-        }
-
         $(document).ready(function() {
+
+
+            {% if request.user.is_authenticated %}
+
+            if (localStorage.getItem('jwt_token')) {
+                $.ajax({
+                    url: '/api/auth/refresh',
+                    type: 'POST',
+                    success: function(response) {
+                        if(response.access_token) {
+                            localStorage.setItem('jwt_token', response.access_token);
+                            console.log("Successfully refreshed token.");
+                        } else {
+                            console.log("No new token received.");
+                        } 
+                    },
+                    error: function(jqXHR, textStatus, errorThrown) {
+                        console.log("Could not refresh session token:", textStatus, errorThrown);
+                    }
+
+
+                });
+            } else {
+                console.log("No JWT token found in localStorage.");
+            }
+
+            {% endif %}
+
+
             // Execute any stashed messages
             var flashMessages = getAndClearFlashMessages();
             flashMessages.forEach(function(data) {

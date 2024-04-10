@@ -232,11 +232,10 @@ class BearerTokenAuthBackend(AuthenticationBackend):
                 audience=f"{config.SITE_NAME}WebUser", 
                 algorithms=['RS256']
             )
-            
+
             with SessionLocal() as session:
                 user = session.query(User).filter_by(id=payload.get("id", None)).first()
                 _groups = [g.name for g in user.groups]
-                # print(user)
 
         except:
             return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
@@ -1656,7 +1655,8 @@ async def api_auth_get(
     # If the user is requesting their own data, return additional information. 
     if requesting_user.id == target_user.id:
         profile_data["last_password_change"] = target_user.last_password_change
-        profile_data["api_key"] = target_user.api_key
+        # Decided against adding API key to minimize private data in JWT
+        # profile_data["api_key"] = target_user.api_key
         profile_data["opt_out"] = target_user.opt_out
         profile_data["site_admin"] = target_user.site_admin
 
@@ -1701,8 +1701,7 @@ async def api_auth_get(
     # async def api_auth_forgot_password_confirm(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
 
 
-# Login, uses OAUTH and current_user functionality, see
-# https://github.com/signebedi/libreforms-fastapi/issues/19
+# Login, see https://github.com/signebedi/libreforms-fastapi/issues/19
 @app.post('/api/auth/login')
 async def api_auth_login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()], 
@@ -1767,6 +1766,8 @@ async def api_auth_login(
         "exp": datetime.now(config.TIMEZONE) + config.PERMANENT_SESSION_LIFETIME,
         "email": user.email,
         "active": user.active,
+        # Decided against adding API key to minimize private data in JWT
+        # "api_key": user.api_key,
         "admin": user.site_admin,
     }
 
@@ -1805,6 +1806,93 @@ async def api_auth_login(
     return response
 
 
+
+@app.post('/api/auth/refresh')
+async def api_auth_refresh(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db),
+):
+    """
+    Refreshes user tokens based on username and password, issuing a JWT for session management. 
+    Tracks and limits failed attempts.
+    """
+
+    try:
+
+        cookie = SimpleCookie()
+        cookie.load(request.headers["cookie"])
+
+        auth = cookie['access_token'].value if 'access_token' in cookie else None
+
+        scheme, token = auth.split()
+
+        if scheme.strip().lower() != 'bearer':
+            # return JSONResponse(status_code=200, content={'message': "Token was not updated"})
+            raise HTTPException(status_code=401)
+
+        # Expiration time is automatically verified in jwt.decode() and raises 
+        # jwt.ExpiredSignatureError if the expiration time is in the past.
+        payload = jwt.decode(
+            token, 
+            site_key_pair.get_public_key(), 
+            issuer=config.SITE_NAME, 
+            audience=f"{config.SITE_NAME}WebUser", 
+            algorithms=['RS256']
+        )
+
+    except:
+        # return JSONResponse(status_code=200, content={'message': "Token was not updated"})
+        raise HTTPException(status_code=401)
+
+    # Here we set a refresh threshold... We could make
+    # this configurable if we really wanted to. Maybe 
+    # something that defaults to 1/3 the session lifetime.
+    refresh_threshold = ( datetime.now(config.TIMEZONE) + ( config.PERMANENT_SESSION_LIFETIME / 3 ) ).timestamp()
+    # refresh_threshold = ( datetime.now(config.TIMEZONE) + timedelta(minutes=6000) ).timestamp()
+
+
+    if payload.get("exp") > refresh_threshold:
+        
+        # If we are outside the request threshold, then we return here
+        # return JSONResponse(status_code=204, content={'message': "Token was not updated"})
+
+        # I am trying to decide whether to raise an error (so, a 4xx response code is logged every 
+        # time an authenticated user tries to refresh their token too soon) or some other response.
+        raise HTTPException(status_code=401) 
+
+    user_dict = {
+        "id": payload['id'],
+        "sub": payload['sub'],
+        "aud": payload['aud'],
+        "iss": payload['iss'],
+        "email": payload['email'],
+        "active": payload['active'],
+        "admin": payload['admin'],
+        # Decided against adding API key to minimize private data in JWT
+        # "api_key": payload['api_key'],
+        "exp": datetime.now(config.TIMEZONE) + config.PERMANENT_SESSION_LIFETIME,
+    }
+
+    # Reimplementing to use RSA keypair, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/79
+    token = jwt.encode(
+        user_dict, 
+        site_key_pair.get_private_key(), 
+        algorithm='RS256'
+    )
+
+    # Set the HTTP-only cookie with the token
+    response = JSONResponse({"access_token": token, "token_type": "bearer"})
+    response.set_cookie(
+        key="access_token",
+        value=f"Bearer {token}",
+        httponly=True,
+        max_age=config.PERMANENT_SESSION_LIFETIME.total_seconds(),
+        expires=config.PERMANENT_SESSION_LIFETIME.total_seconds(),
+    )
+
+    return response
 
 
 # This is a help route to submit a help request to the sysadmin
