@@ -28,23 +28,9 @@
 {% block scripts %}
 <script>
 $(document).ready(function() {
-    // var $createButton = $('#createButton').prop('disabled', true);
 
     // Initialize Bootstrap tooltips
     $('[data-bs-toggle="tooltip"]').tooltip();
-
-
-    // Enable the Create button only if there's some data
-    function toggleCreateButton() {
-        var isFormFilled = $('#dataForm').find('input, textarea, select').filter(function() {
-            return $.trim($(this).val()).length > 0;
-        }).length > 0;
-
-        $createButton.prop('disabled', !isFormFilled);
-    }
-
-    // Check form inputs to toggle the create button
-    $('#dataForm').on('keyup change paste', 'input, textarea, select', toggleCreateButton);
 
     // Form submission event
     $('#dataForm').submit(function(event) {
@@ -133,9 +119,6 @@ $(document).ready(function() {
                     console.error('Form creation failed', xhr.responseText);
                     // Implement flashMessage or another way to show errors to the user
                     flashMessage(xhr.responseText, 'warning');
-                    
-                    // Optionally re-enable the Create button here
-                    $createButton.prop('disabled', false);
                 }
             });
         }

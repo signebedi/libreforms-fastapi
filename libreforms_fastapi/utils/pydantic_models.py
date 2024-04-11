@@ -149,6 +149,15 @@ example_form_config = {
             "default": ["Option1", "Option3"],
             "description": "This is a checkbox field",
         },
+        # "second_checkbox_input": {
+        #     "input_type": "checkbox",
+        #     "output_type": List[str],
+        #     "field_name": "checkbox_input",
+        #     "options": ["Option1", "Option2", "Option3"],
+        #     "required": True,
+        #     "default": ["Option1", "Option3"],
+        #     "description": "This is a checkbox field",
+        # },
         "radio_input": {
             "input_type": "radio",
             "output_type": str,
@@ -158,6 +167,15 @@ example_form_config = {
             "default": "Option1",
             "description": "This is a radio field",
         },
+        # "second_radio_input": {
+        #     "input_type": "radio",
+        #     "output_type": str,
+        #     "field_name": "radio_input",
+        #     "options": ["Option1", "Option2"],
+        #     "required": False,
+        #     "default": "Option1",
+        #     "description": "This is a radio field",
+        # },
         "select_input": {
             "input_type": "select",
             "output_type": str,
@@ -167,6 +185,15 @@ example_form_config = {
             "default": "Option2",
             "description": "This is a select field",
         },
+        # "second_select_input": {
+        #     "input_type": "select",
+        #     "output_type": str,
+        #     "field_name": "select_input",
+        #     "options": ["Option1", "Option2", "Option3"],
+        #     "required": False,
+        #     "default": "Option2",
+        #     "description": "This is a select field",
+        # },
         "textarea_input": {
             "input_type": "textarea",
             "output_type": str,
