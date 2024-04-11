@@ -196,6 +196,9 @@ class LibreFormsUser(BaseUser):
     def display_name(self) -> str:
         return self.username
 
+    def __repr__(self) -> str:
+        return f"LibreFormsUser(username={self.username}, id={self.id}, email={self.email}, groups={self.groups}, api_key={self.api_key}, site_admin={self.site_admin}, permissions={self.permissions}"
+
 
 # Authentication Backend Class, see https://www.starlette.io/authentication,
 # https://github.com/tiangolo/fastapi/issues/3043#issuecomment-914316010, and
@@ -253,6 +256,8 @@ class BearerTokenAuthBackend(AuthenticationBackend):
             site_admin=user.site_admin,
             permissions=user.compile_permissions(),
         )
+
+        # print("\n\n\n", user_to_return)
 
         if user.site_admin:
             return AuthCredentials(["authenticated", "admin"]), user_to_return
