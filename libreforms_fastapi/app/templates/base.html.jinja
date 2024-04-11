@@ -78,15 +78,14 @@
                         </div>
                     </li>
 
+                    {% endif %}
+
                     {% if config['SEARCH_BAR_ENABLED'] %}
                     <form id="searchForm" class="d-flex">
                         <input class="form-control me-sm-2" type="search" id="searchTerm" placeholder="Search">
                         <button class="btn btn-secondary my-2 my-sm-0" onclick="searchQuery(this.value);" type="submit">Search</button>
                     </form>
                     {% endif %}
-
-                    {% endif %}
-
 
                     {% else %}
 
