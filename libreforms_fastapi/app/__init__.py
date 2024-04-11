@@ -112,6 +112,8 @@ from libreforms_fastapi.utils.docs import (
     write_docs,
 )
 
+from libreforms_fastapi.utils.custom_tinydb import CustomEncoder
+
 # Here we set the application config using the get_config
 # factory pattern defined in libreforms_fastapi.utis.config.
 _env = os.environ.get('ENVIRONMENT', 'development')
@@ -486,11 +488,14 @@ def write_api_call_to_transaction_log(
         current_time = datetime.now(config.TIMEZONE)
         user = session.query(User).filter_by(api_key=api_key).first()
         if user:
+
+            encoded_query_params = json.dumps(query_params, cls=CustomEncoder)
+
             new_log = TransactionLog(
                 user_id=user.id if not user.opt_out else None,
                 timestamp=current_time,
                 endpoint=endpoint,
-                query_params=query_params,
+                query_params=encoded_query_params,
                 remote_addr=remote_addr if not user.opt_out else None,
             )
             session.add(new_log)

@@ -21,13 +21,20 @@ from typing import (
 )
 
 
+# class CustomEncoder(JSONEncoder):
+#     """We need to convert date objects to 'YYYY-MM-DD' format"""
+#     def default(self, obj):
+#         if isinstance(obj, date):
+#             return obj.isoformat()
+#         # Fall back to the superclass method for other types
+#         return JSONEncoder.default(self, obj)
+
 class CustomEncoder(JSONEncoder):
-    """We need to convert date objects to 'YYYY-MM-DD' format"""
+    """Converts date objects to 'YYYY-MM-DD' format."""
     def default(self, obj):
         if isinstance(obj, date):
             return obj.isoformat()
-        # Fall back to the superclass method for other types
-        return JSONEncoder.default(self, obj)
+        return super().default(obj)
 
 # We want to modify TinyDB use use string representations of bson 
 # ObjectIDs. As such, we will need to modify some underlying behavior, 
