@@ -155,7 +155,7 @@ example_form_config = {
             "field_name": "radio_input",
             "options": ["Option1", "Option2"],
             "required": False,
-            "default": "Option2",
+            "default": "Option1",
             "description": "This is a radio field",
         },
         "select_input": {
@@ -369,8 +369,8 @@ def get_form_html(
                 checked = "checked" if default and (option == default or option in default) else ""
                 field_html += f'''
                     <div class="form-check {field_info["input_type"]}-form-check">
-                        <input class="form-check-input" type="{field_info["input_type"]}" id="{option}" name="{field_name}" value="{option}" {checked}>
-                        <label class="form-check-label" for="{option}">{option}</label>
+                        <input class="form-check-input" type="{field_info["input_type"]}" id="{field_name}_{option}" name="{field_name}" value="{option}" {checked}>
+                        <label class="form-check-label" for="{field_name}_{option}">{option}</label>
                     </div>
                 '''
             field_html += f'''

@@ -197,7 +197,8 @@ class LibreFormsUser(BaseUser):
         return self.username
 
     def __repr__(self) -> str:
-        return f"LibreFormsUser(username={self.username}, id={self.id}, email={self.email}, groups={self.groups}, api_key={self.api_key}, site_admin={self.site_admin}, permissions={self.permissions}"
+        return f"LibreFormsUser(username={self.username}, id={self.id}, email={self.email}, groups={self.groups}, " \
+            "api_key={self.api_key}, site_admin={self.site_admin}, permissions={self.permissions}"
 
 
 # Authentication Backend Class, see https://www.starlette.io/authentication,
@@ -550,6 +551,7 @@ async def api_form_create(
 
 
     # Here we validate and coerce data into its proper type
+    # print("\n\n\n", body)
     try: 
         form_data = FormModel.model_validate(body)
     except ValidationError as e:
@@ -557,7 +559,9 @@ async def api_form_create(
 
     
     json_data = form_data.model_dump_json()
+    # print("\n\n\n", json_data)
     data_dict = form_data.model_dump()
+    # print("\n\n\n", data_dict)
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...

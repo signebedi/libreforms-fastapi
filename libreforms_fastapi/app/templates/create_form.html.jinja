@@ -95,9 +95,17 @@ $(document).ready(function() {
                 }
             });
 
+            $('#dataForm').find('input:radio').each(function() {
+                if ($(this).is(':checked')) {
+                    formData[this.name] = $(this).val();
+                }
+            });
+
             // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
             var apiKey = "{{ request.user.api_key }}"; // Adjust based on actual access method
             var formName = "{{ form_name }}";
+
+            // console.log(formData);
 
             $.ajax({
                 url: `/api/form/create/${formName}`,
@@ -114,9 +122,10 @@ $(document).ready(function() {
                     
 
                     // We purposefully delay for a second before relocating to the new document
-                    setTimeout(function() {
-                        window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
-                    }, 1000);
+                    // setTimeout(function() {
+                    //     window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
+                    // }, 1000);
+                    window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
 
                 },
                 error: function(xhr) {
