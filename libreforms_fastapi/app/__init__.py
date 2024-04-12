@@ -2807,7 +2807,7 @@ async def ui_auth_help(request: Request):
 
 
 @app.get("/ui/docs", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+# @requires(['authenticated'], status_code=404)
 async def ui_docs(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
