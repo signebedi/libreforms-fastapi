@@ -448,3 +448,12 @@ class GroupModel(BaseModel):
         if ':' not in v:
             raise ValueError('Each permission must contain a ":" character')
         return v
+
+
+
+class RelationshipTypeModel(BaseModel):
+    """This model will be used for validating change to Relationship Types through the admin API"""
+    # id: int = Field(None)
+    name: str = Field(...)
+    description: str = Field(...)
+    exclusive_relationship: bool = Field(...)
