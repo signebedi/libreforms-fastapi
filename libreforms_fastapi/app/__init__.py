@@ -2552,14 +2552,14 @@ async def api_admin_relationship_type(
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
 
-    existing_relationship_type = session.query(Group).filter_by(name=new_relationship_request.name).first()
+    existing_relationship_type = session.query(RelationshipType).filter_by(name=new_relationship_request.name).first()
     if existing_relationship_type:
         # Consider adding IP tracking to failed attempt
         logger.warning(f'Attempt to create relationship type {new_relationship_request.name} but relationship type already exists. Did you mean to modify the relationship type?')
 
         raise HTTPException(status_code=409, detail="Could not create relationship type. Already exists.")
     
-    # Create and write the new group
+    # Create and write the new Relationship Type
     new_relationship_type = RelationshipType(
         name=escape(new_relationship_request.name),
         description=escape(new_relationship_request.description), 
@@ -2839,7 +2839,7 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request):
 # Search forms
 @app.get("/ui/form/search", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-async def ui_admin_update_group(
+async def ui_admin_form_search(
     request: Request,
     search_term: str = Query(None, title="Search Term"),
 ):
