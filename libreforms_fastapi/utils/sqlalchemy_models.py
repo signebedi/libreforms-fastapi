@@ -262,6 +262,22 @@ def get_sqlalchemy_models(
         # constrain the potential complexity of this approach.
         # group_specific = Column(Boolean, default=False)
 
+        def to_dict(self):
+            """
+            Converts the relationship type instance into a dictionary format.
+            """
+
+            relationship_dict = {
+                "id":self.id,
+                "name":self.name,
+                "description":self.description,
+                "exclusive":self.exclusive,
+            }
+
+            return relationship_dict
+
+
+
     class UserRelationship(Base):
         __tablename__ = 'user_relationships'
         user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
