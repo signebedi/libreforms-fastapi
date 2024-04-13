@@ -13,6 +13,7 @@ from sqlalchemy import (
     JSON,
     LargeBinary,
     create_engine,
+    UniqueConstraint,
 )
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import (
@@ -247,6 +248,37 @@ def get_sqlalchemy_models(
 
             return log_dict
 
+
+    class RelationshipType(Base):
+        __tablename__ = 'relationship_types'
+        id = Column(Integer, primary_key=True)
+        name = Column(String, unique=True)
+        description = Column(String)
+        exclusive = Column(Boolean, default=False)
+        
+        # This field is currently unimplemented. The ideas is that we
+        # can lock down certain relationships eg. to certain groups or 
+        # pairings of groups. The problem is that there is no way to 
+        # constrain the potential complexity of this approach.
+        # group_specific = Column(Boolean, default=False)
+
+    class UserRelationship(Base):
+        __tablename__ = 'user_relationships'
+        user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
+        related_user_id = Column(Integer, ForeignKey('user.id'))
+        relationship_type_id = Column(Integer, ForeignKey('relationship_types.id'))
+        # This column could be used if we wnated to permit relationships to be group-specific
+        # group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)  
+        
+        # Enforce uniqueness for exclusive relationships
+        __table_args__ = (UniqueConstraint('user_id', 'relationship_type_id', name='_user_relationship_exclusive'),)
+
+        user = relationship("User", foreign_keys=[user_id])
+        related_user = relationship("User", foreign_keys=[related_user_id])
+        relationship_type = relationship("RelationshipType")
+
+        # See comment above for group-specific relationships
+        # group = relationship("Group")
 
 
     # Allow custom approval chains to be defined here
