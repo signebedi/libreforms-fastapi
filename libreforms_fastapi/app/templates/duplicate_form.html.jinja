@@ -147,7 +147,7 @@ $(document).ready(function() {
             });
 
             // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
-            var apiKey = "{{ request.user.api_key }}"; // Adjust based on actual access method
+            var apiKey = "{{ request.user.api_key }}"; 
             var formName = "{{ form_name }}";
 
             $.ajax({

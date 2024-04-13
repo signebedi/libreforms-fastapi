@@ -2633,6 +2633,71 @@ async def api_admin_get_relationship_types(
     )
 
 
+@app.put(
+    "/api/admin/update_relationship_type/{id}", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_update_relationship_type(
+    relationship_request: RelationshipTypeModel, 
+    id:str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY),
+):
+    """
+    Updates existing relationship type with provided details, handling payload validation using a predefined pydantic
+    model as middleware between the data and the ORM. See https://github.com/signebedi/libreforms-fastapi/issues/173.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    existing_relationship_type = session.query(RelationshipType).filter_by(name=relationship_request.name).first()
+    if not existing_relationship_type:
+        raise HTTPException(status_code=404, detail="Could not update relationship type. Does not exist.")
+    
+    if all ([
+        existing_relationship_type.name == relationship_request.name,
+        existing_relationship_type.description == relationship_request.description,
+        existing_relationship_type.exclusive == relationship_request.exclusive_relationship,
+    ]):
+        # If no change has been passed, return
+        return JSONResponse(
+            status_code=200,
+            content={"status": "no change", "message": f"No change made to relationship with id {id}"},
+        )
+        # raise HTTPException(status_code=304, detail=f"No change made to group with id {id}")
+
+
+    # Updating  fields
+    existing_relationship_type.name=relationship_request.name
+    existing_relationship_type.description=relationship_request.description
+    existing_relationship_type.exclusive=relationship_request.exclusive_relationship
+    
+    session.add(existing_relationship_type)
+    session.commit()
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=request.url.path, 
+            remote_addr=request.client.host, 
+            query_params=existing_relationship_type.to_dict(),
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Successfully modified relationship type {relationship_request.name} with id {id}"},
+    )
+
 # Edit docs
 @app.post(
     "/api/admin/edit_docs", 
@@ -3313,6 +3378,34 @@ async def ui_admin_manage_relationship_types(request: Request):
             **build_ui_context(),
         }
     )
+
+
+# Edit Group
+@app.get("/ui/admin/update_relationship_type/{id}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_update_group(id:str, request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    relationship_type = session.query(RelationshipType).get(id)
+    if not relationship_type:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # These are the relationship details
+    relationship_details = relationship_type.to_dict()
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_update_relationship_type.html.jinja", 
+        context={
+            "relationship_details": relationship_details,
+            **build_ui_context(),
+        }
+    )
+
 
 
 # Manage approval chains

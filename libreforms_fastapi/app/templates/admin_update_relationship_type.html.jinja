@@ -2,17 +2,20 @@
 
 
 {% block title %}
-{{config.SITE_NAME}} — Create Relationship Type
+{{config.SITE_NAME}} — Update Relationship Type
 {% endblock %}
 
 {% block content %}
 <h1>
-    Create Relationship Type 
+    Update Relationship Type 
     <sup title="This is an admin page">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star-fill" viewBox="0 0 16 16">
             <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
         </svg>
     </sup>
+
+{{relationship_details}}
+
 </h1>
 <hr>
 
@@ -23,7 +26,7 @@
          <span id="nameHelpInline" class="form-text">
         | Give a unique name to your relationship type.
         </span>
-        <input type="text" id="name" name="name" class="form-control" required>
+        <input type="text" id="name" name="name" value="{{ relationship_details.name }}" class="form-control" required>
     </fieldset>
 
     <fieldset style="padding-top: 10px;" class="form-check">
@@ -31,19 +34,25 @@
          <span id="descriptionHelpInline" class="form-text">
         | Provide a description for this relationship (Max Length: 500 Chars)
         </span>
-        <textarea type="text" id="description" name="description" class="form-control" maxlength="500" required></textarea> 
+        <textarea type="text" id="description" name="description" class="form-control" maxlength="500" required>{{ relationship_details.description }}</textarea> 
     </fieldset>
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <div style="padding-bottom: 10px;">
             <label for="exclusiveRelationship">Limit</label>
             <span id="exclusiveRelationshipHelpInline" class="form-text">
-                | Do you want to limit users to having one relationship of this type?
+                | Do you want to limit users to having one relationship of this type? Note: changing this field will not affect existing relationships that have been created.
             </span>
         </div>
         <div class="form-check form-switch">
-            <input class="form-check-input" type="checkbox" name="exclusiveRelationship" id="exclusiveRelationship" value="true" checked="" onchange="updateLabel(this)">
-            <label class="form-check-label" for="exclusiveRelationship" id="exclusiveRelationshipStatus">Yes, users should only be able to have one relationship of this type</label>
+            <input class="form-check-input" type="checkbox" name="exclusiveRelationship" id="exclusiveRelationship" value="true"{% if relationship_details.exclusive %} checked=""{% endif %} onchange="updateLabel(this)">
+            <label class="form-check-label" for="exclusiveRelationship" id="exclusiveRelationshipStatus">
+            {% if relationship_details.exclusive %} 
+            Yes, users should only be able to have one relationship of this type
+            {% else %}
+            No, users only be able to have multiple relationships of this type
+            {% endif %}
+            </label>
         </div>
     </fieldset>
 
@@ -94,8 +103,8 @@
 
             // AJAX POST request to the API endpoint
             $.ajax({
-                url: '/api/admin/create_relationship_type',
-                type: 'POST',
+                url: '/api/admin/update_relationship_type/{{ relationship_details.id }}',
+                type: 'PUT',
                 headers: {
                     'X-API-KEY': apiKey,
                 },
@@ -103,15 +112,15 @@
                 data: JSON.stringify(formData), // Convert formData to JSON format
                 success: function(response) {
                     // Handle success
-                    console.log('Relationship created successfully', response);
+                    console.log('Relationship updated successfully', response);
                     
                     // Stash a flashed success message and redirect
-                    setFlashMessage("Relationship created successfully!", "success");
+                    setFlashMessage("Relationship updated successfully!", "success");
                     window.location.href = '/ui/admin/manage_relationship_types';
                 },
                 error: function(xhr) {
                     // Handle errors
-                    console.error('Relationship creation failed.', xhr.responseText);
+                    console.error('Relationship update failed.', xhr.responseText);
                     // Display error message
                     flashMessage(xhr.responseText, AlertCategories.WARNING); 
                 }

@@ -48,7 +48,7 @@ $(document).ready(function() {
         console.log(formData)
 
         // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
-        var apiKey = "{{ request.user.api_key }}"; // Adjust based on actual access method
+        var apiKey = "{{ request.user.api_key }}"; 
 
         $.ajax({
             url: `/api/admin/edit_docs`,
