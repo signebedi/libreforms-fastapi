@@ -100,6 +100,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     HelpRequest,
     DocsEditRequest,
     GroupModel,
+    RelationshipTypeModel,
     get_user_model,
     get_form_model,
     get_form_names,
@@ -377,6 +378,11 @@ Group = models['Group']
 TransactionLog = models['TransactionLog']
 ApprovalChains = models['ApprovalChains']
 Signing = models['Signing']
+
+# Adding user relationship models below, see
+# https://github.com/signebedi/libreforms-fastapi/issues/173
+RelationshipType = models['RelationshipType']
+UserRelationship = models['UserRelationship']
 
 logger.info('Relational database has been initialized')
 
@@ -2521,6 +2527,68 @@ async def api_admin_delete_group(
     )
 
 
+# Create relationship type
+@app.post(
+    "/api/admin/create_relationship_type", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_create_group(
+    new_relationship_request: RelationshipTypeModel, 
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    """
+    Creates a new relationship type with provided details, handling payload validation using a predefined pydantic
+    model as middleware between the data and the ORM. See https://github.com/signebedi/libreforms-fastapi/issues/173.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    existing_relationship_type = session.query(Group).filter_by(name=new_relationship_request.name).first()
+    if existing_relationship_type:
+        # Consider adding IP tracking to failed attempt
+        logger.warning(f'Attempt to create relationship type {new_relationship_request.name} but relationship type already exists. Did you mean to modify the relationship type?')
+
+        raise HTTPException(status_code=409, detail="Could not create relationship type. Already exists.")
+    
+    # Create and write the new group
+    new_relationship_type = RelationshipType(
+        name=escape(new_relationship_request.name),
+        description=escape(new_relationship_request.description), 
+        exclusive=new_relationship_request.exclusive_relationship,
+    )
+    session.add(new_relationship_type)
+    session.commit()
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Successfully created new relationship type {new_relationship_request.name}"},
+    )
+
+
+
 # Edit docs
 @app.post(
     "/api/admin/edit_docs", 
@@ -3162,6 +3230,28 @@ async def ui_admin_update_group(id:str, request: Request):
             **build_ui_context(),
         }
     )
+
+
+
+# Create relationship
+@app.get("/ui/admin/create_relationship_type", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_create_relationship_type(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_create_relationship_type.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
 
 # Manage approval chains
 

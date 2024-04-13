@@ -307,10 +307,12 @@ def get_sqlalchemy_models(
     if create_all:
         Base.metadata.create_all(bind=engine)
 
-    return {
-        "User": User,
+    return { # this approach is a little bit of syntactic salt to ensure we 
+        "User": User, # purposefully merge new models into the mainline code
         "Group": Group,
         "TransactionLog": TransactionLog,
         "ApprovalChains": ApprovalChains,
         "Signing": Signing,
+        "RelationshipType": RelationshipType,
+        "UserRelationship": UserRelationship,
     }, SessionLocal, signatures, engine
