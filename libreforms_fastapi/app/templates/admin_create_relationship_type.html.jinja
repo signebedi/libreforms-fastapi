@@ -29,9 +29,9 @@
     <fieldset style="padding-top: 10px;" class="form-check">
         <label aria-labelledby="descriptionHelpInline" for="description" class="form-check-label">Description</label>
          <span id="descriptionHelpInline" class="form-text">
-        | Provide a description for this relationship
+        | Provide a description for this relationship (Max Length: 500 Chars)
         </span>
-        <textarea type="text" id="description" name="description" class="form-control" required></textarea> 
+        <textarea type="text" id="description" name="description" class="form-control" maxlength="500" required></textarea> 
     </fieldset>
 
     <fieldset style="padding-top: 10px;" class="form-check">
@@ -113,7 +113,7 @@
                     
                     // Stash a flashed success message and redirect
                     setFlashMessage("Relationship created successfully!", "success");
-                    // window.location.href = '/ui/admin/manage_relationships';
+                    window.location.href = '/ui/admin/manage_relationship_types';
                 },
                 error: function(xhr) {
                     // Handle errors

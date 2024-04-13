@@ -3296,6 +3296,24 @@ async def ui_admin_create_relationship_type(request: Request):
         }
     )
 
+# Manage relationship types
+@app.get("/ui/admin/manage_relationship_types", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_manage_relationship_types(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_manage_relationship_types.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
 
 # Manage approval chains
 
