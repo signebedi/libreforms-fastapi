@@ -2632,7 +2632,7 @@ async def api_admin_get_relationship_types(
         content={"status": "success", "relationship_types": relationship_types},
     )
 
-
+# Edit a relationship type
 @app.put(
     "/api/admin/update_relationship_type/{id}", 
     dependencies=[Depends(api_key_auth)], 
@@ -2697,6 +2697,60 @@ async def api_admin_update_relationship_type(
         status_code=200,
         content={"status": "success", "message": f"Successfully modified relationship type {relationship_request.name} with id {id}"},
     )
+
+
+
+# Delete group
+@app.delete(
+    "/api/admin/delete_relationship_type/{id}", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_delete_relationship_type(
+    id:str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    """
+    Deletes single relationship type by ID. Requires site admin permissions. 
+    Logs the action for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    type_to_delete = session.query(RelationshipType).filter_by(id=id).first()
+    if not type_to_delete:
+        raise HTTPException(status_code=404, detail="Could not find relationship type. Does not exist.")
+
+    session.delete(type_to_delete)
+    session.commit()
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Relationship type with id {id} successfully deleted"},
+    )
+
 
 # Edit docs
 @app.post(
