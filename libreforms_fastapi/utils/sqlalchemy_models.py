@@ -164,6 +164,7 @@ def get_sqlalchemy_models(
             Converts the User instance into a dictionary format, with groups represented
             by their names as a list of strings.
             """
+
             user_dict = {
                 'id': self.id,
                 'email': self.email,
@@ -172,16 +173,16 @@ def get_sqlalchemy_models(
             }
 
             if not just_the_basics:
-                user_dict['active'] = self.active,
-                user_dict['created_date'] = self.created_date.isoformat() if self.created_date else None,
-                user_dict['last_login'] = self.last_login.isoformat() if self.last_login else None,
-                user_dict['locked_until'] = self.locked_until.isoformat() if self.locked_until else None,
-                user_dict['public_key'] = self.public_key.decode('utf-8') if self.public_key else None,  # Assuming public_key is bytes
-                user_dict['private_key_ref'] = self.private_key_ref,
-                user_dict['last_password_change'] = self.last_password_change.isoformat() if self.last_password_change else None,
-                user_dict['failed_login_attempts'] = self.failed_login_attempts,
-                user_dict['api_key'] = self.api_key,
-                user_dict['opt_out'] = self.opt_out,
+                user_dict['active'] = self.active
+                user_dict['created_date'] = self.created_date.isoformat() if self.created_date else None
+                user_dict['last_login'] = self.last_login.isoformat() if self.last_login else None
+                user_dict['locked_until'] = self.locked_until.isoformat() if self.locked_until else None
+                user_dict['public_key'] = self.public_key.decode('utf-8') if self.public_key else None  # Assuming public_key is byte
+                user_dict['private_key_ref'] = self.private_key_ref
+                user_dict['last_password_change'] = self.last_password_change.isoformat() if self.last_password_change else None
+                user_dict['failed_login_attempts'] = self.failed_login_attempts
+                user_dict['api_key'] = self.api_key
+                user_dict['opt_out'] = self.opt_out
                 user_dict['site_admin'] = self.site_admin
 
             if not exclude_password:
