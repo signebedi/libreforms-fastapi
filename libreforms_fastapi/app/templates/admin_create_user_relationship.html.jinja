@@ -1,0 +1,134 @@
+{% extends "base.html.jinja" %}
+
+
+{% block title %}
+{{config.SITE_NAME}} — Create User Relationship
+{% endblock %}
+
+{% block content %}
+<h1>
+    Create User Relationship
+    <sup title="This is an admin page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star-fill" viewBox="0 0 16 16">
+            <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
+        </svg>
+    </sup>
+</h1>
+<hr>
+
+<form id="relationshipForm">
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="userHelpInline" for="user" class="form-check-label">User</label>
+         <span id="userHelpInline" class="form-text">
+        | Select a user to assign the relationship to.
+        </span>
+
+        <select id="user" name="user" class="form-control">
+            {% for user in user_list %}
+            <option value="{{ user['id'] }}">{{ user['username'] }} ({{ user['email'] }})</option>
+            {% endfor %}
+        </select> 
+    </fieldset>
+
+
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="relationshipHelpInline" for="relationship" class="form-check-label">Relationship</label>
+         <span id="relationshipHelpInline" class="form-text">
+        | Select the relationship you would like to assign.
+        </span>
+
+        <select id="relationship" name="relationship" class="form-control">
+            {% for relationship in relationship_type_list %}
+            <option value="{{ relationship['id'] }}">{{ relationship['name'] }}</option>
+            {% endfor %}
+        </select> 
+    </fieldset>
+
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="recipientHelpInline" for="recipient" class="form-check-label">Recipient</label>
+         <span id="recipientHelpInline" class="form-text">
+        | Select a user to be the recipient of the relationship.
+        </span>
+
+        <select id="recipient" name="recipient" class="form-control">
+            {% for user in user_list %}
+            <option value="{{ user['id'] }}">{{ user['username'] }} ({{ user['email'] }})</option>
+            {% endfor %}
+        </select> 
+    </fieldset>
+
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="submit" class="btn btn-primary" id="createButton">Create</button>
+    </fieldset>
+
+</form>
+
+{% endblock %}
+
+
+{% block scripts %}
+<script>
+
+    $(document).ready(function() {
+
+        var apiKey = "{{ request.user.api_key }}"; 
+
+        $('#relationshipForm').on('submit', function(event) {
+            event.preventDefault(); // Stop the form from submitting normally
+
+            const createButton = document.getElementById('createButton')
+            createButton.disabled=true; 
+            createButton.value='Creating...';
+
+
+
+            // Prepare form data
+            var formData = {
+                user_id: $('#user').val().trim(),
+                related_user_id: $('#recipient').val().trim(),
+                relationship_type_id: $('#relationship').val().trim(),
+            };
+
+            console.log(JSON.stringify(formData));
+
+            // AJAX POST request to the API endpoint
+            $.ajax({
+                url: '/api/admin/create_user_relationship',
+                type: 'POST',
+                headers: {
+                    'X-API-KEY': apiKey,
+                },
+                contentType: 'application/json', // Ensure to set the content type
+                data: JSON.stringify(formData), // Convert formData to JSON format
+                success: function(response) {
+                    // Handle success
+                    console.log('Relationship created successfully', response);
+                    
+                    // Stash a flashed success message and redirect
+                    setFlashMessage("Relationship created successfully!", "success");
+                    window.location.href = '/ui/admin/manage_relationship_types';
+                },
+                error: function(xhr) {
+                    // Handle errors
+                    console.error('Relationship creation failed.', xhr.responseText);
+                    // Display error message
+                    flashMessage(xhr.responseText, AlertCategories.WARNING); 
+                }
+            });
+
+            // Here we restore the submit button
+            createButton.disabled = false;
+            createButton.value='Create';
+
+
+        });
+
+
+
+    });
+</script>
+{% endblock %}

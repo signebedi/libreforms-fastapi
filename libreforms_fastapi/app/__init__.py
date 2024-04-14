@@ -2761,7 +2761,7 @@ async def api_admin_delete_relationship_type(
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
 )
-async def api_admin_user_relationship(
+async def api_admin_create_user_relationship(
     new_relationship_request: UserRelationshipModel, 
     request: Request,
     background_tasks: BackgroundTasks,
@@ -2867,7 +2867,7 @@ async def api_admin_get_user_relationships(
 
     user_relationships = [x.to_dict() for x in session.query(UserRelationship).all()]
 
-    print("\n\n\n", user_relationships)
+    # print("\n\n\n", user_relationships)
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
@@ -2891,11 +2891,11 @@ async def api_admin_get_user_relationships(
 
 # Delete group
 @app.delete(
-    "/api/admin/delete_user_relationships/{id}", 
+    "/api/admin/delete_user_relationship/{id}", 
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
 )
-async def api_admin_delete_user_relationships(
+async def api_admin_delete_user_relationship(
     id:str,
     request: Request,
     background_tasks: BackgroundTasks,
@@ -3648,6 +3648,49 @@ async def ui_admin_update_group(id:str, request: Request):
         name="admin_update_relationship_type.html.jinja", 
         context={
             "relationship_details": relationship_details,
+            **build_ui_context(),
+        }
+    )
+
+
+# Create user relationship pairing
+@app.get("/ui/admin/create_user_relationship", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_create_user_relationship(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # user_list = [x.to_dict(just_the_basics=True) for x in session.query(User).all()]
+    user_list = [x.to_dict(just_the_basics=True) for x in session.query(User).order_by(User.username).all()]
+    relationship_type_list = [x.to_dict() for x in session.query(RelationshipType).order_by(RelationshipType.name).all()]
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_create_user_relationship.html.jinja", 
+        context={
+            "user_list": user_list,
+            "relationship_type_list": relationship_type_list,
+            **build_ui_context(),
+        }
+    )
+
+# Manage user relationship pairings
+@app.get("/ui/admin/manage_user_relationships", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_manage_user_relationships(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_manage_user_relationships.html.jinja", 
+        context={
             **build_ui_context(),
         }
     )

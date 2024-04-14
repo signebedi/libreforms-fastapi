@@ -58,7 +58,7 @@ function toggleUser(id, field) {
             // Handle errors
             console.error('Failed to perform action.', xhr.responseText);
             // Display error message to the user
-            flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+            flashMessage(xhr.responseText, 'danger'); 
         }
     });
 }
@@ -131,7 +131,7 @@ $(document).ready(function() {
                 // Handle errors
                 console.error('Failed to fetch data', xhr.responseText);
                 // Display error message to the user
-                flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+                flashMessage(xhr.responseText, 'danger'); 
             }
         });
     }

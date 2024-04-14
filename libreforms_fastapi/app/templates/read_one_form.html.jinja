@@ -89,7 +89,7 @@ function signForm() {
             // Handle errors
             console.error('Failed to sign form', xhr.responseText);
             // Display error message to the user
-            flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+            flashMessage(xhr.responseText, 'danger'); 
         }
     });
 }
@@ -113,7 +113,7 @@ function deleteForm() {
             // Handle errors
             console.error('Failed to delete form', xhr.responseText);
             // Display error message to the user
-            flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+            flashMessage(xhr.responseText, 'danger'); 
         }
     });
 }
@@ -246,7 +246,7 @@ $(document).ready(function() {
                 // Handle errors
                 console.error('Failed to fetch document', xhr.responseText);
                 // Display error message to the user
-                flashMessage(xhr.responseText, 'danger'); // Adjust according to your error handling UI logic
+                flashMessage(xhr.responseText, 'danger'); 
             }
         });
     }
