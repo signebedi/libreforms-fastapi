@@ -70,6 +70,9 @@
                             <div class="dropdown-header">Groups</div>
                             <a class="dropdown-item" href="{{ url_for( 'ui_admin_create_group' ) }}">Create Group</a>
                             <a class="dropdown-item" href="{{ url_for( 'ui_admin_manage_groups' ) }}">Manage Groups</a>
+                            <div class="dropdown-header">Relationships</div>
+                            <a class="dropdown-item" href="{{ url_for( 'ui_admin_create_relationship_type' ) }}">Create Relationship Type</a>
+                            <a class="dropdown-item" href="{{ url_for( 'ui_admin_manage_relationship_types' ) }}">Manage Relationship Types</a>
                             <div class="dropdown-header">Settings</div>
                             {% if config.DOCS_ENABLED %}
                             <a class="dropdown-item" href="{{ url_for( 'ui_admin_edit_docs' ) }}">Edit Docs</a>
