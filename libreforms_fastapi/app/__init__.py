@@ -101,6 +101,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     DocsEditRequest,
     GroupModel,
     RelationshipTypeModel,
+    UserRelationshipModel,
     get_user_model,
     get_form_model,
     get_form_names,
@@ -2750,6 +2751,197 @@ async def api_admin_delete_relationship_type(
         status_code=200,
         content={"status": "success", "message": f"Relationship type with id {id} successfully deleted"},
     )
+
+
+
+
+# Create relationship type
+@app.post(
+    "/api/admin/create_user_relationship", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_user_relationship(
+    new_relationship_request: UserRelationshipModel, 
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Creates a new relationship with provided details, handling payload validation using a predefined pydantic
+    model as middleware between the data and the ORM. See https://github.com/signebedi/libreforms-fastapi/issues/173.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    # A user cannot have a relationship with themselves
+    if new_relationship_request.user_id == new_relationship_request.related_user_id:
+        raise HTTPException(status_code=400, detail="Users cannot have a relationship with themselves")
+
+    # We need to check whether each of these exist
+    _user = session.query(User).filter_by(id=new_relationship_request.user_id).first()
+    _related_user = session.query(User).filter_by(id=new_relationship_request.related_user_id).first()
+    _relationship_type = session.query(User).filter_by(id=new_relationship_request.relationship_type_id).first()
+
+    if not all([
+        _user,
+        _related_user,
+        _relationship_type,
+    ]):
+        raise HTTPException(status_code=400, detail="You must pass users and relationship types that exist")
+
+
+    # We need to check if there is an exact duplicate of the three values.
+    existing_user_relationship = session.query(UserRelationship).filter_by(
+        user_id=new_relationship_request.user_id,
+        related_user_id=new_relationship_request.related_user_id,
+        relationship_type_id=new_relationship_request.relationship_type_id
+    ).first() 
+    if existing_user_relationship:
+        # Consider adding IP tracking to failed attempt
+        raise HTTPException(status_code=409, detail="Could not create user relationship. Already exists.")
+
+
+    # We check the relationship type and verify that it is not exclusive. If it is, then we validate whether the 
+    # the user already has an existing relationship. If so, raise and exception and suggest they delete the relationship 
+    # before proceeding.
+    # [PLACEHOLDER]
+
+
+    # Create and write the new Relationship Type
+    new_user_relationship = UserRelationship(
+        user_id=new_relationship_request.user_id,
+        related_user_id=new_relationship_request.related_user_id,
+        relationship_type_id=new_relationship_request.relationship_type_id,
+    )
+    session.add(new_user_relationship)
+    session.commit()
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Successfully created new relationship"},
+    )
+
+# Get all relationship types
+@app.get(
+    "/api/admin/get_user_relationships", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_get_user_relationships(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    """
+    Lists all relationships in the system for administrative purposes. Requires site admin permissions. 
+    Logs the action for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    user_relationships = [x.to_dict() for x in session.query(UserRelationship).all()]
+
+    print("\n\n\n", user_relationships)
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "user_relationships": user_relationships},
+    )
+
+
+# Delete group
+@app.delete(
+    "/api/admin/delete_user_relationships/{id}", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_delete_user_relationships(
+    id:str,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    """
+    Deletes single relationship type by ID. Requires site admin permissions. 
+    Logs the action for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    relationship_to_delete = session.query(UserRelationship).filter_by(id=id).first()
+    if not relationship_to_delete:
+        raise HTTPException(status_code=404, detail="Could not find relationship type. Does not exist.")
+
+    session.delete(relationship_to_delete)
+    session.commit()
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Relationship with id {id} successfully deleted"},
+    )
+
+
+
 
 
 # Edit docs

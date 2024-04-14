@@ -328,7 +328,7 @@ def get_sqlalchemy_models(
                 "id":self.id,
                 "user":self.user.to_dict(just_the_basics=True),
                 "related_user":self.related_user.to_dict(just_the_basics=True),
-                "relationship_type":self.relationship_type.to_dict(just_the_basics=True),
+                "relationship_type":self.relationship_type.to_dict(),
             }
 
             return relationship_dict
