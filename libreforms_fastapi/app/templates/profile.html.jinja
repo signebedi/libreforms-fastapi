@@ -69,7 +69,9 @@
                     { label: "Last Password Change", value: profileData.last_password_change || 'N/A' },
                     { label: "API Key", value: apiKey },
                     { label: "Opted out of detailed usage statistics", value: profileData.opt_out ? 'Yes' : 'No' },
-                    { label: "Site Admin", value: profileData.site_admin ? 'Yes' : 'No' }
+                    { label: "Site Admin", value: profileData.site_admin ? 'Yes' : 'No' },
+                    { label: "Relationships", value: renderUserRelationships(profileData.relationships) },
+                    { label: "Received Relationships", value: renderUserRelationships(profileData.received_relationships) }
                 ];
 
                 attributes.forEach(attr => {

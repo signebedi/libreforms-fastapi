@@ -1681,6 +1681,26 @@ async def api_auth_get(
         profile_data["opt_out"] = target_user.opt_out
         profile_data["site_admin"] = target_user.site_admin
 
+
+    # Here we compile user relationships
+    _relationships = [x.to_dict() for x in target_user.relationships]
+    _received_relationships = [x.to_dict() for x in target_user.received_relationships]
+    profile_data['relationships'] = [{
+        'relationship': x['relationship_type']['name'],
+        'related_user_username': x['related_user']['username'],
+        'related_user_id': x['related_user']['id'],
+    } for x in _relationships]
+
+    profile_data['received_relationships'] = [{
+        'relationship': x['relationship_type']['reciprocal_name'],
+        'related_user_username': x['user']['username'],
+        'related_user_id': x['user']['id'],
+    } for x in _received_relationships]
+
+    print("\n\n\n", profile_data['relationships'])
+    print("\n\n\n", profile_data['received_relationships'])
+
+
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
 

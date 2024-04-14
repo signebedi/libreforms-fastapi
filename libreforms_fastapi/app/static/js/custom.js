@@ -60,20 +60,45 @@ function escapeHtml(text) {
       .replace(/'/g, '&#039;');
   }
 
-  function escapeJsonData(data) {
-    if (typeof data === 'string') {
-      return escapeHtml(data);
-    } else if (Array.isArray(data)) {
-      return data.map(item => escapeJsonData(item));
-    } else if (typeof data === 'object' && data !== null) {
-      const escapedData = {};
-      for (const [key, value] of Object.entries(data)) {
-        escapedData[key] = escapeJsonData(value);
-      }
-      return escapedData;
-    } else {
-      // Return the data as-is if it's not a string, array, or object
-      return data;
+function escapeJsonData(data) {
+  if (typeof data === 'string') {
+    return escapeHtml(data);
+  } else if (Array.isArray(data)) {
+    return data.map(item => escapeJsonData(item));
+  } else if (typeof data === 'object' && data !== null) {
+    const escapedData = {};
+    for (const [key, value] of Object.entries(data)) {
+      escapedData[key] = escapeJsonData(value);
     }
+    return escapedData;
+  } else {
+    // Return the data as-is if it's not a string, array, or object
+    return data;
   }
+}
   
+
+function formatValue(value) {
+  if (Array.isArray(value)) {
+      // Format array as comma-separated string
+      return value.join(', ');
+  } else if (typeof value === 'object' && value !== null) {
+      // Format object in a pretty way
+      var formattedObject = '<ul>';
+      for (var key in value) {
+          formattedObject += `<li>${key}: ${formatValue(value[key])}</li>`; // Recursive call for nested objects
+      }
+      formattedObject += '</ul>';
+      return formattedObject;
+  } else {
+      // Return other types (number, string) as is
+      return value;
+  }
+}
+
+
+function renderUserRelationships(users) {
+  return users.map(user => {
+      return `${user.relationship} <a href='/auth/profile/${user.related_user_id}'>${user.related_user_username}</a>`;
+  }).join(", ");
+}
