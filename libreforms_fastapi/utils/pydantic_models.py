@@ -452,6 +452,7 @@ class GroupModel(BaseModel):
 class RelationshipTypeModel(BaseModel):
     """This model will be used for validating Relationship Types through the admin API"""
     name: str = Field(...)
+    reciprocal_name: str = Field(None)
     description: str = Field(...)
     exclusive_relationship: bool = Field(...)
 

@@ -269,6 +269,7 @@ def get_sqlalchemy_models(
         __tablename__ = 'relationship_types'
         id = Column(Integer, primary_key=True)
         name = Column(String, unique=True)
+        reciprocal_name = Column(String, default="")
         description = Column(String)
         exclusive = Column(Boolean, default=False)
         
@@ -286,6 +287,7 @@ def get_sqlalchemy_models(
             relationship_dict = {
                 "id":self.id,
                 "name":self.name,
+                "reciprocal_name":self.reciprocal_name,
                 "description":self.description,
                 "exclusive":self.exclusive,
             }

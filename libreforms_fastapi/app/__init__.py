@@ -2566,6 +2566,11 @@ async def api_admin_relationship_type(
         description=escape(new_relationship_request.description), 
         exclusive=new_relationship_request.exclusive_relationship,
     )
+
+    # Assign a reciprocal name / title if one was passed
+    if new_relationship_request.reciprocal_name:
+        new_relationship_type.reciprocal_name = new_relationship_request.reciprocal_name
+
     session.add(new_relationship_type)
     session.commit()
 
@@ -2602,7 +2607,7 @@ async def api_admin_get_relationship_types(
 ):
 
     """
-    Lists all relationship tyoes in the system for administrative purposes. Requires site admin permissions. 
+    Lists all relationship types in the system for administrative purposes. Requires site admin permissions. 
     Logs the action for audit purposes.
     """
 
@@ -2658,7 +2663,7 @@ async def api_admin_update_relationship_type(
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
 
-    existing_relationship_type = session.query(RelationshipType).filter_by(name=relationship_request.name).first()
+    existing_relationship_type = session.query(RelationshipType).filter_by(id=id).first()
     if not existing_relationship_type:
         raise HTTPException(status_code=404, detail="Could not update relationship type. Does not exist.")
     
@@ -2666,6 +2671,7 @@ async def api_admin_update_relationship_type(
         existing_relationship_type.name == relationship_request.name,
         existing_relationship_type.description == relationship_request.description,
         existing_relationship_type.exclusive == relationship_request.exclusive_relationship,
+        existing_relationship_type.reciprocal_name == relationship_request.reciprocal_name,
     ]):
         # If no change has been passed, return
         return JSONResponse(
@@ -2675,11 +2681,16 @@ async def api_admin_update_relationship_type(
         # raise HTTPException(status_code=304, detail=f"No change made to group with id {id}")
 
 
-    # Updating  fields
+    # Updating fields
     existing_relationship_type.name=relationship_request.name
     existing_relationship_type.description=relationship_request.description
     existing_relationship_type.exclusive=relationship_request.exclusive_relationship
-    
+
+    # Assign a reciprocal name / title if one was passed
+    if relationship_request.reciprocal_name:
+        existing_relationship_type.reciprocal_name = relationship_request.reciprocal_name
+
+
     session.add(existing_relationship_type)
     session.commit()
 

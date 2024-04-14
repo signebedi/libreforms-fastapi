@@ -27,6 +27,14 @@
     </fieldset>
 
     <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="reciprocalNameHelpInline" for="reciprocalName" class="form-check-label">Reciprocal Name</label>
+         <span id="reciprocalNameHelpInline" class="form-text">
+        | Optionally, give a name to describe the reciprocal of this relationship. For example, if this field is called "managedBy", then a reciprocal name could be "managerOf".
+        </span>
+        <input type="text" id="reciprocalName" name="reciprocalName" class="form-control">
+    </fieldset>
+
+    <fieldset style="padding-top: 10px;" class="form-check">
         <label aria-labelledby="descriptionHelpInline" for="description" class="form-check-label">Description</label>
          <span id="descriptionHelpInline" class="form-text">
         | Provide a description for this relationship (Max Length: 500 Chars)
@@ -86,6 +94,7 @@
             // Prepare form data
             var formData = {
                 name: $('#name').val().trim(),
+                reciprocal_name: $('#reciprocalName').val().trim(),
                 description: $('#description').val().trim(),
                 exclusive_relationship: $('#exclusiveRelationship').is(':checked')
             };
