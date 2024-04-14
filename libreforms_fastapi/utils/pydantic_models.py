@@ -450,7 +450,17 @@ class GroupModel(BaseModel):
         return v
 
 class RelationshipTypeModel(BaseModel):
-    """This model will be used for validating change to Relationship Types through the admin API"""
+    """This model will be used for validating Relationship Types through the admin API"""
     name: str = Field(...)
     description: str = Field(...)
     exclusive_relationship: bool = Field(...)
+
+
+class UserRelationshipModel(BaseModel):
+    """This model will be used for validating User Relationship through the admin API"""
+    user_id: int = Field(...)
+    related_user_id: int = Field(...)
+    relationship_type_id: int = Field(...)
+
+
+
