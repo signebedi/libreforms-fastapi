@@ -45,5 +45,5 @@ sudo docker exec -it libreforms-instance libreformsctl useradd --environment <en
 To stop your instance, you can run the following command.
 
 ```bash
-libreforms-instance
+docker kill libreforms-instance
 ```
