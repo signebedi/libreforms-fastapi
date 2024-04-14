@@ -101,6 +101,17 @@ def get_sqlalchemy_models(
 
         transaction_log = relationship("TransactionLog", order_by="TransactionLog.id", back_populates="user")
 
+        relationships = relationship(
+            'UserRelationship',
+            foreign_keys='UserRelationship.user_id',
+            back_populates='user'
+        )
+        received_relationships = relationship(
+            'UserRelationship',
+            foreign_keys='UserRelationship.related_user_id',
+            back_populates='related_user'
+        )
+
         def __repr__(self) -> str:
 
             # Here we join the group names and represent them as a comma-separated string of values
@@ -145,7 +156,10 @@ def get_sqlalchemy_models(
 
             return permissions_dict
 
-        def to_dict(self, exclude_password=True):
+        def to_dict(self, 
+            just_the_basics=False, 
+            exclude_password=True,
+        ):
             """
             Converts the User instance into a dictionary format, with groups represented
             by their names as a list of strings.
@@ -154,19 +168,21 @@ def get_sqlalchemy_models(
                 'id': self.id,
                 'email': self.email,
                 'username': self.username,
-                'groups': [group.name for group in self.groups],
-                'active': self.active,
-                'created_date': self.created_date.isoformat() if self.created_date else None,
-                'last_login': self.last_login.isoformat() if self.last_login else None,
-                'locked_until': self.locked_until.isoformat() if self.locked_until else None,
-                'public_key': self.public_key.decode('utf-8') if self.public_key else None,  # Assuming public_key is bytes
-                'private_key_ref': self.private_key_ref,
-                'last_password_change': self.last_password_change.isoformat() if self.last_password_change else None,
-                'failed_login_attempts': self.failed_login_attempts,
-                'api_key': self.api_key,
-                'opt_out': self.opt_out,
-                'site_admin': self.site_admin
+                'groups': [group.name for group in self.groups]
             }
+
+            if not just_the_basics:
+                user_dict['active'] = self.active,
+                user_dict['created_date'] = self.created_date.isoformat() if self.created_date else None,
+                user_dict['last_login'] = self.last_login.isoformat() if self.last_login else None,
+                user_dict['locked_until'] = self.locked_until.isoformat() if self.locked_until else None,
+                user_dict['public_key'] = self.public_key.decode('utf-8') if self.public_key else None,  # Assuming public_key is bytes
+                user_dict['private_key_ref'] = self.private_key_ref,
+                user_dict['last_password_change'] = self.last_password_change.isoformat() if self.last_password_change else None,
+                user_dict['failed_login_attempts'] = self.failed_login_attempts,
+                user_dict['api_key'] = self.api_key,
+                user_dict['opt_out'] = self.opt_out,
+                user_dict['site_admin'] = self.site_admin
 
             if not exclude_password:
                 user_dict['password'] = self.password
@@ -277,24 +293,46 @@ def get_sqlalchemy_models(
             return relationship_dict
 
 
-
     class UserRelationship(Base):
         __tablename__ = 'user_relationships'
-        user_id = Column(Integer, ForeignKey('user.id'), primary_key=True)
+        id = Column(Integer, primary_key=True)
+        user_id = Column(Integer, ForeignKey('user.id'))
         related_user_id = Column(Integer, ForeignKey('user.id'))
         relationship_type_id = Column(Integer, ForeignKey('relationship_types.id'))
         # This column could be used if we wnated to permit relationships to be group-specific
         # group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)  
         
-        # Enforce uniqueness for exclusive relationships
-        __table_args__ = (UniqueConstraint('user_id', 'relationship_type_id', name='_user_relationship_exclusive'),)
+        # Enforce uniqueness for exclusive relationships... this has serious issues however because
+        # it is static and applies in all instances, not just when the exclusive flag is set to true. As
+        # such, and as much as it pains me to say this, it might make sense to implement this checking as
+        # part of the application logic.
+        # __table_args__ = (UniqueConstraint('user_id', 'relationship_type_id', name='_user_relationship_exclusive'),)
 
-        user = relationship("User", foreign_keys=[user_id])
-        related_user = relationship("User", foreign_keys=[related_user_id])
+        # user = relationship("User", foreign_keys=[user_id])
+        # related_user = relationship("User", foreign_keys=[related_user_id])
+        # relationship_type = relationship("RelationshipType")
+
+        user = relationship("User", foreign_keys=[user_id], back_populates="relationships")
+        related_user = relationship("User", foreign_keys=[related_user_id], back_populates="received_relationships")
         relationship_type = relationship("RelationshipType")
 
         # See comment above for group-specific relationships
         # group = relationship("Group")
+
+        def to_dict(self):
+            """
+            Converts the user relationship instance into a dictionary format.
+            """
+
+            relationship_dict = {
+                "id":self.id,
+                "user":self.user.to_dict(just_the_basics=True),
+                "related_user":self.related_user.to_dict(just_the_basics=True),
+                "relationship_type":self.relationship_type.to_dict(just_the_basics=True),
+            }
+
+            return relationship_dict
+
 
 
     # Allow custom approval chains to be defined here
