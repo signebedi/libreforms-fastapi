@@ -33,6 +33,17 @@ git clone https://github.com/signebedi/libreforms-fastapi.git
 cd libreforms-fastapi/
 sudo docker build -t libreforms-fastapi . # Please note this can take several minutes
 sudo docker volume create libreforms-volume # Create a volume for the instance directory
-sudo docker run -d -v libreforms-volume:/app/instance -p 8000:8000 libreforms-fastapi
+sudo docker run -d --name libreforms-instance -v libreforms-volume:/app/instance -p 8000:8000 libreforms-fastapi
 ```
 
+You can create an admin account by running the following commands, being careful to replace `<environment>` with the appropriate environment (when in doubt, use `development`). Follow the instructions from the interface that pops up.
+
+```bash
+sudo docker exec -it libreforms-instance libreformsctl useradd --environment <environment> --site-admin
+```
+
+To stop your instance, you can run the following command.
+
+```bash
+libreforms-instance
+```

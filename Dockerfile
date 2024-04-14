@@ -9,6 +9,9 @@ COPY . .
 # Install any needed packages specified in requirements/base.txt
 RUN pip3 install --no-cache-dir -r /app/requirements/base.txt
 
+# Install the local package
+RUN pip3 install --no-cache-dir  -e .
+
 # Create instance dir
 RUN mkdir -p /app/instance
 

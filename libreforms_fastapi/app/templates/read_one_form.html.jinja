@@ -130,25 +130,6 @@ $(document).ready(function() {
     // This var will allow us to render certain data types in a human-readable format.
     var formFieldMask = {{ form_field_mask | tojson }};
 
-    function formatValue(value) {
-        if (Array.isArray(value)) {
-            // Format array as comma-separated string
-            return value.join(', ');
-        } else if (typeof value === 'object' && value !== null) {
-            // Format object in a pretty way
-            var formattedObject = '<ul>';
-            for (var key in value) {
-                formattedObject += `<li>${key}: ${formatValue(value[key])}</li>`; // Recursive call for nested objects
-            }
-            formattedObject += '</ul>';
-            return formattedObject;
-        } else {
-            // Return other types (number, string) as is
-            return value;
-        }
-    }
-
-
     function renderTable(data, tableName, fieldMappings = null) {
         var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
         table += '<th>Attribute</th><th>Value</th>';
