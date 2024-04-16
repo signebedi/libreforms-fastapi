@@ -146,7 +146,7 @@ $(document).ready(function() {
 
                 value = formatValue(value);
 
-                table += '<td>' + value + '</td>';
+                table += `<td id="${key}-value-field">${value}</td>`; 
                 table += '</tr>';
 
             } else {
@@ -220,6 +220,41 @@ $(document).ready(function() {
                     "searching": false,
                     "autoWidth": false
                 });
+
+
+            {# "The logic below may not continue to work once we implement https://github.com/signebedi/libreforms-fastapi/issues/62" #}
+            $.ajax({
+                url: `/api/validate/signature/${formName}/${documentId}`,
+                type: 'GET',
+                headers: {
+                    'X-API-KEY': apiKey,
+                },
+                dataType: 'json',
+                success: function(response) {
+
+                    if (response.valid == true) {
+                        $("#signature-value-field").html(`
+                            <span class="badge bg-primary">Signature Valid</span> 
+                        `);
+                    } else {
+                        $("#signature-value-field").html(`
+                            <span class="badge bg-danger">Signature Invalid</span>
+                        `);
+                    }
+                },
+                error: function(xhr) {
+                    // Handle errors
+                    console.error('Failed to validate signature', xhr.responseText);
+                    // Display error message to the user
+                    flashMessage(xhr.responseText, 'danger'); 
+                }
+            });
+
+
+
+
+
+
 
 
             },
