@@ -11,6 +11,7 @@ from sqlalchemy import (
     String, 
     DateTime,
     JSON,
+    Enum,
     LargeBinary,
     create_engine,
     UniqueConstraint,
@@ -339,12 +340,17 @@ def get_sqlalchemy_models(
 
 
     # Allow custom approval chains to be defined here
-    class ApprovalChains(Base):
-        __tablename__ = 'approval_chains'
+    class SignatureRoles(Base):
+        __tablename__ = 'signature_roles'
         id = Column(Integer, primary_key=True)
-        form_name = Column(String(1000))
-        apply_to_single_group = Column(String(100), nullable=True) # Maybe we allow admins to route approvals based on the group of the sender...
-        send_to_users_manager = Column(Boolean) # I think that this is probably going to be difficult to implement ...
+        role_name = Column(String, unique=True)
+        role_method = Column(Enum('relationship', 'group', 'static'), default='relationship')
+        form_name = Column(String)
+        on_approve = Column(Enum('step_up', 'finish'), default='finish')
+        on_deny = Column(Enum('restart', 'step_down', 'end'), default='restart')
+        on_return = Column(Enum('restart', 'step_down'), default='restart')
+        comments_required = Column(Boolean, default=False)
+
 
     # Create a custom Signing class from sqlalchemy_signing
     Signing = create_signing_class(Base, tz_aware_datetime)
