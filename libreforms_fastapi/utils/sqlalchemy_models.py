@@ -331,14 +331,14 @@ def get_sqlalchemy_models(
         role_name = Column(String, unique=True)
         role_method = Column(Enum('signature', 'relationship', 'group', 'static'), default='relationship')
         form_name = Column(String)
-        preceded_by_id = Column(Integer, ForeignKey('signature_roles.id'))
-        succeeded_by_id = Column(Integer, ForeignKey('signature_roles.id'))
+        preceded_by_id = Column(Integer, ForeignKey('signature_roles.id'), nullable=True)
+        succeeded_by_id = Column(Integer, ForeignKey('signature_roles.id'),nullable=True)
         on_approve = Column(Enum('step_up', 'finish'), default='finish')
         on_deny = Column(Enum('restart', 'step_down', 'kill'), default='restart')
         on_return = Column(Enum('restart', 'step_down'), default='restart')
         comments_required = Column(Boolean, default=False)
 
-        last_updated = Column(DateTime, nullable=False, default=tz_aware_datetime, onupdate=datetime.utcnow)
+        last_updated = Column(DateTime, nullable=False, default=tz_aware_datetime, onupdate=tz_aware_datetime)
         created_on = Column(DateTime, nullable=False, default=tz_aware_datetime)
 
         preceded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[preceded_by_id], backref="preceding_role")
@@ -347,6 +347,61 @@ def get_sqlalchemy_models(
         group_target = Column(Integer, ForeignKey('group.id'))
         relationship_target = Column(Integer, ForeignKey('relationship_types.id'))
         static_target = Column(Integer, ForeignKey('user.id'))
+
+
+        def to_dict(self):
+            """
+            Converts a signature role into a dictionary format.
+            """
+
+
+            id = Column(Integer, primary_key=True)
+            role_name = Column(String, unique=True)
+            role_method = Column(Enum('signature', 'relationship', 'group', 'static'), default='relationship')
+            form_name = Column(String)
+            preceded_by_id = Column(Integer, ForeignKey('signature_roles.id'), )
+            succeeded_by_id = Column(Integer, ForeignKey('signature_roles.id'), nullable=True)
+            on_approve = Column(Enum('step_up', 'finish'), default='finish')
+            on_deny = Column(Enum('restart', 'step_down', 'kill'), default='restart')
+            on_return = Column(Enum('restart', 'step_down'), default='restart')
+            comments_required = Column(Boolean, default=False)
+
+            last_updated = Column(DateTime, nullable=False, default=tz_aware_datetime, onupdate=tz_aware_datetime)
+            created_on = Column(DateTime, nullable=False, default=tz_aware_datetime)
+
+            preceded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[preceded_by_id], backref="preceding_role")
+            succeeded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[succeeded_by_id], backref="succeeding_role")
+
+            group_target = Column(Integer, ForeignKey('group.id'))
+            relationship_target = Column(Integer, ForeignKey('relationship_types.id'))
+            static_target = Column(Integer, ForeignKey('user.id'))
+
+            role_dict = {
+                "id":self.id,
+                "role_name":self.role_name,
+                "role_method":self.role_method,
+                "form_name":self.form_name,
+                "on_approve":self.on_approve,
+                "on_deny":self.on_deny,
+                "on_return":self.on_return,
+                "comments_required":self.comments_required,
+                "last_updated":self.last_updated,
+                "created_on":self.created_on,
+                "preceded_by":self.preceded_by,
+                "succeeded_by":self.succeeded_by,
+            }
+
+            # We exclude the `signature` target option, which is targeted at the
+            # owning user..
+            if self.role_method == "group":
+                role_dict['target'] = self.group_target
+            elif self.role_method == "relationship":
+                role_dict['target'] = self.relationship_target
+            elif self.role_method == "static":
+                role_dict['target'] = self.static_target
+
+            return role_dict
+
 
     # Create a custom Signing class from sqlalchemy_signing
     Signing = create_signing_class(Base, tz_aware_datetime)
@@ -366,8 +421,8 @@ def get_sqlalchemy_models(
     if create_all:
         Base.metadata.create_all(bind=engine)
 
-    return { # this approach is a little bit of syntactic salt to ensure we 
-        "User": User, # purposefully merge new models into the mainline code
+    return { # This approach is a little bit of syntactic salt to ensure we 
+        "User": User, # purposefully merge new models into the mainline code.
         "Group": Group,
         "TransactionLog": TransactionLog,
         "SignatureRoles": SignatureRoles,
