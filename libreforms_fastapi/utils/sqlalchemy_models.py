@@ -354,28 +354,6 @@ def get_sqlalchemy_models(
             Converts a signature role into a dictionary format.
             """
 
-
-            id = Column(Integer, primary_key=True)
-            role_name = Column(String, unique=True)
-            role_method = Column(Enum('signature', 'relationship', 'group', 'static'), default='relationship')
-            form_name = Column(String)
-            preceded_by_id = Column(Integer, ForeignKey('signature_roles.id'), )
-            succeeded_by_id = Column(Integer, ForeignKey('signature_roles.id'), nullable=True)
-            on_approve = Column(Enum('step_up', 'finish'), default='finish')
-            on_deny = Column(Enum('restart', 'step_down', 'kill'), default='restart')
-            on_return = Column(Enum('restart', 'step_down'), default='restart')
-            comments_required = Column(Boolean, default=False)
-
-            last_updated = Column(DateTime, nullable=False, default=tz_aware_datetime, onupdate=tz_aware_datetime)
-            created_on = Column(DateTime, nullable=False, default=tz_aware_datetime)
-
-            preceded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[preceded_by_id], backref="preceding_role")
-            succeeded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[succeeded_by_id], backref="succeeding_role")
-
-            group_target = Column(Integer, ForeignKey('group.id'))
-            relationship_target = Column(Integer, ForeignKey('relationship_types.id'))
-            static_target = Column(Integer, ForeignKey('user.id'))
-
             role_dict = {
                 "id":self.id,
                 "role_name":self.role_name,
