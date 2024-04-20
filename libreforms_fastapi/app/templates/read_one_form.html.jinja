@@ -35,10 +35,10 @@
         <div class="dropdown-menu" id="linkList" style="">
             <h6 class="dropdown-header">Form Management</h6>
             <a class="dropdown-item" id="editLink" href="{{ url_for ('ui_form_update', form_name=form_name, document_id=document_id) }}">Edit Form</a>
-            {% if "sign_own" in request.user.permissions[form_name] | tojson %}
-            
+            {# {% if "sign_own" in request.user.permissions[form_name] | tojson %}
             <a class="dropdown-item" id="signLink" onclick="signForm();" href="#">Sign Form</a>
-            {% endif %}
+            {% endif %} #}
+            <a class="dropdown-item" id="signLink" onclick="signForm();" href="#">Sign Form</a>
             <a class="dropdown-item disabled" id="historyLink" href="#">View Form History</a>
             <a class="dropdown-item" id="duplicateLink" href="/ui/form/duplicate/{{ form_name }}/{{ document_id }}">Duplicate Form</a>
             <a class="dropdown-item" id="deleteLink" onclick="deleteForm();" href="#">Delete Form</a>
@@ -173,9 +173,9 @@ $(document).ready(function() {
         }
 
         // Enable the sign form link
-        if (owner === currentUser && userPermissions.includes("sign_own")) {
-            $('#signLink').removeClass('disabled');
-        }
+        //if (owner === currentUser && userPermissions.includes("sign_own")) {
+        //    $('#signLink').removeClass('disabled');
+        //}
 
         // Enable the delete form link
         if (owner === currentUser && userPermissions.includes("delete_own")) {
@@ -233,18 +233,18 @@ $(document).ready(function() {
                 success: function(response) {
 
                     if (response.valid == true) {
-                        $("#signature-value-field").html(`
+                        $("#signatures-value-field").html(`
                             <span class="badge bg-primary">Signature Valid</span> 
                         `);
                     } else {
-                        $("#signature-value-field").html(`
+                        $("#signatures-value-field").html(`
                             <span class="badge bg-danger">Signature Invalid</span>
                         `);
                     }
                 },
                 error: function(xhr) {
                     // Handle errors
-                    console.error('Failed to validate signature', xhr.responseText);
+                    console.error('Failed to validate signatures', xhr.responseText);
                     // Display error message to the user
                     flashMessage(xhr.responseText, 'danger'); 
                 }

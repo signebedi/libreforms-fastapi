@@ -447,7 +447,7 @@ def cli_useradd(username, password, email, opt_out, site_admin, environment):
                 "example_form:update_all",
                 "example_form:delete_own",
                 "example_form:delete_all",
-                "example_form:sign_own"
+                # "example_form:sign_own"
             ]
             default_group = Group(id=1, name="default", permissions=default_permissions)
             session.add(default_group)
@@ -567,7 +567,7 @@ def cli_usermod(username, password, new_email, opt_out, active, site_admin, head
                 "example_form:update_all",
                 "example_form:delete_own",
                 "example_form:delete_all",
-                "example_form:sign_own"
+                # "example_form:sign_own"
             ]
             default_group = Group(id=1, name="default", permissions=default_permissions)
             session.add(default_group)
@@ -677,7 +677,7 @@ def cli_id(username, environment):
                 "example_form:update_all",
                 "example_form:delete_own",
                 "example_form:delete_all",
-                "example_form:sign_own"
+                # "example_form:sign_own"
             ]
             default_group = Group(id=1, name="default", permissions=default_permissions)
             session.add(default_group)

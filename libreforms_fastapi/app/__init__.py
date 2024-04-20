@@ -402,7 +402,7 @@ with SessionLocal() as session:
             "example_form:update_all",
             "example_form:delete_own",
             "example_form:delete_all",
-            "example_form:sign_own"
+            # "example_form:sign_own"
         ]
         default_group = Group(id=1, name="default", permissions=default_permissions)
         session.add(default_group)
@@ -1245,12 +1245,12 @@ async def api_form_sign(
         # for group in user.groups:
         #     print("\n\n", group.get_permissions()) 
 
-        user.validate_permission(form_name=form_name, required_permission="sign_own")
+        # user.validate_permission(form_name=form_name, required_permission="sign_own")
+        assert (True) # Placeholder for SignatureRoles validation
+
     except Exception as e:
         raise HTTPException(status_code=403, detail=f"{e}")
         
-            # "example_form:sign_own"
-
     metadata={
         doc_db.last_editor_field: user.username,
     }
@@ -3563,7 +3563,7 @@ async def ui_admin_create_group(request: Request):
         "update_all",
         "delete_own",
         "delete_all",
-        "sign_own",
+        # "sign_own",
     ]
 
 
@@ -3600,7 +3600,7 @@ async def ui_admin_update_group(id:str, request: Request):
         "update_all",
         "delete_own",
         "delete_all",
-        "sign_own",
+        # "sign_own",
     ]
 
     # These are the permissions already assigned to the group
