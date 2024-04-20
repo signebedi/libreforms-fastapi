@@ -427,7 +427,7 @@ def cli_useradd(username, password, email, opt_out, site_admin, environment):
     User = models['User']
     Group = models['Group']
     TransactionLog = models['TransactionLog']
-    ApprovalChains = models['ApprovalChains']
+    SignatureRoles = models['SignatureRoles']
     Signing = models['Signing']
 
     Base.metadata.create_all(bind=engine)
@@ -547,7 +547,7 @@ def cli_usermod(username, password, new_email, opt_out, active, site_admin, head
     User = models['User']
     Group = models['Group']
     TransactionLog = models['TransactionLog']
-    ApprovalChains = models['ApprovalChains']
+    SignatureRoles = models['SignatureRoles']
     Signing = models['Signing']
 
     Base.metadata.create_all(bind=engine)
@@ -657,7 +657,7 @@ def cli_id(username, environment):
     User = models['User']
     Group = models['Group']
     TransactionLog = models['TransactionLog']
-    ApprovalChains = models['ApprovalChains']
+    SignatureRoles = models['SignatureRoles']
     Signing = models['Signing']
 
     Base.metadata.create_all(bind=engine)

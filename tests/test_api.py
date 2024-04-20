@@ -19,7 +19,7 @@ def setup_environment():
         User,
         Group,
         TransactionLog,
-        ApprovalChains,
+        SignatureRoles,
         Signing,
         signatures,
         engine,

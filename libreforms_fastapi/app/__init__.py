@@ -377,7 +377,7 @@ models, SessionLocal, signatures, engine = get_sqlalchemy_models(
 User = models['User']
 Group = models['Group']
 TransactionLog = models['TransactionLog']
-ApprovalChains = models['ApprovalChains']
+SignatureRoles = models['SignatureRoles']
 Signing = models['Signing']
 
 # Adding user relationship models below, see

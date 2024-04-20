@@ -99,6 +99,6 @@ function formatValue(value) {
 
 function renderUserRelationships(users) {
   return users.map(user => {
-      return `${user.relationship} <a href='/auth/profile/${user.related_user_id}'>${user.related_user_username}</a>`;
+      return `${user.relationship} <a href='/ui/auth/profile/${user.related_user_id}'>${user.related_user_username}</a>`;
   }).join(", ");
 }

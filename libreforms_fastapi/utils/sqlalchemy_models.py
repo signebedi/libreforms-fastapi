@@ -275,11 +275,11 @@ def get_sqlalchemy_models(
         description = Column(String)
         exclusive = Column(Boolean, default=False)
         
-        # This field is currently unimplemented. The ideas is that we
-        # can lock down certain relationships eg. to certain groups or 
-        # pairings of groups. The problem is that there is no way to 
-        # constrain the potential complexity of this approach.
-        # group_specific = Column(Boolean, default=False)
+        relationship_instances = relationship(
+            'UserRelationship',
+            foreign_keys='UserRelationship.relationship_type_id',
+            back_populates='relationship_type'
+        )
 
         def to_dict(self):
             """
@@ -303,25 +303,10 @@ def get_sqlalchemy_models(
         user_id = Column(Integer, ForeignKey('user.id'))
         related_user_id = Column(Integer, ForeignKey('user.id'))
         relationship_type_id = Column(Integer, ForeignKey('relationship_types.id'))
-        # This column could be used if we wnated to permit relationships to be group-specific
-        # group_id = Column(Integer, ForeignKey('groups.id'), nullable=True)  
-        
-        # Enforce uniqueness for exclusive relationships... this has serious issues however because
-        # it is static and applies in all instances, not just when the exclusive flag is set to true. As
-        # such, and as much as it pains me to say this, it might make sense to implement this checking as
-        # part of the application logic.
-        # __table_args__ = (UniqueConstraint('user_id', 'relationship_type_id', name='_user_relationship_exclusive'),)
-
-        # user = relationship("User", foreign_keys=[user_id])
-        # related_user = relationship("User", foreign_keys=[related_user_id])
-        # relationship_type = relationship("RelationshipType")
 
         user = relationship("User", foreign_keys=[user_id], back_populates="relationships")
         related_user = relationship("User", foreign_keys=[related_user_id], back_populates="received_relationships")
-        relationship_type = relationship("RelationshipType")
-
-        # See comment above for group-specific relationships
-        # group = relationship("Group")
+        relationship_type = relationship("RelationshipType",foreign_keys=[relationship_type_id], back_populates="relationship_instances")
 
         def to_dict(self):
             """
@@ -344,13 +329,24 @@ def get_sqlalchemy_models(
         __tablename__ = 'signature_roles'
         id = Column(Integer, primary_key=True)
         role_name = Column(String, unique=True)
-        role_method = Column(Enum('relationship', 'group', 'static'), default='relationship')
+        role_method = Column(Enum('signature', 'relationship', 'group', 'static'), default='relationship')
         form_name = Column(String)
+        preceded_by_id = Column(Integer, ForeignKey('signature_roles.id'))
+        succeeded_by_id = Column(Integer, ForeignKey('signature_roles.id'))
         on_approve = Column(Enum('step_up', 'finish'), default='finish')
-        on_deny = Column(Enum('restart', 'step_down', 'end'), default='restart')
+        on_deny = Column(Enum('restart', 'step_down', 'kill'), default='restart')
         on_return = Column(Enum('restart', 'step_down'), default='restart')
         comments_required = Column(Boolean, default=False)
 
+        last_updated = Column(DateTime, nullable=False, default=tz_aware_datetime, onupdate=datetime.utcnow)
+        created_on = Column(DateTime, nullable=False, default=tz_aware_datetime)
+
+        preceded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[preceded_by_id], backref="preceding_role")
+        succeeded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[succeeded_by_id], backref="succeeding_role")
+
+        group_target = Column(Integer, ForeignKey('group.id'))
+        relationship_target = Column(Integer, ForeignKey('relationship_types.id'))
+        static_target = Column(Integer, ForeignKey('user.id'))
 
     # Create a custom Signing class from sqlalchemy_signing
     Signing = create_signing_class(Base, tz_aware_datetime)
@@ -374,7 +370,7 @@ def get_sqlalchemy_models(
         "User": User, # purposefully merge new models into the mainline code
         "Group": Group,
         "TransactionLog": TransactionLog,
-        "ApprovalChains": ApprovalChains,
+        "SignatureRoles": SignatureRoles,
         "Signing": Signing,
         "RelationshipType": RelationshipType,
         "UserRelationship": UserRelationship,
