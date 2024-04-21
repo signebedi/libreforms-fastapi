@@ -271,40 +271,35 @@ class DigitalSignatureManager:
 def serialize_record_for_signing(record):
     """
     Serializes the record in a consistent, deterministic manner for signing.
-    Excludes the '_signature' field from the serialization.
     """
-    record_copy = dict(copy.deepcopy(record))  # Make a copy to avoid modifying the original
-    # The logic of selecting only the data field is that, while metadata is subject (and really
-    # expected) to change, eg. through the form approval process, we expect the data to remain 
-    # the same.
-    select_data_fields = record_copy['data']
-    # print(select_data_fields)
-    return json.dumps(select_data_fields, sort_keys=True)
+    return 
+
 
 def sign_record(record, username, env="development", private_key_path=None):
     """
-    Generates a signature for the given record and inserts it into the '_signature' field.
+    Generates a signature for the given record and returns it.
     """
     ds_manager = DigitalSignatureManager(username=username, env=env, private_key_path=private_key_path)
-    serialized = serialize_record_for_signing(record)
-    signature = ds_manager.sign_data(serialized.encode())
-    s = signature.hex()
-    record['metadata']['_signature'] = s  # Store the signature as a hex string
-    return record, s
 
-def verify_record_signature(record, username, env="development", public_key=None, private_key_path=None):
+    serialized = json.dumps(record, sort_keys=True)
+    signature = ds_manager.sign_data(serialized.encode())
+
+    s = signature.hex()
+
+    return s
+
+def verify_record_signature(record, signature, username, env="development", public_key=None, private_key_path=None):
     """
     Verifies the signature of the given record.
     Returns True if the signature is valid, False otherwise.
     """
-    if '_signature' not in record['metadata'] or record['metadata']['_signature'] is None:
-        return False  # No signature to verify
     
     ds_manager = DigitalSignatureManager(username=username, env=env, private_key_path=private_key_path)
 
-    record_copy = copy.deepcopy(record)
-    signature_bytes = bytes.fromhex(record['metadata']['_signature'])
-    serialized = serialize_record_for_signing(record_copy)
+    # record_copy = copy.deepcopy(record)
+
+    signature_bytes = bytes.fromhex(signature)
+    serialized = json.dumps(record, sort_keys=True)
     
     # This is hackish, because ds_manager.verify_signature should be able to accept bytes. It's a workaround for now.
     if isinstance(public_key, bytes):

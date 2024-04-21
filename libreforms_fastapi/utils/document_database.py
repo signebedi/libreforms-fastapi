@@ -172,11 +172,11 @@ class ManageDocumentDB(ABC):
         self.last_modified_field = "last_modified"
         self.ip_address_field = "ip_address"
         self.created_by_field = "created_by"
-        self.signature_field = "signature"        
+        self.signature_field = "signatures"        
         self.last_editor_field = "last_editor"
-        self.approved_field = "approved"
-        self.approved_by_field = "approved_by"
-        self.approval_signature_field = "approval_signature"
+        # self.approved_field = "approved"
+        # self.approved_by_field = "approved_by"
+        # self.approval_signature_field = "approval_signature"
         self.journal_field = "journal"
 
         return [
@@ -190,9 +190,9 @@ class ManageDocumentDB(ABC):
             self.created_by_field, 
             self.signature_field, 
             self.last_editor_field, 
-            self.approved_field, 
-            self.approved_by_field, 
-            self.approval_signature_field, 
+            # self.approved_field, 
+            # self.approved_by_field, 
+            # self.approval_signature_field, 
             self.journal_field, 
         ]
     @abstractmethod
@@ -366,11 +366,11 @@ class ManageTinyDB(ManageDocumentDB):
                 self.last_modified_field: metadata.get(self.last_modified_field, current_timestamp.isoformat()),
                 self.ip_address_field: metadata.get(self.ip_address_field, None),
                 self.created_by_field: metadata.get(self.created_by_field, None),
-                self.signature_field: metadata.get(self.signature_field, None),
+                self.signature_field: metadata.get(self.signature_field, {}),
                 self.last_editor_field: metadata.get(self.last_editor_field, None),
-                self.approved_field: metadata.get(self.approved_field, None),
-                self.approved_by_field: metadata.get(self.approved_by_field, None),
-                self.approval_signature_field: metadata.get(self.approval_signature_field, None),
+                # self.approved_field: metadata.get(self.approved_field, None),
+                # self.approved_by_field: metadata.get(self.approved_by_field, None),
+                # self.approval_signature_field: metadata.get(self.approval_signature_field, None),
             }
         }
 
@@ -506,6 +506,7 @@ class ManageTinyDB(ManageDocumentDB):
         form_name:str, 
         document_id:str, 
         username:str, 
+        role_id:int, 
         public_key=None, 
         private_key_path=None, 
         metadata={}, 
@@ -544,7 +545,11 @@ class ManageTinyDB(ManageDocumentDB):
         if unsign:
             
             # If the document is not signed, raise a no changes exception
-            if not document['metadata'][self.signature_field]:
+            if username not in document['metadata'][self.signature_field].keys() \
+                or not document['metadata'][self.signature_field][username][0]: 
+                # Note: the structure of the signature field is:
+                # { username: (key, timestamp, role_id), ...}
+                
                 raise NoChangesProvided(form_name, document_id)
 
             signature = None
@@ -555,17 +560,25 @@ class ManageTinyDB(ManageDocumentDB):
             # we raise a DocumentAlreadyHasValidSignature exception. The idea here is to avoid spamming signatures if
             # there has been no substantive change to the data since a past signature. This will allow the logic here
             # to proceed if there is no signature, or if the data has changed since the last signature.
-            has_document_already_been_signed = verify_record_signature(record=document, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
 
-            if has_document_already_been_signed:
-                raise DocumentAlreadyHasValidSignature(form_name, document_id, username)
+            if username in document['metadata'][self.signature_field].keys():
+
+                signature, _, _ = document['metadata'][self.signature_field].get(username)
+
+                has_document_already_been_signed = verify_record_signature(record=document, signature=signature, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
+
+                if has_document_already_been_signed:
+                    raise DocumentAlreadyHasValidSignature(form_name, document_id, username)
 
             # Now we afix the signature
             try:
-                r, signature = sign_record(record=document, username=username, env=self.env, private_key_path=private_key_path)
+                signature = sign_record(record=document.get("data"), username=username, env=self.env, private_key_path=private_key_path)
+
+                print()
 
                 if verify_on_sign:
-                    verify = verify_record_signature(record=r, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
+                    verify = verify_record_signature(record=document.get("data"), signature=signature, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
+                    print("\n\n\n", verify)
                     assert (verify)
                     # print ("\n\n\n", a)
             except:
@@ -573,12 +586,17 @@ class ManageTinyDB(ManageDocumentDB):
 
         current_timestamp = datetime.now(self.timezone)
 
+        # Build the signature data structure
+        signature_tuple = (signature, current_timestamp, role_id)
+        reconstructed_signature_dict = document['metadata'].get(self.signature_field)
+        reconstructed_signature_dict[username] = signature_tuple
+
         # Build the journal
         journal = document['metadata'].get(self.journal_field)
         journal.append (
             {
                 "metadata": {
-                    self.signature_field: signature,
+                    self.signature_field: reconstructed_signature_dict,
                     self.last_modified_field: current_timestamp.isoformat(),
                     self.last_editor_field: metadata.get(self.last_editor_field, None),
                     self.ip_address_field: metadata.get(self.ip_address_field, None),
@@ -594,7 +612,7 @@ class ManageTinyDB(ManageDocumentDB):
         document['metadata'][self.last_editor_field] = metadata.get(self.last_editor_field, None)
         document['metadata'][self.ip_address_field] = metadata.get(self.ip_address_field, None)
         document['metadata'][self.journal_field] = journal
-        document['metadata'][self.signature_field] = signature
+        document['metadata'][self.signature_field] = reconstructed_signature_dict
 
 
         # Update only the fields that are provided in  metadata, not replacing the entire 
@@ -706,8 +724,6 @@ class ManageTinyDB(ManageDocumentDB):
                 },
             }
         )
-
-
 
 
         # Here we update only a few metadata fields ... fields like approval and signature should be
