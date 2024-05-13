@@ -3,7 +3,7 @@ FastAPI implementation of the libreForms spec
 
 #### Installation
 
-Follow the steps below to install the system on your computer. Please note, you need to install Python3 and Python3-Venv through your package manager. If you plan to use MongoDB, you will need to install that, too. See your distribution's specific instructions for these steps or [install using Docker](#running-in-docker) to get started.
+Follow the steps below to install the system on your computer. Please note, you need to install Python3.10 (or higher) and Python3.10-Venv through your package manager. If you plan to use MongoDB and a relational database, you will need to install these, too. See your distribution's specific instructions for these steps or [install using Docker](#running-in-docker) to get started.
 
 ```bash
 git clone https://github.com/signebedi/libreforms-fastapi.git
@@ -20,7 +20,7 @@ To run in production, you need to generate an app configuration and daemonize uv
 
 ```bash
 libreformsctl config production
-libreformsctl uvicorn production 
+libreformsctl uvicorn --environment production 
 libreformsctl nginx production # Optional if you want a reverse proxy 
 ```
 
@@ -47,3 +47,7 @@ To stop your instance, you can run the following command.
 ```bash
 docker kill libreforms-instance
 ```
+
+#### Bcrypt Errors
+
+Recent versions of bcrypt sometimes raise an attribute error. This is an ongoing issue as of May, 2024, and can be resolved by installing a trailing edge version of bcrypt. To monitor developments, we've created a meta here: https://github.com/signebedi/libreforms-fastapi/issues/181. 
