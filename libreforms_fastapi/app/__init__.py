@@ -101,6 +101,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     GroupModel,
     RelationshipTypeModel,
     UserRelationshipModel,
+    FormConfigUpdateRequest,
     get_user_model,
     get_form_model,
     get_form_names,
@@ -3091,9 +3092,6 @@ async def api_admin_edit_docs(
     )
 
 
-
-
-
 # Get form config string
 @app.get(
     "/api/admin/get_form_config", 
@@ -3120,9 +3118,6 @@ async def api_admin_get_form_config(
 
     _form_config = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH)
 
-    print(_form_config)
-
-
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
 
@@ -3140,6 +3135,60 @@ async def api_admin_get_form_config(
     return JSONResponse(
         status_code=200,
         content={"status": "success", "content": _form_config},
+    )
+
+
+# Update form config string
+@app.post(
+    "/api/admin/write_form_config", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+    include_in_schema=True
+)
+async def api_admin_write_form_config(
+    request: Request,
+    _form_config: FormConfigUpdateRequest,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Allows site administrators to update the site form config as yaml. This operation is logged for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+
+    try:
+        write_form_config_yaml(
+            config_path=config.FORM_CONFIG_PATH, 
+            form_config_str=_form_config.content, 
+            validate=True,
+        )
+    except Exception as e:
+        raise HTTPException(status_code=418, detail=f"{e}")
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"content": _form_config.content},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success"},
     )
 
 
@@ -3520,7 +3569,7 @@ async def ui_admin_edit_docs(request: Request):
         render_markdown=False,
     ).strip()
 
-    print(docs_markdown)
+    # print(docs_markdown)
 
     return templates.TemplateResponse(
         request=request, 
@@ -3530,6 +3579,33 @@ async def ui_admin_edit_docs(request: Request):
             "docs_markdown": docs_markdown,
         }
     )
+
+
+# Update form config
+@app.get("/ui/admin/write_form_config", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_write_form_config(request: Request):
+    
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    form_config_str = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH).strip()
+
+    print(form_config_str)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_form_config.html.jinja", 
+        context={
+            **build_ui_context(),
+            "form_config_str": form_config_str,
+        }
+    )
+
+
 
 
 

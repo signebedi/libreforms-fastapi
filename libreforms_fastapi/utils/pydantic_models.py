@@ -448,7 +448,7 @@ def write_form_config_yaml(config_path, form_config_str, validate=True):
     if validate:
         try:
             # Attempt to load the YAML string to check its validity
-            parsed_config = yaml.safe_load(form_config_str)
+            parsed_config = yaml.load(form_config_str, Loader=yaml.FullLoader)
 
             # I'm putting a placeholder here because we may with to add additional
             # validators down the road.
@@ -663,6 +663,11 @@ class HelpRequest(BaseModel):
 
 class DocsEditRequest(BaseModel):
     """Another quick and dirty model for managing admin edit docs API calls"""
+    content: str
+
+
+class FormConfigUpdateRequest(BaseModel):
+    """Another quick and dirty model for managing admin update form config API calls"""
     content: str
 
 
