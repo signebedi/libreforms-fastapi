@@ -318,28 +318,6 @@ example_form:
 """
 
 
-# Deprecated in https://github.com/signebedi/libreforms-fastapi/issues/37
-def old_load_form_config(config_path=None):
-    """This is a quick abstraction to load the json form config"""
-    # Try to open config_path and if not existent or empty, use example config
-    form_config = example_form_config  # Default to example_form_config
-
-    if not config_path:
-        return form_config
-
-    if os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as file:
-                form_config = json.load(file)
-        except json.JSONDecodeError:
-            pass
-            # print("Failed to load the JSON file. Falling back to the default configuration.")
-    else:
-        pass
-
-    return form_config
-
-
 # Constructors that return Python types themselves
 def type_constructor_int(loader, node):
     return int
