@@ -106,6 +106,8 @@ from libreforms_fastapi.utils.pydantic_models import (
     get_form_names,
     get_form_html,
     load_form_config,
+    get_form_config_yaml,
+    write_form_config_yaml,
 )
 
 from libreforms_fastapi.utils.docs import (
@@ -3087,6 +3089,59 @@ async def api_admin_edit_docs(
         status_code=200,
         content={"status": "success"},
     )
+
+
+
+
+
+# Get form config string
+@app.get(
+    "/api/admin/get_form_config", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+    include_in_schema=True
+)
+async def api_admin_get_form_config(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Allows site administrators to view the site form config as yaml. This operation is logged for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+
+    _form_config = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH)
+
+    print(_form_config)
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "content": _form_config},
+    )
+
 
 
 

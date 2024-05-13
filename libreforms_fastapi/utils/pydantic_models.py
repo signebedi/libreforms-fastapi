@@ -386,7 +386,18 @@ def load_form_config(config_path=None):
     """
     default_config = yaml.load(EXAMPLE_FORM_CONFIG_YAML, Loader=yaml.FullLoader)
 
-    if not config_path or not os.path.exists(config_path):
+    if not config_path:
+        return default_config
+
+    elif not os.path.exists(config_path):
+
+        basedir = os.path.dirname(config_path)
+        if not os.path.exists(basedir):
+            os.makedirs(basedir)
+
+        with open(config_path, 'w') as file:
+            file.write(EXAMPLE_FORM_CONFIG_YAML)
+
         return default_config
 
     elif os.path.exists(config_path):
