@@ -216,7 +216,7 @@ class Config(BaseSettings):
 
 class ProductionConfig(Config):
     # The DOMAIN is meant to fail in production if you have not set it
-    DOMAIN:str = os.getenv('DOMAIN', "https://example.com")
+    DOMAIN:str = os.getenv('DOMAIN', None)
     
     # Defaults to True in production
     SMTP_ENABLED:bool = os.getenv('SMTP_ENABLED', 'True') == 'True'
