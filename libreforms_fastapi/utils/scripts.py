@@ -1,4 +1,4 @@
-import re, random, string
+import re, random, string, os
 from passlib.context import CryptContext
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.backends import default_backend
@@ -15,7 +15,7 @@ def old_check_password_hash(hash: str, password: str):
     return pwd_context.verify(password, hash)
 
 def generate_password_hash(password: str):
-    
+
     # Generate a random salt
     salt = os.urandom(16)
 
