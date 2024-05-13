@@ -1,14 +1,56 @@
 import re, random, string
 from passlib.context import CryptContext
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+from cryptography.hazmat.backends import default_backend
+from cryptography.hazmat.primitives import hashes
+
 
 # Create a password context
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def generate_password_hash(password: str):
+def old_generate_password_hash(password: str):
     return pwd_context.hash(password)
 
-def check_password_hash(hash: str, password: str):
+def old_check_password_hash(hash: str, password: str):
     return pwd_context.verify(password, hash)
+
+def generate_password_hash(password: str):
+    
+    # Generate a random salt
+    salt = os.urandom(16)
+
+    # Create Scrypt object
+    kdf = Scrypt(
+        salt=salt,
+        length=32,
+        n=2**14,
+        r=8,
+        p=1,
+        backend=default_backend()
+    )
+
+    # Derive the password and return the salt and key combined
+    key = kdf.derive(password.encode())  
+    return salt + key
+
+def check_password_hash(hash: bytes, password: str):
+
+    # The salt is the first 16 bytes, the rest is the key
+    salt = hash[:16]  
+    key = hash[16:]
+    kdf = Scrypt(
+        salt=salt,
+        length=32,
+        n=2**14,
+        r=8,
+        p=1,
+        backend=default_backend()
+    )
+    try:
+        kdf.verify(password.encode(), key)
+        return True
+    except Exception:
+        return False
 
 # this is a password generation script that takes a password length
 # and regex, returning a password string. It also takes a alphanumeric_percentage
