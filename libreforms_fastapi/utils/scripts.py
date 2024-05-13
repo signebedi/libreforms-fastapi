@@ -1,18 +1,20 @@
 import re, random, string, os
-from passlib.context import CryptContext
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 
 
+# Deprecated, see https://github.com/signebedi/libreforms-fastapi/issues/184
+# from passlib.context import CryptContext
+
 # Create a password context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
-def old_generate_password_hash(password: str):
-    return pwd_context.hash(password)
+# def old_generate_password_hash(password: str):
+#     return pwd_context.hash(password)
 
-def old_check_password_hash(hash: str, password: str):
-    return pwd_context.verify(password, hash)
+# def old_check_password_hash(hash: str, password: str):
+#     return pwd_context.verify(password, hash)
 
 def generate_password_hash(password: str):
 

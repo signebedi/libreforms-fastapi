@@ -4,7 +4,6 @@ fastapi<1.0.0
 fuzzywuzzy<1.0.0
 Jinja2<4.0.0
 Markdown<4.0.0
-passlib[bcrypt]<2.0.0
 pydantic-settings<3.0.0
 PyJWT<3.0.0
 pymongo<5.0.0
