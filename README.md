@@ -24,6 +24,8 @@ libreformsctl uvicorn --environment production
 libreformsctl nginx production # Optional if you want a reverse proxy 
 ```
 
+
+
 #### Running in Docker
 
 Follow the instructions below to run in docker. Creating a custom volume is optional but will give you control over the application configurations and, in the event you are using TinyDB and SQLite, you will also be able to access the database files.
@@ -47,7 +49,3 @@ To stop your instance, you can run the following command.
 ```bash
 docker kill libreforms-instance
 ```
-
-#### Bcrypt Errors
-
-Recent versions of bcrypt sometimes raise an attribute error. This is an ongoing issue as of May, 2024, and can be resolved by installing a trailing edge version of bcrypt. To monitor developments, we've created a meta here: https://github.com/signebedi/libreforms-fastapi/issues/181. 
