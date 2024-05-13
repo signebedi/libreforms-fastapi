@@ -381,12 +381,10 @@ yaml.add_constructor('!bytes', type_constructor_bytes)
 
 def load_form_config(config_path=None):
     """
-    This is a quick abstraction to load the JSON form config with 
-    type-safe parsing for the output_type.
+    This is a quick abstraction to load the YAML form config with 
+    while parsing for the output_type.
     """
     default_config = yaml.load(EXAMPLE_FORM_CONFIG_YAML, Loader=yaml.FullLoader)
-
-    # print(default_config)
 
     if not config_path or not os.path.exists(config_path):
         return default_config
@@ -411,6 +409,54 @@ def load_form_config(config_path=None):
         return default_config
 
     return form_config
+
+def get_form_config_yaml(config_path=None):
+    """
+    Here we return the string representation of the yaml form config.
+    """
+
+    if not config_path or not os.path.exists(config_path):
+        return EXAMPLE_FORM_CONFIG_YAML
+
+    elif os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as file:
+                form_config = file.read()
+        except Exception as e:
+            raise Exception(f"Failed to read the form config file at {config_path}: {e}")
+
+    return form_config
+
+
+def write_form_config_yaml(config_path, form_config_str, validate=True):
+    """
+    Here we write the string representation of the yaml form config.
+    """
+
+    # Validate the YAML string
+    if validate:
+        try:
+            # Attempt to load the YAML string to check its validity
+            parsed_config = yaml.safe_load(form_config_str)
+
+            # I'm putting a placeholder here because we may with to add additional
+            # validators down the road.
+
+        except yaml.YAMLError as e:
+            raise Exception(f"Failed to validate YAML format: {e}")
+
+    basedir = os.path.dirname(config_path)
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
+
+    try:
+        with open(config_path, 'w') as file:
+            file.write(form_config_str)
+    except Exception as e:
+        raise Exception(f"Failed to write the form config to {config_path}: {e}")
+
+    return True
+
 
 
 def get_form_names(config_path=None):
