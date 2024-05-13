@@ -58,9 +58,18 @@ else: env_file_path=""
 
 def get_config(_env=env):
     if _env == 'production':
+        # Reload the prod config here, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/182
+        env_file_path = os.path.join(instance_directory, "prod.env")
+        load_dotenv(env_file_path)
         return ProductionConfig()
     elif _env == 'testing':
         return TestingConfig()
+
+    # Else, just return the development config, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/182
+    env_file_path = os.path.join(instance_directory, "dev.env")
+    load_dotenv(env_file_path)
     return DevelopmentConfig()
 
 # We employ a pydantic settings class to manage dotenv settings, see 
