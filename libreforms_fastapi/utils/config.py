@@ -178,6 +178,11 @@ class Config(BaseSettings):
     # Permanent session lifetime should be an int corresponding to the number of minutes
     PERMANENT_SESSION_LIFETIME: timedelta = timedelta(hours=6)  # Again we set a default value
 
+    # In development we do not force HTTPS, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/183
+    FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'True') == 'True'
+
+
     @field_validator('PERMANENT_SESSION_LIFETIME')
     def set_permanent_session_lifetime(cls, v):
         hours = int(os.getenv('PERMANENT_SESSION_LIFETIME', '6'))
@@ -230,6 +235,10 @@ class ProductionConfig(Config):
     # Set site cookie configs, see https://github.com/signebedi/gita-api/issues/109
     SESSION_COOKIE_SECURE:bool = os.getenv('SESSION_COOKIE_SECURE', 'True') == 'True'
     SESSION_COOKIE_SAMESITE:str = os.getenv('SESSION_COOKIE_SAMESITE', "None")
+
+    # In production we force HTTPS, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/183
+    FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'True') == 'True'
 
 
 class DevelopmentConfig(Config):
