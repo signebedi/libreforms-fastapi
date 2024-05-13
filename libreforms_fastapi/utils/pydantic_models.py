@@ -1,5 +1,5 @@
-import re, os
-from datetime import datetime, date
+import re, os, yaml
+from datetime import datetime, date, time, timedelta
 from typing import List, Optional, Dict, Type, Any, Annotated
 
 from pydantic import (
@@ -220,7 +220,106 @@ example_form_config = {
     },
 }
 
-def load_form_config(config_path=None):
+
+EXAMPLE_FORM_CONFIG_YAML = """
+example_form:
+  text_input:
+    input_type: text
+    output_type: !str
+    field_name: text_input
+    default: Default Text
+    validators:
+      min_length: 1
+      max_length: 200
+      pattern: '^[\\s\\S]*$'
+    required: true
+    options: null
+    description: This is a text field
+  number_input:
+    input_type: number
+    output_type: !int
+    field_name: number_input
+    default: 42
+    validators:
+      ge: 0
+      le: 10000
+    required: false
+    options: null
+    description: This is a number field
+  email_input:
+    input_type: email
+    output_type: !str
+    field_name: email_input
+    default: user@example.com
+    required: false
+    options: null
+    description: This is an email field
+  date_input:
+    input_type: date
+    output_type: !date
+    field_name: date_input
+    default: 2024-01-01
+    required: false
+    options: null
+    description: This is a date field
+  checkbox_input:
+    input_type: checkbox
+    output_type: !list
+    field_name: checkbox_input
+    options: 
+      - Option1
+      - Option2
+      - Option3
+    required: true
+    default: 
+      - Option1
+      - Option3
+    description: This is a checkbox field
+  radio_input:
+    input_type: radio
+    output_type: !str
+    field_name: radio_input
+    options: 
+      - Option1
+      - Option2
+    required: false
+    default: Option1
+    description: This is a radio field
+  select_input:
+    input_type: select
+    output_type: !str
+    field_name: select_input
+    options:
+      - Option1
+      - Option2
+      - Option3
+    required: false
+    default: Option2
+    description: This is a select field
+  textarea_input:
+    input_type: textarea
+    output_type: !str
+    field_name: textarea_input
+    default: Default textarea content.
+    validators:
+      min_length: 0
+      max_length: 200
+      pattern: '^[\\s\\S]*$'
+    required: false
+    options: null
+    description: This is a textarea field
+  file_input:
+    input_type: file
+    output_type: !bytes
+    field_name: file_input
+    required: false
+    default: null
+    description: This is a file field
+"""
+
+
+# Deprecated in https://github.com/signebedi/libreforms-fastapi/issues/37
+def old_load_form_config(config_path=None):
     """This is a quick abstraction to load the json form config"""
     # Try to open config_path and if not existent or empty, use example config
     form_config = example_form_config  # Default to example_form_config
@@ -237,6 +336,79 @@ def load_form_config(config_path=None):
             # print("Failed to load the JSON file. Falling back to the default configuration.")
     else:
         pass
+
+    return form_config
+
+
+# Constructors that return Python types themselves
+def type_constructor_int(loader, node):
+    return int
+
+def type_constructor_str(loader, node):
+    return str
+
+def type_constructor_date(loader, node):
+    return date
+
+def type_constructor_datetime(loader, node):
+    return datetime
+
+def type_constructor_time(loader, node):
+    return time
+
+def type_constructor_timedelta(loader, node):
+    return timedelta
+
+def type_constructor_list(loader, node):
+    return list
+
+def type_constructor_tuple(loader, node):
+    return tuple
+
+def type_constructor_bytes(loader, node):
+    return bytes
+
+# Register the type constructors
+yaml.add_constructor('!int', type_constructor_int)
+yaml.add_constructor('!str', type_constructor_str)
+yaml.add_constructor('!date', type_constructor_date)
+yaml.add_constructor('!type_datetime', type_constructor_datetime)
+yaml.add_constructor('!type_time', type_constructor_time)
+yaml.add_constructor('!type_timedelta', type_constructor_time)
+yaml.add_constructor('!list', type_constructor_list)
+yaml.add_constructor('!tuple', type_constructor_list)
+yaml.add_constructor('!bytes', type_constructor_bytes)
+
+def load_form_config(config_path=None):
+    """
+    This is a quick abstraction to load the JSON form config with 
+    type-safe parsing for the output_type.
+    """
+    default_config = yaml.load(EXAMPLE_FORM_CONFIG_YAML, Loader=yaml.FullLoader)
+
+    # print(default_config)
+
+    if not config_path or not os.path.exists(config_path):
+        return default_config
+
+    elif os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as file:
+                form_config = yaml.load(file, Loader=yaml.FullLoader)
+
+        except yaml.YAMLError as e:
+            # raise Exception(f"Error parsing YAML file: {e}")
+            return default_config
+        except IOError as e:
+            # raise Exception(f"Error reading file: {e}")
+            return default_config
+        except Exception as e:
+            raise Exception(f"An unexpected error occurred: {e}")
+
+
+    if not isinstance(form_config, dict):
+        # raise Exception(f"The form config at {config_path} is not properly formatted")
+        return default_config
 
     return form_config
 

@@ -77,7 +77,6 @@ from libreforms_fastapi.utils.scripts import (
 # Import the tools used to generate signatures
 from libreforms_fastapi.utils.certificates import (
     verify_record_signature,
-    sign_record,
     DigitalSignatureManager,
     RuntimeKeypair,
 )
@@ -390,9 +389,9 @@ logger.info('Relational database has been initialized')
 # Create default group if it does not exist
 with SessionLocal() as session:
     # Check if a group with id 1 exists
-    default_group = session.query(Group).get(1)
+    _default_group = session.query(Group).get(1)
 
-    if not default_group:
+    if not _default_group:
         # If not, create and add the new default group
         default_permissions = [
             "example_form:create",
@@ -404,13 +403,55 @@ with SessionLocal() as session:
             "example_form:delete_all",
             # "example_form:sign_own"
         ]
-        default_group = Group(id=1, name="default", permissions=default_permissions)
-        session.add(default_group)
+        _default_group = Group(id=1, name="default", permissions=default_permissions)
+        session.add(_default_group)
         session.commit()
         logger.info("Default group created")
     else:
         # print(default_group.get_permissions())
         logger.info("Default group already exists")
+
+    # Check if a signature role with id 1 exists
+    _default_signature_role = session.query(SignatureRoles).get(1)
+
+    if not _default_signature_role:
+        # If not, create and add the new signature for the example_form
+        _default_signature_role = SignatureRoles(
+            id=1, 
+            role_name="default signature role", 
+            role_method="signature",
+            form_name="example_form"
+        )
+        session.add(_default_signature_role)
+        session.commit()
+        logger.info("Default signature role created")
+    else:
+        logger.info("Default signature role already exists")
+
+
+    # class SignatureRoles(Base):
+    #     __tablename__ = 'signature_roles'
+    #     id = Column(Integer, primary_key=True)
+    #     role_name = Column(String, unique=True)
+    #     role_method = Column(Enum('signature', 'relationship', 'group', 'static'), default='relationship')
+    #     form_name = Column(String)
+    #     preceded_by_id = Column(Integer, ForeignKey('signature_roles.id'), nullable=True)
+    #     succeeded_by_id = Column(Integer, ForeignKey('signature_roles.id'),nullable=True)
+    #     on_approve = Column(Enum('step_up', 'finish'), default='finish')
+    #     on_deny = Column(Enum('restart', 'step_down', 'kill'), default='restart')
+    #     on_return = Column(Enum('restart', 'step_down'), default='restart')
+    #     comments_required = Column(Boolean, default=False)
+
+    #     last_updated = Column(DateTime, nullable=False, default=tz_aware_datetime, onupdate=tz_aware_datetime)
+    #     created_on = Column(DateTime, nullable=False, default=tz_aware_datetime)
+
+    #     preceded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[preceded_by_id], backref="preceding_role")
+    #     succeeded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[succeeded_by_id], backref="succeeding_role")
+
+    #     group_target = Column(Integer, ForeignKey('group.id'))
+    #     relationship_target = Column(Integer, ForeignKey('relationship_types.id'))
+    #     static_target = Column(Integer, ForeignKey('user.id'))
+
 
 
 # Initialize the document database
@@ -1266,6 +1307,7 @@ async def api_form_sign(
             document_id=document_id,
             metadata=metadata,
             username=user.username,
+            role_id=1,
             public_key=user.public_key,
             private_key_path=user.private_key_ref,
         )
@@ -1430,8 +1472,8 @@ async def api_form_sign(
     # async def api_validate_field():
 
 # Validate form signature, see https://github.com/signebedi/libreforms-fastapi/issues/72
-@app.get("/api/validate/signature/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
-async def api_validate_signature(
+@app.get("/api/validate/signatures/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+async def api_validate_signatures(
     form_name:str,
     document_id:str,
     background_tasks: BackgroundTasks,
@@ -1441,7 +1483,7 @@ async def api_validate_signature(
 ):
 
     """
-    Validates the digital signature of a document, confirming authenticity and integrity. 
+    Validates the digital signatures of a document, confirming authenticity and integrity. 
     Logs the validation attempt.
     """
 
@@ -1494,15 +1536,33 @@ async def api_validate_signature(
             query_params={},
         )
 
-    # Here we get the user information for the user who created the document to validate their signature
-    owner = session.query(User).filter_by(username=document['metadata'][doc_db.created_by_field]).first()
-    if not owner:
-        raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+    # The validation step is somewhat complex. We'll start by getting the signatures 
+    # object, which is a dict of tuples in the format of:
+    # { username: (signature, timestamp, role_id), ... }
+    signatures = document["metadata"].get(doc_db.signature_field)
 
-    valid = verify_record_signature(record=document, username=owner.username, env=config.ENVIRONMENT, public_key=owner.public_key, private_key_path=owner.private_key_ref)
+    valid_signatures_check_dict = {}
+    
+    for _user in signatures.keys():
+
+        # Here we get the user information for the user who created the document to validate their signature
+        owner = session.query(User).filter_by(username=_user).first()
+        if not owner:
+            raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+        signature, _timestamp, _role_id = signatures.get(owner.username)
+
+        valid = verify_record_signature(record=document.get("data"), signature=signature, username=owner.username, env=config.ENVIRONMENT, public_key=owner.public_key, private_key_path=owner.private_key_ref)
+
+        valid_signatures_check_dict[_user] = valid
+
+    # print("\n\n\n\n", len(valid_signatures_check_dict))
 
     return {
-        "valid": valid, 
+        # returns true if all are valid[len(valid_signatures_check_dict)>0]
+        "valid": all(list(valid_signatures_check_dict.values())), 
+        "signature_count": len(valid_signatures_check_dict),
+        "results": valid_signatures_check_dict,
         "document_id": document_id, 
     }
 

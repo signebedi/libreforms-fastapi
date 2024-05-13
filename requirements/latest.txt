@@ -10,6 +10,7 @@ PyJWT
 pymongo
 python-Levenshtein
 python-multipart
+PyYAML
 SQLAlchemy
 sqlalchemy-signing
 tinydb

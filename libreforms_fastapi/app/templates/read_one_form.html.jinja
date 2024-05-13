@@ -221,25 +221,34 @@ $(document).ready(function() {
                     "autoWidth": false
                 });
 
-
-            {# "The logic below may not continue to work once we implement https://github.com/signebedi/libreforms-fastapi/issues/62" #}
             $.ajax({
-                url: `/api/validate/signature/${formName}/${documentId}`,
+                url: `/api/validate/signatures/${formName}/${documentId}`,
                 type: 'GET',
                 headers: {
                     'X-API-KEY': apiKey,
                 },
                 dataType: 'json',
                 success: function(response) {
-
-                    if (response.valid == true) {
+                    if (response.signature_count < 1) {
                         $("#signatures-value-field").html(`
-                            <span class="badge bg-primary">Signature Valid</span> 
+                            <span class="badge bg-secondary">No Signatures</span> 
                         `);
                     } else {
-                        $("#signatures-value-field").html(`
-                            <span class="badge bg-danger">Signature Invalid</span>
-                        `);
+                        
+                        var badgeHTML = "";
+
+                        for (let key in response.results) {
+
+                            let valid = response.results[key];
+
+                            if (valid == true) {
+                                badgeHTML = badgeHTML + `<span class="badge bg-primary">${key}</span>`;
+                            } else {
+                                badgeHTML = badgeHTML + `<span class="badge bg-danger">${key} (Invalid)</span>`;
+                            }
+                        }
+
+                        $("#signatures-value-field").html(badgeHTML);
                     }
                 },
                 error: function(xhr) {

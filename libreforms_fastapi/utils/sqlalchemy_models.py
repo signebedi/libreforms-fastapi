@@ -348,7 +348,6 @@ def get_sqlalchemy_models(
         relationship_target = Column(Integer, ForeignKey('relationship_types.id'))
         static_target = Column(Integer, ForeignKey('user.id'))
 
-
         def to_dict(self):
             """
             Converts a signature role into a dictionary format.

@@ -138,7 +138,7 @@ class Config(BaseSettings):
 
     # Here we specify a path to our JSON form config representation, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/37.
-    FORM_CONFIG_PATH:str = os.getenv('FORM_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "form_config.json")))
+    FORM_CONFIG_PATH:str = os.getenv('FORM_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "form_config.yml")))
 
     # Here we allow admins to decide whether to enable site documentation 
     DOCS_ENABLED:bool = os.getenv('DOCS_ENABLED', 'False') == 'True'

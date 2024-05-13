@@ -267,14 +267,6 @@ class DigitalSignatureManager:
             print(f"Verification failed: {str(e)}")
             return False
 
-
-def serialize_record_for_signing(record):
-    """
-    Serializes the record in a consistent, deterministic manner for signing.
-    """
-    return 
-
-
 def sign_record(record, username, env="development", private_key_path=None):
     """
     Generates a signature for the given record and returns it.
