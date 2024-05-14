@@ -111,7 +111,8 @@ def escape_data_field(data: Any) -> Any:
 
 
 def get_document_database(
-    form_names_callable, 
+    form_names_callable,
+    form_config_path,
     timezone: ZoneInfo, 
     db_path: str = "instance/", 
     use_logger=True, 
@@ -129,6 +130,7 @@ def get_document_database(
             raise Exception("Please pass a value MongoDB URI")
         return ManageMongoDB(
             form_names_callable=form_names_callable, 
+            form_config_path=form_config_path,
             timezone=timezone, 
             db_path=db_path, 
             use_logger=use_logger, 
@@ -138,6 +140,7 @@ def get_document_database(
     # Default to a TinyDB database
     return ManageTinyDB(
         form_names_callable=form_names_callable, 
+        form_config_path=form_config_path,
         timezone=timezone, 
         db_path=db_path, 
         use_logger=use_logger, 
@@ -146,8 +149,9 @@ def get_document_database(
 
 
 class ManageDocumentDB(ABC):
-    def __init__(self, form_names_callable, timezone: ZoneInfo):
+    def __init__(self, form_names_callable, form_config_path, timezone: ZoneInfo):
         self.form_names_callable = form_names_callable
+        self.form_config_path = form_config_path
 
         # Set default log_name if not already set by a subclass
         if not hasattr(self, 'log_name'):
@@ -276,7 +280,7 @@ class ManageDocumentDB(ABC):
 
 
 class ManageTinyDB(ManageDocumentDB):
-    def __init__(self, form_names_callable, timezone: ZoneInfo, db_path: str = "instance/", use_logger=True, env="development"):
+    def __init__(self, form_names_callable, form_config_path, timezone: ZoneInfo, db_path: str = "instance/", use_logger=True, env="development"):
         self.db_path = db_path
         os.makedirs(self.db_path, exist_ok=True)
 
@@ -293,7 +297,7 @@ class ManageTinyDB(ManageDocumentDB):
                 namespace=self.log_name
             )
 
-        super().__init__(form_names_callable, timezone)
+        super().__init__(form_names_callable, form_config_path, timezone)
 
         # Here we create a Query object to ship with the class
         self.Form = Query()
@@ -303,7 +307,7 @@ class ManageTinyDB(ManageDocumentDB):
         """Establishes database instances for each form."""
         # Initialize databases
         self.databases = {}
-        for form_name in self.form_names_callable():
+        for form_name in self.form_names_callable(config_path=self.form_config_path):
             # self.databases[form_name] = TinyDB(self._get_db_path(form_name))
             self.databases[form_name] = CustomTinyDB(self._get_db_path(form_name), cls=CustomEncoder)
 
@@ -313,7 +317,7 @@ class ManageTinyDB(ManageDocumentDB):
 
     def _check_form_exists(self, form_name:str):
         """Checks if the form exists in the configuration."""
-        if form_name not in self.form_names_callable():
+        if form_name not in self.form_names_callable(config_path=self.form_config_path):
             raise CollectionDoesNotExist(form_name)
 
         # If a form name is found in the callable but not in the collections, reinitialize. 

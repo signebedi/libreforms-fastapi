@@ -458,8 +458,15 @@ with SessionLocal() as session:
 
 
 # Initialize the document database
-doc_db = get_document_database(form_names_callable=get_form_names, timezone=config.TIMEZONE, env=config.ENVIRONMENT, use_mongodb=config.MONGODB_ENABLED, mongodb_uri=config.MONGODB_URI)
-logger.info('Document Database has been initialized')
+doc_db = get_document_database(
+    form_names_callable=get_form_names,
+    form_config_path=config.FORM_CONFIG_PATH,
+    timezone=config.TIMEZONE, 
+    env=config.ENVIRONMENT, 
+    use_mongodb=config.MONGODB_ENABLED, 
+    mongodb_uri=config.MONGODB_URI
+)
+logger.info('Document Database has been initialized.')
 
 # Here we define an API key header for the api view functions.
 X_API_KEY = APIKeyHeader(name="X-API-Key")
@@ -3170,7 +3177,7 @@ async def api_admin_write_form_config(
             validate=True,
         )
     except Exception as e:
-        raise HTTPException(status_code=418, detail=f"{e}")
+        raise HTTPException(status_code=422, detail=f"{e}")
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
