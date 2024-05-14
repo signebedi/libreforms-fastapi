@@ -1,4 +1,4 @@
-import re, os, json, tempfile, logging, sys, asyncio, jwt
+import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib
 from datetime import datetime, timedelta
 from typing import Dict, Optional, Annotated
 from markupsafe import escape
@@ -3041,7 +3041,23 @@ async def api_admin_delete_user_relationship(
         content={"status": "success", "message": f"Relationship with id {id} successfully deleted"},
     )
 
+# This is for comparing changes on docs and form config writes
+def get_string_differences(str1, str2):
+    # Split the strings into lines to handle line breaks properly
+    lines1 = str1.splitlines(keepends=True)
+    lines2 = str2.splitlines(keepends=True)
+    
+    # print(lines1, lines2)
 
+    # Generate the diff
+    diff = list(difflib.ndiff(lines1, lines2))
+        
+    # Filter the diff to keep only changed lines ('+' or '-')
+    changes = [line for line in diff if line.startswith('+ ') or line.startswith('- ')]
+
+    # join the changes into a single string for easier reading
+    readable_changes = ' '.join(changes)
+    return readable_changes
 
 
 
@@ -3072,6 +3088,8 @@ async def api_admin_edit_docs(
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
 
+    old_docs_markdown = get_docs(docs_path=config.DOCS_PATH, render_markdown=False)
+
     background_tasks.add_task(
         write_docs, 
             docs_path=config.DOCS_PATH, 
@@ -3090,7 +3108,7 @@ async def api_admin_edit_docs(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params={},
+            query_params={"changes": get_string_differences(old_docs_markdown, docs.content)},
         )
 
     return JSONResponse(
@@ -3170,6 +3188,8 @@ async def api_admin_write_form_config(
         raise HTTPException(status_code=404)
 
 
+    old_form_config_str = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH).strip()
+
     try:
         write_form_config_yaml(
             config_path=config.FORM_CONFIG_PATH, 
@@ -3190,7 +3210,7 @@ async def api_admin_write_form_config(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params={"content": _form_config.content},
+            query_params={"changes": get_string_differences(old_form_config_str, _form_config.content)},
         )
 
     return JSONResponse(
@@ -3604,7 +3624,7 @@ async def ui_admin_write_form_config(request: Request):
 
     form_config_str = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH).strip()
 
-    print(form_config_str)
+    # print(form_config_str)
 
     return templates.TemplateResponse(
         request=request, 
