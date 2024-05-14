@@ -145,6 +145,10 @@ class Config(BaseSettings):
     # https://github.com/signebedi/libreforms-fastapi/issues/164.
     SEARCH_BAR_ENABLED:bool = os.getenv('SEARCH_BAR_ENABLED', 'True') == 'True'
 
+    # Here we determine whether the footer will show in the UI, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/188.
+    DISABLE_FOOTER:bool = os.getenv('DISABLE_FOOTER', 'False') == 'True'
+
     # Here we specify a path to our JSON form config representation, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/37.
     FORM_CONFIG_PATH:str = os.getenv('FORM_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "form_config.yml")))
@@ -180,7 +184,7 @@ class Config(BaseSettings):
 
     # In development we do not force HTTPS, see
     # https://github.com/signebedi/libreforms-fastapi/issues/183
-    FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'True') == 'True'
+    FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'False') == 'True'
 
 
     @field_validator('PERMANENT_SESSION_LIFETIME')
@@ -262,12 +266,10 @@ class TestingConfig(Config):
 
 
 # View functions should pass config changes as kwargs to the function below
-def validate_and_write_configs(app_config, **kwargs):
-
+def validate_and_write_configs(app_config: Config, **kwargs):
 
     # First check assumptions
-
-    app_config_copy = app_config.copy()
+    app_config_copy = app_config.model_dump()
     for key in kwargs.keys():
         app_config_copy[key] = kwargs[key]
 
@@ -277,14 +279,14 @@ def validate_and_write_configs(app_config, **kwargs):
     except Exception as e:
         return
 
-    config_file_path = app_config['CONFIG_FILE_PATH']
+    config_file_path = app_config.CONFIG_FILE_PATH
     
     # Ensure the .env file exists
     if not os.path.isfile(config_file_path):
         print(f"The file at {config_file_path} does not exist. Creating a new one.")
         with open(config_file_path, 'w'): pass
     else:
-        datetime_format = datetime.now(app_config.TIMEZONE).strftime("%Y%m%d%H%M%S") # This can be adjusted as needed
+        datetime_format = datetime.now(app_config_dict.TIMEZONE).strftime("%Y%m%d%H%M%S") # This can be adjusted as needed
         backup_file_path = f"{config_file_path}.{datetime_format}"
         shutil.copy(config_file_path, backup_file_path)
         print(f"Backup of the current config file created at {backup_file_path}")
@@ -306,7 +308,7 @@ def validate_and_write_configs(app_config, **kwargs):
             # Then we check if the config is set this way in the app
             # config (if we reach this stage, it effectively means we
             # are in default values territory)
-            if app_config[config_name] != config_value:
+            if getattr(app_config, config_name) != config_value:
 
                 # This function updates the .env file directly
                 set_key(config_file_path, config_name, config_value_str)

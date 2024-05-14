@@ -116,7 +116,7 @@
 
                     {% endif %}
 
-                    {% if config['SUPPRESS_FOOTER'] %}
+                    {% if config['DISABLE_FOOTER'] %}
 
                     {# <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="offcanvas" href="#offcanvasPrivacy" role="button" aria-controls="offcanvasPrivacy">
@@ -170,7 +170,7 @@
     </main>
     <!-- End of Main Content -->
 
-    {% if not config['SUPPRESS_FOOTER'] %}
+    {% if not config['DISABLE_FOOTER'] %}
     <!-- Start of Footer Content -->
     <footer class="bg-dark text-light" style="margin-top:20px;">
         <div class="container py-1">
