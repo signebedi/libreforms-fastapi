@@ -38,10 +38,10 @@
 
 
 {% block scripts %}
-<script src="https://unpkg.com/monaco-editor@0.48.0/min/vs/loader.js"></script>
+<script src="{{ url_for('static', path='js/monaco-editor-0.48.0/min/vs/loader.js') }}"></script>
 
 <script>
-require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.48.0/min/vs' }});
+require.config({ paths: { 'vs': '{{ url_for("static", path="js/monaco-editor-0.48.0/min/vs") }}' }});
 
 require(['vs/editor/editor.main'], function() {
 
