@@ -4,6 +4,9 @@
 {{config.SITE_NAME}} — Edit Form Config
 {% endblock %}
 
+{% block header %}
+{% endblock %}
+
 
 {% block content %}
 <h1>
@@ -17,37 +20,56 @@
 <hr>
 
 <form id="configForm">
-
     <fieldset class="form-check" style="padding-top: 10px;">
         <label aria-labelledby="configDescription" for="content" class="form-check-label">Form Config</label>
         <span id="configDescription" class="form-text">| Update the form config for the site using this page</span>
-        <textarea class="form-control" id="content" name="content" rows="10" style="resize: vertical; max-height: 50%;" required>{{ form_config_str }}</textarea>
+        {# <textarea class="form-control language-html" id="content" name="content" rows="10" style="resize: vertical; max-height: 50%;" required>{{ form_config_str }}</textarea> #}
+
+        <!-- Monaco editor -->
+        <div id="editor" style="height: 500px;"></div>  
+
     </fieldset>
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <button type="submit" class="btn btn-primary" id="updateButton">Update</button>
     </fieldset>
-
-
 </form>
 {% endblock %}
 
 
 {% block scripts %}
+<script src="https://unpkg.com/monaco-editor@0.48.0/min/vs/loader.js"></script>
+
 <script>
-$(document).ready(function() {
-    // Form submission event
+require.config({ paths: { 'vs': 'https://unpkg.com/monaco-editor@0.48.0/min/vs' }});
+
+require(['vs/editor/editor.main'], function() {
+
+    // Map site theme to the monaco theme
+    function getMonacoTheme() {
+        var siteTheme = localStorage.getItem('theme');
+        return siteTheme === 'dark' ? 'vs-dark' : 'vs'; 
+    }
+
+    var editor = monaco.editor.create(document.getElementById('editor'), {
+        value: '{{ form_config_str | tojson | safe }}', // Ensure safe rendering of YAML content
+        language: 'yaml',
+        theme: getMonacoTheme()
+    });
+
+    // Listen for theme changes 
+    document.addEventListener('themeChanged', function(event) {
+        var newTheme = event.detail.theme === 'dark' ? 'vs-dark' : 'vs';
+        monaco.editor.setTheme(newTheme);
+    });
+
+
     $('#configForm').submit(function(event) {
-
         event.preventDefault();
-
         var formData = {
-            "content": $('#content').val()
+            "content": editor.getValue() // Get content from Monaco Editor
         };
-
-        console.log(formData)
-
-        // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
+        console.log(formData);
         var apiKey = "{{ request.user.api_key }}"; 
 
         $.ajax({
@@ -60,14 +82,10 @@ $(document).ready(function() {
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(response) {
-                // Flash success on screen
-                flashMessage("Successfully updated form config", AlertCategories.SUCCESS);
-                
+                flashMessage("Successfully updated form config", "success");
             },
             error: function(xhr) {
-                // Handle errors, e.g., show an error message
                 console.error('Operation failed', xhr.responseText);
-                // Implement flashMessage or another way to show errors to the user
                 flashMessage(xhr.responseText, 'warning');
             }
         });

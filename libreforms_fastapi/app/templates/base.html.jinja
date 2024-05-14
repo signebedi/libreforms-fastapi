@@ -313,6 +313,11 @@
                 sunIcon.style.display = 'none';
                 document.body.removeAttribute('data-theme'); 
             }
+            
+        // Dispatch the theme change event
+        const themeChangeEvent = new CustomEvent('themeChanged', { detail: { theme: theme } });
+        document.dispatchEvent(themeChangeEvent);
+
         }
 
         // Check system preference if no user preference exists
