@@ -3490,6 +3490,9 @@ async def ui_auth_create(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
+    if config.DISABLE_NEW_USERS:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     return templates.TemplateResponse(
         request=request, 
         name="create_user.html.jinja", 

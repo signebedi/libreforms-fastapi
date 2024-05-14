@@ -106,9 +106,13 @@
                         <a class="nav-link" href="{{ url_for('ui_auth_login') }}">Login</a>
                     </li>
 
+                    {% if not config['DISABLE_NEW_USERS'] %}
+
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('ui_auth_create') }}">Create User</a>
                     </li>
+                    
+                    {% endif %}
 
                     {% endif %}
 
