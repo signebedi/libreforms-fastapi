@@ -84,6 +84,10 @@
                             {% if config.DOCS_ENABLED %}
                             <a class="dropdown-item" href="{{ url_for( 'ui_admin_edit_docs' ) }}">Edit Docs</a>
                             {% endif %}
+                            {# <a class="dropdown-item" href="{{ url_for( 'ui_admin_site_config' ) }}">Site Config</a> #}
+                            {# <a class="dropdown-item" href="{{ url_for( 'ui_admin_smtp_config' ) }}">SMTP Config</a> #}
+                            {# <a class="dropdown-item" href="{{ url_for( 'ui_admin_relational_database_config' ) }}">Relational Database</a> #}
+                            {# <a class="dropdown-item" href="{{ url_for( 'ui_admin_document_database_config' ) }}">Document Database</a> #}
                         </div>
                     </li>
 
@@ -125,7 +129,7 @@
 
 
     <!-- Start of Footer Content -->
-    <footer class="bg-dark text-light fixed-bottom">
+    <footer class="bg-dark text-light" style="margin-top:20px;">
         <div class="container py-1">
             <div class="row">
                 <div class="col-12 d-flex flex-column flex-md-row justify-content-between align-items-center"> <!-- Possibly align-left -->
