@@ -93,107 +93,8 @@ def get_user_model(
     return UserModel
 
 
-# Example form configuration with default values set
-example_form_config = {
-    "example_form": {
-        "text_input": {
-            "input_type": "text",
-            "output_type": str,
-            "field_name": "text_input",
-            "default": "Default Text",
-            "validators": {
-                "min_length": 1, # These are drawn from:
-                "max_length": 200, # https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
-                "pattern": r'^[\s\S]*$',
-            },
-            "required": True,
-            "options": None,
-            "description": "This is a text field",
-        },
-        "number_input": {
-            "input_type": "number",
-            "output_type": int,
-            "field_name": "number_input",
-            "default": 42,
-            "validators": {
-                "ge": 0, # These are drawn from:
-                "le": 10000, # https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
-            },
-            "required": False,
-            "options": None,
-            "description": "This is a number field",
-        },
-        "email_input": {
-            "input_type": "email",
-            "output_type": str,
-            "field_name": "email_input",
-            "default": "user@example.com",
-            "required": False,
-            "options": None,
-            "description": "This is an email field",
-        },
-        "date_input": {
-            "input_type": "date",
-            "output_type": date,
-            "field_name": "date_input",
-            "default": "2024-01-01",
-            "required": False,
-            "options": None,
-            "description": "This is a date field",
-        },
-        "checkbox_input": {
-            "input_type": "checkbox",
-            "output_type": List[str],
-            "field_name": "checkbox_input",
-            "options": ["Option1", "Option2", "Option3"],
-            "required": True,
-            "default": ["Option1", "Option3"],
-            "description": "This is a checkbox field",
-        },
-        "radio_input": {
-            "input_type": "radio",
-            "output_type": str,
-            "field_name": "radio_input",
-            "options": ["Option1", "Option2"],
-            "required": False,
-            "default": "Option1",
-            "description": "This is a radio field",
-        },
-        "select_input": {
-            "input_type": "select",
-            "output_type": str,
-            "field_name": "select_input",
-            "options": ["Option1", "Option2", "Option3"],
-            "required": False,
-            "default": "Option2",
-            "description": "This is a select field",
-        },
-        "textarea_input": {
-            "input_type": "textarea",
-            "output_type": str,
-            "field_name": "textarea_input",
-            "default": "Default textarea content.",
-            "validators": {
-                "min_length": 0, # A note about min-length: https://stackoverflow.com/a/10294291/13301284. Better to set a pattern and set required.
-                "max_length": 200, # These are drawn from: https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
-                "pattern": r'^[\s\S]*$',
-            },
-            "required": False,
-            "options": None,
-            "description": "This is a textarea field",
-        },
-        "file_input": {
-            "input_type": "file",
-            "output_type": bytes,
-            "field_name": "file_input",
-            "options": None,
-            "required": False,
-            "default": None,  # File inputs can't have default values
-            "description": "This is a file field",
-        },
-    },
-}
-
+# The options in the `validator` field are drawn from: https://docs.pydantic.dev/latest/api/fields/#pydantic.fields.Field
+# A note about min-length: https://stackoverflow.com/a/10294291/13301284. Better to set a pattern and set required.
 EXAMPLE_FORM_CONFIG_YAML = """
 example_form:
   text_input:
@@ -290,45 +191,59 @@ example_form:
     description: This is a file field
 """
 
+def get_yaml_constructors(**kwargs):
+    """
+    This factory is used to build a dictionary of built-in and custom constructors that
+    will be used in building the internal, dictionary representation of the form config.
+    """
 
-# Constructors that return Python types themselves
-def type_constructor_int(loader, node):
-    return int
+    # Default constructors for returning Python types
+    def type_constructor_int(loader, node):
+        return int
 
-def type_constructor_str(loader, node):
-    return str
+    def type_constructor_str(loader, node):
+        return str
 
-def type_constructor_date(loader, node):
-    return date
+    def type_constructor_date(loader, node):
+        return date
 
-def type_constructor_datetime(loader, node):
-    return datetime
+    def type_constructor_datetime(loader, node):
+        return datetime
 
-def type_constructor_time(loader, node):
-    return time
+    def type_constructor_time(loader, node):
+        return time
 
-def type_constructor_timedelta(loader, node):
-    return timedelta
+    def type_constructor_timedelta(loader, node):
+        return timedelta
 
-def type_constructor_list(loader, node):
-    return list
+    def type_constructor_list(loader, node):
+        return list
 
-def type_constructor_tuple(loader, node):
-    return tuple
+    def type_constructor_tuple(loader, node):
+        return tuple
 
-def type_constructor_bytes(loader, node):
-    return bytes
+    def type_constructor_bytes(loader, node):
+        return bytes
+
+    # We create a constructor mapping that we'll use later to 
+    # register the constructors.
+    constructor_mapping = {
+        '!int': type_constructor_int,
+        '!str': type_constructor_str,
+        '!date': type_constructor_date,
+        '!type_datetime': type_constructor_datetime,
+        '!type_time': type_constructor_time,
+        '!type_timedelta': type_constructor_time,
+        '!list': type_constructor_list,
+        '!tuple': type_constructor_list,
+        '!bytes': type_constructor_bytes,
+        **kwargs,
+    }
+    return constructor_mapping
 
 # Register the type constructors
-yaml.add_constructor('!int', type_constructor_int)
-yaml.add_constructor('!str', type_constructor_str)
-yaml.add_constructor('!date', type_constructor_date)
-yaml.add_constructor('!type_datetime', type_constructor_datetime)
-yaml.add_constructor('!type_time', type_constructor_time)
-yaml.add_constructor('!type_timedelta', type_constructor_time)
-yaml.add_constructor('!list', type_constructor_list)
-yaml.add_constructor('!tuple', type_constructor_list)
-yaml.add_constructor('!bytes', type_constructor_bytes)
+for key, value in get_yaml_constructors().items():
+    yaml.add_constructor(key, value)
 
 def load_form_config(config_path=None):
     """
