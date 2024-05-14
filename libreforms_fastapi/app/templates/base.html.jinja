@@ -114,20 +114,19 @@
 
                     {% if config['SUPPRESS_FOOTER'] %}
 
-                    <li class="nav-item">
-
+                    {# <li class="nav-item">
                         <a class="nav-link" data-bs-toggle="offcanvas" href="#offcanvasPrivacy" role="button" aria-controls="offcanvasPrivacy">
                         Privacy
                         </a>
-                    </li>
+                    </li> #}
 
                     {% if config["DOCS_ENABLED"] %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('ui_docs') }}">Docs</a>
                     </li>
                     {% endif %}
-                    <li class="nav-item">
 
+                    <li class="nav-item">
                         <button title="Toggle theme" id="theme-toggle" class="theme-button nav-link">
                             <!-- Moon SVG -->
                             <svg class="icon" id="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -200,7 +199,12 @@
 
                     <div>
                         <a href="{{config['SITE_SOURCE_URL']}}" class="text-light">Source</a> |
-                        <a href="{{ url_for('ui_privacy') }}" class="text-light">Privacy</a>
+
+                        <a class="text-light" data-bs-toggle="offcanvas" href="#offcanvasPrivacy" role="button" aria-controls="offcanvasPrivacy">
+                        Privacy
+                        </a>
+                        {# <a href="{{ url_for('ui_privacy') }}" class="text-light">Privacy</a> #}
+                        
                         {% if config["DOCS_ENABLED"] %}
                          | <a href="{{ url_for('ui_docs') }}" class="text-light">Docs</a>
                         {% endif %}

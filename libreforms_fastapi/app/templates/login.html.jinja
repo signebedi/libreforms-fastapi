@@ -41,6 +41,10 @@ $(document).ready(function() {
     // Initially disable the submit button
     var $submitBtn = $('#loginButton').prop('disabled', true);
 
+    // Show the privacy policy off canvas
+    var privacyOffcanvas = new bootstrap.Offcanvas($('#offcanvasPrivacy'));
+    privacyOffcanvas.show();
+
     // Function to check input fields and toggle the submit button's disabled property
     function toggleLoginButton() {
         var username = $('#username').val().trim();
