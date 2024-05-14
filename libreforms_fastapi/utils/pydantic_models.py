@@ -539,6 +539,10 @@ class FormConfigUpdateRequest(BaseModel):
     @validator('content')
     def validate_yaml(cls, v):
         try:
+            
+            # Remove leading and trailing double and single quotes
+            v = v.strip('"\'')
+
             data = yaml.load(v, Loader=yaml.FullLoader)
             if data is None:
                 raise ValueError("No content found; possibly empty YAML.")
