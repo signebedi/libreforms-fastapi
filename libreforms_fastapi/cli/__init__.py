@@ -484,7 +484,7 @@ def cli_useradd(username, password, email, opt_out, site_admin, environment):
             username=username.lower(), 
             password=generate_password_hash(password),
             active=config.REQUIRE_EMAIL_VERIFICATION == False,
-            opt_out=opt_out if config.COLLECT_USAGE_STATISTICS else True,
+            opt_out=opt_out if config.COLLECT_USAGE_STATISTICS else False,
             site_admin=site_admin,
         )
 

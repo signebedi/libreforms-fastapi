@@ -1632,7 +1632,7 @@ async def api_auth_create(
         username=user_request.username, 
         password=generate_password_hash(user_request.password.get_secret_value()),
         active=config.REQUIRE_EMAIL_VERIFICATION == False,
-        opt_out=user_request.opt_out if config.COLLECT_USAGE_STATISTICS else True,
+        opt_out=user_request.opt_out if config.COLLECT_USAGE_STATISTICS else False,
     ) 
 
     # Create the users API key with a 365 day expiry
