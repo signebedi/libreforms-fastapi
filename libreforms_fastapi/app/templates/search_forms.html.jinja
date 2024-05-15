@@ -17,6 +17,10 @@
             <tr>
                 <th>Record</th>
                 <th>Details</th>
+                <th>Last Editor</th>
+                <th>Last Modified</th>
+                <th>Created By</th>
+                <th>Created At</th>
             </tr>
         </thead>
         <tbody>
@@ -57,6 +61,10 @@ $(document).ready(function () {
                 let row = `<tr>
                                 <td><a href="/ui/form/read_one/${form['metadata']['form_name']}/${form['metadata']['document_id']}">${form['metadata']['document_id']}</a></td>
                                 <td>${GFG(JSON.stringify(form['data']), 60)}</td>
+                                <td>${form['metadata']['last_editor']}</td>
+                                <td>${form['metadata']['last_modified']}</td>
+                                <td>${form['metadata']['created_by']}</td>
+                                <td>${form['metadata']['created_at']}</td>
                             </tr>`;
 
                 $("#searchTable tbody").append(row);
