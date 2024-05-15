@@ -1,3 +1,4 @@
+
 {% extends "base.html.jinja" %}
 
 {% block title %}
@@ -21,7 +22,10 @@
     <fieldset class="form-check" style="padding-top: 10px;">
         <label aria-labelledby="docsDescription" for="content" class="form-check-label">Documentation</label>
         <span id="docsDescription" class="form-text">| Update the documentation for the site using this page</span>
-        <textarea class="form-control" id="content" name="content" rows="10" style="resize: vertical; max-height: 50%;" required>{{ docs_markdown }}</textarea>
+        {# <textarea class="form-control" id="content" name="content" rows="10" style="resize: vertical; max-height: 50%;" required>{{ docs_markdown }}</textarea> #}
+
+        <!-- Monaco editor -->
+        <div id="editor" style="height: 500px;"></div>  
     </fieldset>
 
     <fieldset style="padding-top: 10px;" class="form-check">
@@ -34,20 +38,39 @@
 
 
 {% block scripts %}
+<script src="{{ url_for('static', path='js/monaco-editor-0.48.0/min/vs/loader.js') }}"></script>
+
 <script>
-$(document).ready(function() {
-    // Form submission event
+require.config({ paths: { 'vs': '{{ url_for("static", path="js/monaco-editor-0.48.0/min/vs") }}' }});
+
+require(['vs/editor/editor.main'], function() {
+
+    // Map site theme to the monaco theme
+    function getMonacoTheme() {
+        var siteTheme = localStorage.getItem('theme');
+        return siteTheme === 'dark' ? 'vs-dark' : 'vs'; 
+    }
+
+    var editor = monaco.editor.create(document.getElementById('editor'), {
+        value: '{{ docs_markdown | tojson | safe }}', // Ensure safe rendering of YAML content
+        language: 'markdown',
+        wordWrap: 'on',
+        theme: getMonacoTheme()
+    });
+
+    // Listen for theme changes 
+    document.addEventListener('themeChanged', function(event) {
+        var newTheme = event.detail.theme === 'dark' ? 'vs-dark' : 'vs';
+        monaco.editor.setTheme(newTheme);
+    });
+
+
     $('#docsForm').submit(function(event) {
-
         event.preventDefault();
-
         var formData = {
-            "content": $('#content').val()
+            "content": editor.getValue() // Get content from Monaco Editor
         };
-
-        console.log(formData)
-
-        // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
+        console.log(formData);
         var apiKey = "{{ request.user.api_key }}"; 
 
         $.ajax({
@@ -60,14 +83,10 @@ $(document).ready(function() {
             contentType: 'application/json; charset=utf-8',
             dataType: 'json',
             success: function(response) {
-                // Flash success on screen
-                flashMessage("Successfully updated documentation", AlertCategories.SUCCESS);
-                
+                flashMessage("Successfully updated documentation", "success");
             },
             error: function(xhr) {
-                // Handle errors, e.g., show an error message
                 console.error('Operation failed', xhr.responseText);
-                // Implement flashMessage or another way to show errors to the user
                 flashMessage(xhr.responseText, 'warning');
             }
         });
