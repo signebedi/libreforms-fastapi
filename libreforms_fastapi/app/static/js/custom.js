@@ -30,7 +30,7 @@ function flashMessage(message, category) {
     $('.alerts-container').append(alertDiv);
     setTimeout(function() {
         alertDiv.fadeOut();
-    }, 5000);
+    }, 15000);
 }
 
 
