@@ -52,7 +52,7 @@ require(['vs/editor/editor.main'], function() {
     }
 
     var editor = monaco.editor.create(document.getElementById('editor'), {
-        value: '{{ docs_markdown | tojson | safe }}', // Ensure safe rendering of YAML content
+        value: "{{ docs_markdown | replace('\n', '\\n') | replace('\"', '\\\"') | safe }}", 
         language: 'markdown',
         wordWrap: 'on',
         theme: getMonacoTheme()

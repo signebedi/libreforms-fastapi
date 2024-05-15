@@ -52,7 +52,7 @@ require(['vs/editor/editor.main'], function() {
     }
 
     var editor = monaco.editor.create(document.getElementById('editor'), {
-        value: '{{ form_config_str | tojson | safe }}', // Ensure safe rendering of YAML content
+        value: "{{ form_config_str | replace('\n', '\\n') | replace('\"', '\\\"') | safe }}", 
         language: 'yaml',
         wordWrap: 'on',
         theme: getMonacoTheme()
