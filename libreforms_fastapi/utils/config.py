@@ -82,10 +82,10 @@ class Config(BaseSettings):
     SITE_SOURCE_URL:str = os.getenv('SITE_SOURCE_URL', 'https://github.com/signebedi/libreforms-fastapi')
 
 
-    HOMEPAGE_CONTENT:str | Markup = os.getenv('HOMEPAGE_CONTENT', '<p>Welcome to <code>libreforms-fastapi</code>, an open-source form management application based on the <a href="https://github.com/libreForms/spec">libreForms API</a> and built using FastAPI.</p>')
+    HOMEPAGE_MESSAGE:str | Markup = os.getenv('HOMEPAGE_MESSAGE', '<p>Welcome to <code>libreforms-fastapi</code>, an open-source form management application based on the <a href="https://github.com/libreForms/spec">libreForms API</a> and built using FastAPI.</p>')
 
 
-    @field_validator('HOMEPAGE_CONTENT')
+    @field_validator('HOMEPAGE_MESSAGE')
     def validate_homepage_content(cls, v):
         try:
             # Attempt to create a Markup object to validate the privacy message

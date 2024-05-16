@@ -3638,6 +3638,24 @@ async def ui_admin_write_form_config(request: Request):
 
 
 
+# Edit privacy policy
+@app.get("/ui/admin/config_privacy", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_config_privacy(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="config_privacy.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
 
 # Manage users
 @app.get("/ui/admin/manage_users", response_class=HTMLResponse, include_in_schema=False)
