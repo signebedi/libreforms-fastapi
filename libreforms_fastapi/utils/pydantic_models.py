@@ -579,5 +579,8 @@ class UserRelationshipModel(BaseModel):
     related_user_id: int = Field(...)
     relationship_type_id: int = Field(...)
 
+class SiteConfig(BaseModel):
+    """This model will be used for validating site config changes through the admin API"""
+    content: dict = Field(...)
 
 

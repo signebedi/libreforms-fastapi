@@ -68,13 +68,15 @@ require(['vs/editor/editor.main'], function() {
     $('#configForm').submit(function(event) {
         event.preventDefault();
         var formData = {
-            "content": editor.getValue() // Get content from Monaco Editor
+            "content": {
+                "HOMEPAGE_MESSAGE": editor.getValue() // Get content from Monaco Editor
+            }
         };
         console.log(formData);
         var apiKey = "{{ request.user.api_key }}"; 
 
         $.ajax({
-            url: `/api/admin/____`,
+            url: `/api/admin/update_site_config`,
             type: 'POST',
             headers: {
                 'X-API-KEY': apiKey,

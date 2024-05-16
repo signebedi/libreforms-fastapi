@@ -102,6 +102,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     RelationshipTypeModel,
     UserRelationshipModel,
     FormConfigUpdateRequest,
+    SiteConfig,
     get_user_model,
     get_form_model,
     get_form_names,
@@ -3217,6 +3218,61 @@ async def api_admin_write_form_config(
         status_code=200,
         content={"status": "success"},
     )
+
+
+
+# Update form config string
+@app.post(
+    "/api/admin/update_site_config", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+    include_in_schema=True
+)
+async def api_admin_update_site_config(
+    request: Request,
+    _site_config: SiteConfig,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Allows site administrators to update the site config. This operation is logged for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    print(_site_config.content)
+
+
+    try:
+        _ = validate_and_write_configs(config, **_site_config.content)
+
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"{e}")
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"changes": {**_site_config.content}},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success"},
+    )
+
 
 
 

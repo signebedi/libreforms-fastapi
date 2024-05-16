@@ -5,7 +5,8 @@ separate source to help preserve the generalizability of this logic.
 """
 
 import os, shutil
-from markupsafe import Markup
+from pathlib import Path
+from markupsafe import Markup, escape
 from typing import (
     List,
 )
@@ -269,15 +270,15 @@ class TestingConfig(Config):
 def validate_and_write_configs(app_config: Config, **kwargs):
 
     # First check assumptions
-    app_config_copy = app_config.model_dump()
+    app_config_copy = app_config.copy()
     for key in kwargs.keys():
-        app_config_copy[key] = kwargs[key]
+        setattr(app_config_copy, key, kwargs[key])
 
     try:
         assert check_configuration_assumptions(config=app_config_copy)
 
     except Exception as e:
-        return
+        raise Exception("asd")
 
     config_file_path = app_config.CONFIG_FILE_PATH
     
@@ -286,16 +287,21 @@ def validate_and_write_configs(app_config: Config, **kwargs):
         print(f"The file at {config_file_path} does not exist. Creating a new one.")
         with open(config_file_path, 'w'): pass
     else:
-        datetime_format = datetime.now(app_config_dict.TIMEZONE).strftime("%Y%m%d%H%M%S") # This can be adjusted as needed
-        backup_file_path = f"{config_file_path}.{datetime_format}"
+
+        config_backup_directory = Path(os.getcwd()) / 'instance' / 'config_backups'
+        config_backup_directory.mkdir(parents=True, exist_ok=True)
+
+        datetime_format = datetime.now(app_config.TIMEZONE).strftime("%Y%m%d%H%M%S") # This can be adjusted as needed
+        backup_file_path = config_backup_directory / f"{config_file_path}.{datetime_format}"
         shutil.copy(config_file_path, backup_file_path)
+
         print(f"Backup of the current config file created at {backup_file_path}")
 
     # Load current configurations from .env file
     current_configs = dotenv_values(config_file_path)
     
     for config_name, config_value in kwargs.items():
-        if config_name not in app_config.keys():
+        if config_name not in app_config.__fields__.keys():
             print(f"{config_name} not found in app config.")
             continue
 
