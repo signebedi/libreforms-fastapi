@@ -3650,7 +3650,27 @@ async def ui_admin_config_privacy(request: Request):
 
     return templates.TemplateResponse(
         request=request, 
-        name="config_privacy.html.jinja", 
+        name="admin_config_privacy.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
+
+
+# Edit homepage message
+@app.get("/ui/admin/config_homepage_message", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_config_homepage_message(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_config_homepage_message.html.jinja", 
         context={
             **build_ui_context(),
         }

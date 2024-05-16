@@ -85,15 +85,15 @@ class Config(BaseSettings):
     HOMEPAGE_MESSAGE:str | Markup = os.getenv('HOMEPAGE_MESSAGE', '<p>Welcome to <code>libreforms-fastapi</code>, an open-source form management application based on the <a href="https://github.com/libreForms/spec">libreForms API</a> and built using FastAPI.</p>')
 
 
-    @field_validator('HOMEPAGE_MESSAGE')
-    def validate_homepage_content(cls, v):
-        try:
-            # Attempt to create a Markup object to validate the privacy message
-            m = Markup(v)
-        except:
-            # If there is an issue, raise a ValueError
-            raise ValueError(f'Issue converting to markup: {v}')
-        return m
+    # @field_validator('HOMEPAGE_MESSAGE')
+    # def validate_homepage_content(cls, v):
+    #     try:
+    #         # Attempt to create a Markup object to validate the privacy message
+    #         m = Markup(v)
+    #     except:
+    #         # If there is an issue, raise a ValueError
+    #         raise ValueError(f'Issue converting to markup: {v}')
+    #     return m
 
     PRIVACY_MESSAGE:str | Markup = os.getenv('PRIVACY_MESSAGE', '')
 
