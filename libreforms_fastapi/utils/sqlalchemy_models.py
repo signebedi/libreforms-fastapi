@@ -30,8 +30,8 @@ class InsufficientPermissionsError(Exception):
     """Raised when users lack sufficient permissions"""
     pass
 
-# Set the default timezone to UTC
-default_tz = ZoneInfo("UTC")
+# Set the default timezone to America/New_York
+default_tz = ZoneInfo("America/New_York")
 
 # Instantiatate a declarative base
 Base = declarative_base()

@@ -113,7 +113,7 @@ class Config(BaseSettings):
     DEBUG:bool = os.getenv('DEBUG', 'False') == 'True'
     SECRET_KEY:str = os.getenv('SECRET_KEY', 'supersecret_dev_key')
 
-    TIMEZONE: ZoneInfo | str = os.getenv('TIMEZONE', 'America/New_York')
+    TIMEZONE: ZoneInfo | str = os.getenv('TIMEZONE', 'UTC')
 
     @field_validator('TIMEZONE')
     def validate_timezone(cls, v):
@@ -288,7 +288,7 @@ def validate_and_write_configs(app_config: Config, **kwargs):
         with open(config_file_path, 'w'): pass
     else:
 
-        config_backup_directory = Path(os.getcwd()) / 'instance' / 'config_backups'
+        config_backup_directory = Path(os.getcwd()) / 'instance' / 'app_config_backups'
         config_backup_directory.mkdir(parents=True, exist_ok=True)
 
         datetime_format = datetime.now(app_config.TIMEZONE).strftime("%Y%m%d%H%M%S")

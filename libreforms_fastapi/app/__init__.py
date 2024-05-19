@@ -3196,6 +3196,7 @@ async def api_admin_write_form_config(
             config_path=config.FORM_CONFIG_PATH, 
             form_config_str=_form_config.content, 
             validate=True,
+            timezone=config.TIMEZONE,
         )
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"{e}")

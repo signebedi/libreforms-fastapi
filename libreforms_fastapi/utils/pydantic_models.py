@@ -1,4 +1,6 @@
-import re, os, yaml
+import re, os, yaml, shutil
+from pathlib import Path
+from zoneinfo import ZoneInfo
 from datetime import datetime, date, time, timedelta
 from typing import List, Optional, Dict, Type, Any, Annotated
 
@@ -305,7 +307,7 @@ def get_form_config_yaml(config_path=None):
     return form_config
 
 
-def write_form_config_yaml(config_path, form_config_str, validate=True):
+def write_form_config_yaml(config_path, form_config_str, validate=True, timezone=ZoneInfo("America/New_York")):
     """
     Here we write the string representation of the yaml form config.
     """
@@ -325,6 +327,24 @@ def write_form_config_yaml(config_path, form_config_str, validate=True):
     basedir = os.path.dirname(config_path)
     if not os.path.exists(basedir):
         os.makedirs(basedir)
+
+    config_backup_directory = Path(os.getcwd()) / 'instance' / 'form_config_backups'
+    config_backup_directory.mkdir(parents=True, exist_ok=True)
+
+    datetime_format = datetime.now(timezone).strftime("%Y%m%d%H%M%S")
+
+    # Separate filename from its directory
+    config_file_name = Path(config_path).name
+
+    # Construct the backup filename
+    backup_file_name = f"{config_file_name}.{datetime_format}"
+
+    # Construct the full backup file path
+    backup_file_path = config_backup_directory / backup_file_name
+
+    # print("\n\n\n\n", config_backup_directory, "\n", backup_file_path)
+    shutil.copy(config_path, backup_file_path)
+
 
     try:
         with open(config_path, 'w') as file:
