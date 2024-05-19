@@ -499,6 +499,10 @@ def get_form_html(
         # Here, we tell the model factory to treat header fields differently, see
         # https://github.com/signebedi/libreforms-fastapi/issues/204.
         if field_info.get("is_header", False):
+
+            if not visible_field_name:
+                visible_field_name = ""
+                
             field_html += f'''
                 <fieldset class="form-check" style="padding-top: 10px;">
 
