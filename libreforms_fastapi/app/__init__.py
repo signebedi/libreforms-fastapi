@@ -110,6 +110,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     load_form_config,
     get_form_config_yaml,
     write_form_config_yaml,
+    get_form_backups,
 )
 
 from libreforms_fastapi.utils.docs import (
@@ -3681,6 +3682,8 @@ async def ui_admin_write_form_config(request: Request):
 
     form_config_str = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH).strip()
 
+    past_versions = get_form_backups()
+
     # print(form_config_str)
 
     return templates.TemplateResponse(
@@ -3689,6 +3692,7 @@ async def ui_admin_write_form_config(request: Request):
         context={
             **build_ui_context(),
             "form_config_str": form_config_str,
+            "past_versions": past_versions,            
         }
     )
 
