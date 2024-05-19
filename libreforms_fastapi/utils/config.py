@@ -291,8 +291,18 @@ def validate_and_write_configs(app_config: Config, **kwargs):
         config_backup_directory = Path(os.getcwd()) / 'instance' / 'config_backups'
         config_backup_directory.mkdir(parents=True, exist_ok=True)
 
-        datetime_format = datetime.now(app_config.TIMEZONE).strftime("%Y%m%d%H%M%S") # This can be adjusted as needed
-        backup_file_path = config_backup_directory / f"{config_file_path}.{datetime_format}"
+        datetime_format = datetime.now(app_config.TIMEZONE).strftime("%Y%m%d%H%M%S")
+
+        # Separate filename from its directory
+        config_file_name = Path(config_file_path).name
+
+        # Construct the backup filename
+        backup_file_name = f"{config_file_name}.{datetime_format}"
+
+        # Construct the full backup file path
+        backup_file_path = config_backup_directory / backup_file_name
+
+        # print("\n\n\n\n", config_backup_directory, "\n", backup_file_path)
         shutil.copy(config_file_path, backup_file_path)
 
         print(f"Backup of the current config file created at {backup_file_path}")
