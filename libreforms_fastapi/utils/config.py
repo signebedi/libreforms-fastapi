@@ -98,15 +98,15 @@ class Config(BaseSettings):
 
     PRIVACY_MESSAGE:str | Markup = os.getenv('PRIVACY_MESSAGE', '')
 
-    @field_validator('PRIVACY_MESSAGE')
-    def validate_privacy_message(cls, v):
-        try:
-            # Attempt to create a Markup object to validate the privacy message
-            m = Markup(v)
-        except:
-            # If there is an issue, raise a ValueError
-            raise ValueError(f'Issue converting to markup: {v}')
-        return m
+    # @field_validator('PRIVACY_MESSAGE')
+    # def validate_privacy_message(cls, v):
+    #     try:
+    #         # Attempt to create a Markup object to validate the privacy message
+    #         m = Markup(v)
+    #     except:
+    #         # If there is an issue, raise a ValueError
+    #         raise ValueError(f'Issue converting to markup: {v}')
+    #     return m
 
 
     DOMAIN:str = os.getenv('DOMAIN', 'http://127.0.0.1:5000')
