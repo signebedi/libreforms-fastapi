@@ -459,6 +459,8 @@ def get_form_html(
 
         field_html = ""
 
+
+        visible_field_name = field_info.get("field_name_override", field_name.replace("_", " ").capitalize())
         description_text = field_info.get("description", "")
 
         description_id = f"{field_name}HelpInline"
@@ -466,7 +468,7 @@ def get_form_html(
         if field_info['input_type'] in ['text', 'number', 'email', 'date']:
             field_html += f'''
                 <fieldset class="form-check" style="padding-top: 10px;">
-                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text">|{' Required.' if required else ''} {description_text}</span>
                     <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params} value="{default or ''}"{' required' if required else ''}>
                     <div class="valid-feedback"></div>
@@ -476,7 +478,7 @@ def get_form_html(
         elif field_info['input_type'] == 'textarea':
             field_html += f'''
                 <fieldset class="form-check" style="padding-top: 10px;">
-                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}{' data-required="true"' if required else ''}</label>
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}{' data-required="true"' if required else ''}</label>
                     <span id="{description_id}" class="form-text">|{' Required.' if required else ''} {description_text}</span>
                     <textarea class="form-control" id="{field_name}" name="{field_name}" {field_params} rows="4" style="resize: vertical; max-height: 300px;"{' required' if required else ''}>{default or ''}</textarea>
                     <div class="valid-feedback"></div>
@@ -486,7 +488,7 @@ def get_form_html(
         elif field_info['input_type'] in ['checkbox', 'radio']:
             field_html += f'''
                 <fieldset class="form-check{' required-checkbox-group' if required else ''}" style="padding-top: 10px;"{' data-required="true"' if required else ''}>
-                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text">|{' Required.' if required else ''} {description_text}</span>
             '''
             for option in field_info['options']:
@@ -504,7 +506,7 @@ def get_form_html(
         elif field_info['input_type'] == 'select':
             field_html += f'''
                 <fieldset class="form-check" style="padding-top: 10px;">
-                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{field_name.replace("_", " ").capitalize()}</label>
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text">|{' Required.' if required else ''} {description_text}</span>
                     <select class="form-control" id="{field_name}" name="{field_name}"{' required' if required else ''}>'''
             for option in field_info['options']:
