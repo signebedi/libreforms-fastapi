@@ -30,10 +30,68 @@
 
     </fieldset>
 
+
+    <fieldset class="form-check" style="padding-top: 10px;">
+        <label aria-labelledby="configDescription" for="content" class="form-check-label">Past Versions</label>
+        <span id="configDescription" class="form-text">| Select past versions of this form</span>
+
+        <select id="versionSelector" class="form-select">
+            <option value="{{ form_config_str }}">Current Version</option>
+
+            {% for file, time_string, date, old_version_str, addition, subtraction in past_versions %}
+            <option 
+                value="{{ old_version_str }}"
+                title="{{ date }} version has {{addition}} additions and {{subtraction}} subtractions versus the current version">
+                {{ date }} ({{ addition }} additions, {{ subtraction }} subtractions)
+            </option>
+            {% endfor %}
+        </select>
+
+
+    </fieldset>
+
+
     <fieldset style="padding-top: 10px;" class="form-check">
         <button type="submit" class="btn btn-primary" id="updateButton">Update</button>
     </fieldset>
 </form>
+
+{# <div style="margin-top:15px;" class="accordion" id="accordionExample">
+    <div class="accordion-item">
+        <h4 class="accordion-header" id="headingOne">
+            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
+            Past Versions
+            </button>
+        </h4>
+        <div id="collapseOne" class="accordion-collapse collapse show" aria-labelledby="headingOne" data-bs-parent="#accordionExample" style="">
+            <div class="accordion-body">
+
+                <ul class="list-group form-check">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        <button type="button" class="btn btn-link" value="{{ form_config_str | replace('\n', '\\n') | replace('\"', '\\\"') | safe }}">Current Version</button>
+                    </li>
+
+                    {% for file, time_string, date, old_version_str, addition, subtraction in past_versions %}
+                    <li title="{{ date }} version has {{addition}} additions and {{subtraction}} subtractions versus the current version" class="list-group-item d-flex justify-content-between align-items-center">
+                        
+                        <button type="button" class="btn btn-link" value="{{ old_version_str | replace('\n', '\\n') | replace('\"', '\\\"') | safe }}">{{ date }}</button>
+
+                        <div>
+                            <span class="badge bg-success rounded-pill">{{ addition }}</span>
+                            <span class="badge bg-danger rounded-pill">{{ subtraction }}</span>
+                        </div>
+                    </li>
+                    {% endfor%}
+                </ul>
+
+            </div>
+        </div>
+    </div>
+</div> #}
+
+
+
+
 {% endblock %}
 
 
@@ -64,6 +122,11 @@ require(['vs/editor/editor.main'], function() {
         monaco.editor.setTheme(newTheme);
     });
 
+    // Add event listener to the select element
+    document.getElementById('versionSelector').addEventListener('change', function(event) {
+        var selectedValue = event.target.value.replace(/\\"/g, '"').replace(/\\n/g, '\n'); // Replace \\" with ", and \\n with actual newlines
+        editor.setValue(selectedValue); // Set the selected version as the editor's value
+    });
 
     $('#configForm').submit(function(event) {
         event.preventDefault();

@@ -1,4 +1,4 @@
-import re, os, yaml, shutil
+import re, os, yaml, shutil, difflib
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from datetime import datetime, date, time, timedelta
@@ -358,7 +358,9 @@ def write_form_config_yaml(config_path, form_config_str, validate=True, timezone
 
     return True
 
-def get_form_backups():
+def get_form_backups(config_path=None):
+
+    current_config = get_form_config_yaml(config_path=config_path)
 
     # Define the backup directory path
     directory_path = os.path.join('instance', 'form_config_backups')
@@ -383,10 +385,36 @@ def get_form_backups():
         with open (os.path.join(directory_path, file), 'r') as f:
             content_list.append(f.read())
 
-    # Consider adding the diff - using the current form as the baseline against which the judge past versions
+    # Add the diff count, using the current config as the baseline
+    current_config_lines = current_config.split('\n')
+
+    additions = []
+    subtractions = []
+
+    for _conf in content_list:
+        old_config_lines = _conf.split('\n')
+
+        # Use difflib to compare the configs and get the differences
+        _diff = difflib.unified_diff(current_config_lines, old_config_lines)
+
+        # Initialize counters for additions and subtractions
+        additions_count = 0
+        subtractions_count = 0
+
+        # Iterate through the diff and count additions and subtractions
+        diff_list = list(_diff)
+        for line in diff_list:
+            if line.startswith('+') and not line.startswith('+++'):
+                additions_count += 1
+            elif line.startswith('-') and not line.startswith('---'):
+                subtractions_count += 1
+
+        # Store the counts
+        additions.append(additions_count)
+        subtractions.append(subtractions_count)
 
     # Zip up and return the results
-    return zip(file_list, time_string_list, date_list, content_list)
+    return list(zip(file_list, time_string_list, date_list, content_list, additions, subtractions))[::-1]
 
 
 def get_form_names(config_path=None):
