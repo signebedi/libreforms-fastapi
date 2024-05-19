@@ -358,6 +358,35 @@ def write_form_config_yaml(config_path, form_config_str, validate=True, timezone
 
     return True
 
+def get_form_backups():
+
+    # Define the backup directory path
+    directory_path = os.path.join('instance', 'form_config_backups')
+
+    # Get the list of files in the directory
+    file_list = os.listdir(directory_path)
+
+    # Filter out directories, keeping only files
+    file_list = [file for file in file_list if os.path.isfile(os.path.join(directory_path, file))]
+    time_string_list = [file.split('.')[-1] for file in file_list if os.path.isfile(os.path.join(directory_path, file))]
+
+    # print(file_list)
+
+    # Parsing the string into a datetime object
+    date_list = [datetime.strptime(time_string, "%Y%m%d%H%M%S") for time_string in time_string_list]
+
+    # print(date_list)
+
+    # We also add the content 
+    content_list = []
+    for file in file_list:
+        with open (os.path.join(directory_path, file), 'r') as f:
+            content_list.append(f.read())
+
+    # Consider adding the diff - using the current form as the baseline against which the judge past versions
+
+    # Zip up and return the results
+    return zip(file_list, time_string_list, date_list, content_list)
 
 
 def get_form_names(config_path=None):
