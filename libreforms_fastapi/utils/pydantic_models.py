@@ -111,6 +111,10 @@ example_form:
     required: true
     options: null
     description: This is a text field
+  section_header:
+    is_header: true
+    field_name_override: This is a section header!
+    description: This is a section header
   number_input:
     input_type: number
     output_type: !int
@@ -390,6 +394,12 @@ def get_form_model(form_name, config_path=None, update=False):
         arbitrary_types_allowed = True
 
     for field_name, field_info in fields.items():
+        
+        # Here, we tell the model factory to ignore header fields, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/204.
+        if field_info.get("is_header", False):
+            continue
+
         python_type = field_info["output_type"]
         default_value = None if update else field_info.get("default", ...)
         required = field_info.get("required", False)
@@ -445,6 +455,8 @@ def get_form_html(
     
     for field_name, field_info in form_config[form_name].items():
     
+
+
         required: bool = field_info.get("required", False)
 
         validators: dict = field_info.get("validators", {})
@@ -482,10 +494,21 @@ def get_form_html(
 
         visible_field_name = field_info.get("field_name_override", field_name.replace("_", " ").capitalize())
         description_text = field_info.get("description", "")
-
         description_id = f"{field_name}HelpInline"
 
-        if field_info['input_type'] in ['text', 'number', 'email', 'date']:
+        # Here, we tell the model factory to treat header fields differently, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/204.
+        if field_info.get("is_header", False):
+            field_html += f'''
+                <fieldset class="form-check" style="padding-top: 10px;">
+
+                    <h4 aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</h4>
+                    <span id="{description_id}" class="form-text">{description_text}</span>
+
+                </fieldset>'''
+
+
+        elif field_info['input_type'] in ['text', 'number', 'email', 'date']:
             field_html += f'''
                 <fieldset class="form-check" style="padding-top: 10px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
