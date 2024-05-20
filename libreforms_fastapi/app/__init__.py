@@ -175,6 +175,14 @@ AdminCreateUserRequest = get_user_model(
     admin=True,
 )
 
+PasswordChangeUserModel = get_user_model(
+    username_regex=config.USERNAME_REGEX,
+    username_helper_text=config.USERNAME_HELPER_TEXT,
+    password_regex=config.PASSWORD_REGEX,
+    password_helper_text=config.PASSWORD_HELPER_TEXT,
+    password_change=True,
+)
+
 
 class LibreFormsUser(BaseUser):
     def __init__(
