@@ -1591,6 +1591,7 @@ async def api_validate_signatures(
 ### API Routes - Auth
 ##########################
 
+
 # Create user
 @app.post("/api/auth/create", include_in_schema=config.DISABLE_NEW_USERS==False)
 async def api_auth_create(
@@ -1704,6 +1705,105 @@ async def api_auth_create(
         "api_key": api_key,
         "message": f"Successfully created new user {user_request.username}"
     }
+
+
+
+# Change password
+@app.post("/api/auth/change_password", include_in_schema=True)
+async def api_auth_change_password(
+    user_request: PasswordChangeUserModel, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY)
+):
+
+    """
+    Changes an existing user's password with provided details, writing optional user statistics to log. 
+    Sends email confirmation when SMTP is enabled and configured.
+    """
+
+
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="User does not exist")
+
+
+    if not check_password_hash(user.password, user_request.old_password.get_secret_value()):
+
+        # Implement failed_password_attempts, see 
+        # https://github.com/signebedi/libreforms-fastapi/issues/78
+        user.failed_login_attempts += 1
+        _report_to_user = False
+
+
+        # If the user has exceeded their failed password attemps, set them
+        # as inactive.
+        if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
+            _report_to_user = True
+            user.active = False
+
+        session.add(user)
+        session.commit()
+
+        raise HTTPException(status_code=400, detail=f"Incorrect username or password{'. Max password failures exceeded. User account locked.' if _report_to_user else ''}")
+
+    if not user.active:
+        raise HTTPException(status_code=400, detail="User authentication failed")
+
+    # Validate that user has not exceeded the max failed login attempts,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/78
+    if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
+        raise HTTPException(status_code=400, detail="User authentication failed")
+
+    # If the password IS correct, clear the user's failed password attempts, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/78.
+    else:
+        user.failed_login_attempts = 0
+        user.last_login = datetime.now(config.TIMEZONE)
+
+        # Set the users new password
+        user.last_password_change = datetime.now(config.TIMEZONE)
+        user.password=generate_password_hash(user_request.new_password.get_secret_value())
+
+        session.add(user)
+        session.commit()
+
+    # Email notification
+    if config.SMTP_ENABLED:
+
+        subject=f"{config.SITE_NAME} User Password Changed"
+
+        content=f"This email serves to notify you that the user {user.username} has just had their password changed at {config.DOMAIN}. If you believe this was a mistake, please contact your system adminstrator."
+
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject=subject, 
+            content=content, 
+            to_address=user.email,
+        )
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=user.api_key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"user":user.username},
+        )
+
+    return {
+        "status": "success", 
+        "message": f"Successfully changed paswword for user {user.username}"
+    }
+
 
 # Get User / id
 @app.get("/api/auth/get/{id}", dependencies=[Depends(api_key_auth)])

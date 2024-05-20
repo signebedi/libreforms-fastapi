@@ -61,15 +61,29 @@ def get_user_model(
 
     class PasswordChangeUserModel(BaseModel):
         """
-        This is the model used to update a user's password. It requires a username, 
-        password, and verify_password field.
+        This is the model used to update a user's password. It requires an old_password, 
+        new_password, and verify_new_password field.
         """
-        username: str = Field(...)
-        password: SecretStr = Field(...)
-        verify_password: SecretStr = Field(...)
+        # username: str = Field(...)
+        old_password: SecretStr = Field(...)
+        new_password: SecretStr = Field(...)
+        verify_new_password: SecretStr = Field(...)
 
 
-        @validator('password', 'verify_password', pre=True, each_item=False)
+        @validator('new_password', always=True)
+        def passwords_changed(cls, v, values, **kwargs):
+            if 'old_password' in values and v.get_secret_value() == values['old_password'].get_secret_value():
+                raise ValueError('New password cannot be the same as the previous password')
+            return v
+
+        @validator('verify_new_password', always=True)
+        def passwords_match(cls, v, values, **kwargs):
+            if 'new_password' in values and v.get_secret_value() != values['new_password'].get_secret_value():
+                raise ValueError('Passwords do not match')
+            return v
+
+
+        @validator('new_password', 'verify_new_password', pre=True, each_item=False)
         def password_pattern(cls, value):
             # Since value is now of type SecretStr, we need to get its actual value
             password = value.get_secret_value() if isinstance(value, SecretStr) else value
@@ -77,12 +91,6 @@ def get_user_model(
             if not pattern.match(password):
                 raise ValueError(password_helper_text)
             return value
-
-        @validator('verify_password', always=True)
-        def passwords_match(cls, v, values, **kwargs):
-            if 'password' in values and v.get_secret_value() != values['password'].get_secret_value():
-                raise ValueError('Passwords do not match')
-            return v
 
     if password_change:
         return PasswordChangeUserModel
@@ -108,6 +116,13 @@ def get_user_model(
                 raise ValueError(username_helper_text)
             return value.lower()
 
+
+        @validator('verify_password', always=True)
+        def passwords_match(cls, v, values, **kwargs):
+            if 'password' in values and v.get_secret_value() != values['password'].get_secret_value():
+                raise ValueError('Passwords do not match')
+            return v
+
         @validator('password', 'verify_password', pre=True, each_item=False)
         def password_pattern(cls, value):
             # Since value is now of type SecretStr, we need to get its actual value
@@ -116,13 +131,7 @@ def get_user_model(
             if not pattern.match(password):
                 raise ValueError(password_helper_text)
             return value
-
-        @validator('verify_password', always=True)
-        def passwords_match(cls, v, values, **kwargs):
-            if 'password' in values and v.get_secret_value() != values['password'].get_secret_value():
-                raise ValueError('Passwords do not match')
-            return v
-
+            
     return UserModel
 
 

@@ -125,14 +125,14 @@ body {
 
 .msg {
     border-radius: 10px;
-  }
-  
-  .msg.right {
+}
+
+.msg.right {
     background-color:#CCC;
     float: right;
-  }
-  
-  .msg.left {
+}
+
+.msg.left {
     background-color:#555;
     color: white;
-  }
+}
