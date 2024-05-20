@@ -363,7 +363,8 @@ def get_form_backups(config_path=None):
     current_config = get_form_config_yaml(config_path=config_path)
 
     # Define the backup directory path
-    directory_path = os.path.join('instance', 'form_config_backups')
+    directory_path = os.path.join(os.getcwd(), 'instance', 'form_config_backups')
+    os.makedirs(os.path.join(os.getcwd(), 'instance'))
 
     # Get the list of files in the directory
     file_list = os.listdir(directory_path)
