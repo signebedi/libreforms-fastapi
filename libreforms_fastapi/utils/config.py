@@ -113,7 +113,7 @@ class Config(BaseSettings):
     DEBUG:bool = os.getenv('DEBUG', 'False') == 'True'
     SECRET_KEY:str = os.getenv('SECRET_KEY', 'supersecret_dev_key')
 
-    TIMEZONE: ZoneInfo | str = os.getenv('TIMEZONE', 'UTC')
+    TIMEZONE: ZoneInfo | str = os.getenv('TIMEZONE', 'America/New_York')
 
     @field_validator('TIMEZONE')
     def validate_timezone(cls, v):
@@ -137,6 +137,13 @@ class Config(BaseSettings):
     # Here we allow the application to be run headlessly, but default to an enabled UI,
     # see https://github.com/signebedi/libreforms-fastapi/issues/18.
     UI_ENABLED:bool = os.getenv('UI_ENABLED', 'True') == 'True'
+
+
+    # This config is used to determine whether to permit edits to the form config in the 
+    # web UI. Often, especially in production, admins may want to introduce additional process
+    # when making changes to the form config to ensure changes are deliberate and thoughtful. 
+    # See https://github.com/signebedi/libreforms-fastapi/issues/206.
+    FORM_CONFIG_EDITS_ENABLED:bool = os.getenv('FORM_CONFIG_EDITS_ENABLED', 'True') == 'True'
 
     # Here we allow admins to decide whether users should be able to see each other's 
     # profile data, see https://github.com/signebedi/libreforms-fastapi/issues/54.
