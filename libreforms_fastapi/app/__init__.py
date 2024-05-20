@@ -1761,10 +1761,11 @@ async def api_auth_change_password(
     # https://github.com/signebedi/libreforms-fastapi/issues/78.
     else:
         user.failed_login_attempts = 0
-        user.last_login = datetime.now(config.TIMEZONE)
+        current_time = datetime.now(config.TIMEZONE)
+        user.last_login = current_time
 
         # Set the users new password
-        user.last_password_change = datetime.now(config.TIMEZONE)
+        user.last_password_change = current_time
         user.password=generate_password_hash(user_request.new_password.get_secret_value())
 
         session.add(user)
@@ -3701,6 +3702,20 @@ async def ui_auth_create(request: Request):
     #     if not config.UI_ENABLED:
     #         raise HTTPException(status_code=404, detail="This page does not exist")
 
+
+@app.get("/ui/auth/change_password", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], status_code=404)
+async def ui_auth_change_password(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="change_password.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
 
 # View profile
 @app.get("/ui/auth/profile/", response_class=HTMLResponse, include_in_schema=False)
