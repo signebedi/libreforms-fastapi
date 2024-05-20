@@ -364,7 +364,7 @@ def get_form_backups(config_path=None):
 
     # Define the backup directory path
     directory_path = os.path.join(os.getcwd(), 'instance', 'form_config_backups')
-    os.makedirs(os.path.join(os.getcwd(), 'instance'))
+    os.makedirs(directory_path, exist_ok=True)
 
     # Get the list of files in the directory
     file_list = os.listdir(directory_path)
