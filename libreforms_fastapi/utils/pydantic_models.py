@@ -36,7 +36,7 @@ def get_user_model(
     password_regex: str,
     password_helper_text: str,
     admin: bool=False,
-    password_change: bool:False,
+    password_change: bool=False,
 ):
 
 
@@ -144,7 +144,7 @@ example_form:
     description: This is a text field
   section_header:
     is_header: true
-    field_name_override: This is a section header!
+    field_label: This is a section header!
     description: This is a section header
   number_input:
     input_type: number
@@ -581,7 +581,7 @@ def get_form_html(
         field_html = ""
 
 
-        visible_field_name = field_info.get("field_name_override", field_name.replace("_", " ").capitalize())
+        visible_field_name = field_info.get("field_label", field_name.replace("_", " ").capitalize())
         description_text = field_info.get("description", "")
         description_id = f"{field_name}HelpInline"
 
