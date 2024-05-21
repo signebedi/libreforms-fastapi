@@ -335,14 +335,14 @@ async def start_check_key_rotation():
     task = asyncio.create_task(check_key_rotation(3600))
 
 
-async def test_logger(period: int):
-    while True:
-        logger.info('This is a background task heartbeat')
-        await asyncio.sleep(period)
+# async def test_logger(period: int):
+#     while True:
+#         logger.info('This is a background task heartbeat')
+#         await asyncio.sleep(period)
 
-@app.on_event("startup")
-async def start_test_logger():
-    task = asyncio.create_task(test_logger(6000))
+# @app.on_event("startup")
+# async def start_test_logger():
+#     task = asyncio.create_task(test_logger(6000))
 
 app.mount("/static", StaticFiles(directory="libreforms_fastapi/app/static"), name="static")
 templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
@@ -3859,6 +3859,26 @@ async def ui_admin_config_homepage_message(request: Request):
             **build_ui_context(),
         }
     )
+
+
+# form config lock
+@app.get("/ui/admin/form_config_lock", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_form_config_lock(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_form_config_lock.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
 
 
 # Manage users
