@@ -1,0 +1,133 @@
+
+{% extends "base.html.jinja" %}
+
+{% block title %}
+{{config.SITE_NAME}} — Lock Form Config
+{% endblock %}
+
+
+{% block content %}
+<h1>
+    Lock Form Config
+    <sup title="This is an admin page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star-fill" viewBox="0 0 16 16">
+            <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
+        </svg>
+    </sup>
+</h1>
+<hr>
+
+<form id="configForm">
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div style="padding-bottom: 10px;">
+            <label for="formConfigLock">Form Config Lock</label>
+            <span id="formConfigLockHelpInline" class="form-text">
+                | Use this interface to lock or unlock the form config
+            </span>
+        </div>
+        <div class="form-check form-switch">
+            <input class="form-check-input" 
+            type="checkbox" 
+            name="formConfigLock" 
+            id="formConfigLock" 
+            onchange="updateLabel(this)">
+            <label class="form-check-label" for="formConfigLock" id="formConfigLockStatus">
+            
+            {% if config['FORM_CONFIG_EDITS_ENABLED'] %}
+
+
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-unlock" viewBox="0 0 16 16">
+                <path d="M11 1a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5V3a3 3 0 0 1 6 0v4a.5.5 0 0 1-1 0V3a2 2 0 0 0-2-2M3 8a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1z"/>
+            </svg>
+
+            Permit edits to the form config
+
+            {% else %}
+            
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-lock" viewBox="0 0 16 16">
+                <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2M5 8h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1"/>
+            </svg>
+
+            Lock the form config from edits
+
+            {% endif %}
+            
+            </label>
+        </div>
+    </fieldset>
+
+
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="submit" class="btn btn-primary" id="updateButton">Update</button>
+    </fieldset>
+
+
+</form>
+{% endblock %}
+
+
+{% block scripts %}
+
+<script>
+ $(document).ready(function() {
+
+    $('#formConfigLock').prop('checked', {{ "false" if config['FORM_CONFIG_EDITS_ENABLED'] else "true" }});
+
+    console.log($('#formConfigLock').is(':checked'));
+
+    $('#configForm').submit(function(event) {
+        event.preventDefault();
+        var formData = {
+            "content": {
+                "FORM_CONFIG_EDITS_ENABLED": !$('#formConfigLock').is(':checked')
+            }
+        };
+        console.log(formData);
+        var apiKey = "{{ request.user.api_key }}"; 
+
+        $.ajax({
+            url: `/api/admin/update_site_config`,
+            type: 'POST',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            data: JSON.stringify(formData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                flashMessage("Successfully updated application config", "success");
+            },
+            error: function(xhr) {
+                console.error('Operation failed', xhr.responseText);
+                flashMessage(xhr.responseText, 'warning');
+            }
+        });
+    });
+});
+
+function updateLabel(checkbox) {
+    var label = document.getElementById('formConfigLockStatus');
+    if (checkbox.checked) {
+        label.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-lock" viewBox="0 0 16 16">
+                <path d="M8 1a2 2 0 0 1 2 2v4H6V3a2 2 0 0 1 2-2m3 6V3a3 3 0 0 0-6 0v4a2 2 0 0 0-2 2v5a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2M5 8h6a1 1 0 0 1 1 1v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V9a1 1 0 0 1 1-1"/>
+            </svg>
+
+            Lock the form config from edits
+        `;
+
+    } else {
+        label.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-unlock" viewBox="0 0 16 16">
+                <path d="M11 1a2 2 0 0 0-2 2v4a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h5V3a3 3 0 0 1 6 0v4a.5.5 0 0 1-1 0V3a2 2 0 0 0-2-2M3 8a1 1 0 0 0-1 1v5a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V9a1 1 0 0 0-1-1z"/>
+            </svg>
+
+            Permit edits to the form config
+        `;
+    }
+}
+
+</script>
+{% endblock %}

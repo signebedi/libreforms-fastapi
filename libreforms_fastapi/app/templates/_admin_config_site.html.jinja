@@ -25,15 +25,6 @@ Admin - Site Configuration
             <input type="text" class="form-control" id="DOMAIN" name="DOMAIN" value="{{ app_config.DOMAIN }}">
         </div>
 
-        <div class="form-group" style="padding-top: 10px;">
-            <label for="HOMEPAGE_MESSAGE">Homepage Content</label>
-            <textarea class="form-control" rows="5" id="HOMEPAGE_MESSAGE" name="HOMEPAGE_MESSAGE">{{ app_config.HOMEPAGE_MESSAGE }}</textarea>
-        </div>
-
-        <div class="form-group" style="padding-top: 10px;">
-            <label for="PRIVACY_MESSAGE">Privacy Message</label>
-            <textarea class="form-control" rows="5" id="PRIVACY_MESSAGE" name="PRIVACY_MESSAGE">{{ app_config.PRIVACY_MESSAGE }}</textarea>
-        </div>
 
         <!-- Rate Limits Configurations -->
         <div class="form-group" style="padding-top: 10px;">
@@ -76,6 +67,12 @@ Admin - Site Configuration
             <label for="DISABLE_NEW_USERS">Disable New Users</label>
             <input type="checkbox" class="form-check-input" id="DISABLE_NEW_USERS" name="DISABLE_NEW_USERS" {{ 'checked' if app_config.DISABLE_NEW_USERS }}>
         </div>
+
+        <div class="form-group" style="padding-top: 10px;">
+            <label for="DISABLE_NEW_USERS">Permit Form Config Edits</label>
+            <input type="checkbox" class="form-check-input" id="FORM_CONFIG_EDITS_ENABLED" name="DISABLE_NEW_USERS" {{ 'checked' if app_config.FORM_CONFIG_EDITS_ENABLED }}>
+        </div>
+
     </div>
 
     <div class="form-group" style="padding-top: 10px;">
