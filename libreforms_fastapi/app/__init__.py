@@ -4253,7 +4253,7 @@ async def ui_admin_manage_user_relationships(request: Request):
 
 @app.get("/ui/admin/manage_documents", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_manage_forms(request: Request):
+async def ui_admin_manage_documents(request: Request):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
