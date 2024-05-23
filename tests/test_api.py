@@ -8,7 +8,7 @@ from libreforms_fastapi.utils.sqlalchemy_models import Base, get_sqlalchemy_mode
 from libreforms_fastapi.utils.config import get_config
 
 # os.environ["ENVIRONMENT"] = "testing"
-config = get_config(_env="testing")
+config = get_config(env="testing")
 
 # Define a session-scoped fixture for the TestClient and Signatures
 @pytest.fixture(scope="session")
