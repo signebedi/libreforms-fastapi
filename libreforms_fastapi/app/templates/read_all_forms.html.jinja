@@ -97,7 +97,8 @@ $(document).ready(function () {
 
     }).catch(error => {
         console.error("Error fetching data:", error);
-        flashMessage("There was an issue fetching results", AlertCategories.WARNING);
+        flashMessage("There was an issue fetching results. There may be none to display.", AlertCategories.WARNING);
+        spinner.style.display = 'none'; // Hide the spinner
     });
 });
 </script>

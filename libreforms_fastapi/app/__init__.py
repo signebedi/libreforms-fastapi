@@ -2552,6 +2552,57 @@ async def api_admin_get_groups(
     )
 
 
+
+# Get all groups
+@app.get(
+    "/api/admin/get_documents", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_get_documents(
+    request: Request,
+    background_tasks: BackgroundTasks,
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    """
+    Lists all documents in the system for administrative purposes. Requires site admin permissions. 
+    Logs the action for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    documents = []
+
+    for form_name in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        documents = documents + doc_db.get_all_documents(form_name=form_name)
+
+    print("\n\n\n", documents)
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "documents": documents},
+    )
+
 # Add new group
 @app.post(
     "/api/admin/create_group", 
@@ -4198,6 +4249,27 @@ async def ui_admin_manage_user_relationships(request: Request):
             **build_ui_context(),
         }
     )
+
+
+@app.get("/ui/admin/manage_documents", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_manage_forms(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_manage_documents.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
+
 
 
 
