@@ -1,5 +1,6 @@
 import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib
 from datetime import datetime, timedelta
+from contextlib import contextmanager
 from typing import Dict, Optional, Annotated
 from markupsafe import escape
 from bson import ObjectId
@@ -123,360 +124,357 @@ from libreforms_fastapi.utils.custom_tinydb import CustomEncoder
 # Here we set the application config using the get_config
 # factory pattern defined in libreforms_fastapi.utis.config.
 _env = os.environ.get('ENVIRONMENT', 'development')
-config = get_config(_env)
 
-if config.DEBUG:
-    print(config)
+@contextmanager
+def get_config_context():
+    original_environment = dict(os.environ)  # Make a copy of the current environment
+    os.environ.clear()  # Clear all modifications
+    conf = get_config(_env)
 
-# Run our assumptions checks defined in
-# libreforms_fastapi.utis.scripts
-assert check_configuration_assumptions(config=config)
+    try:
+        yield conf
+    finally:
+        os.environ.clear()  # Clear all modifications
+        os.environ.update(original_environment)  # Restore original environment
 
-# Built using instructions at https://fastapi.tiangolo.com/tutorial/metadata/,
-# see https://github.com/signebedi/libreforms-fastapi/issues/31.
-app = FastAPI(
-    title=config.SITE_NAME,
-    # description=description,
-    summary="FastAPI implementation of the libreForms spec",
-    version=__version__,
-    # terms_of_service="http://example.com/terms/",
-    contact={
-        "name": __maintainer__,
-        "url": __url__,
-        "email": __email__,
-    },
-    license_info={
-        "name": __license__,
-        "url": "https://github.com/signebedi/libreforms-fastapi/blob/master/LICENSE",
-    },
-)
-
-# Here we instantiate our oauth object, see
-# https://github.com/signebedi/libreforms-fastapi/issues/19
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
-# Here we read / generate an RSA keypair for this environment, see
-# https://github.com/signebedi/libreforms-fastapi/issues/79
-site_key_pair = RuntimeKeypair(env=config.ENVIRONMENT)
-
-# Here we instantiate the user model, which we are using a factory
-# function for to avoid needing to import the config to pydantic...
-CreateUserRequest = get_user_model(
-    username_regex=config.USERNAME_REGEX,
-    username_helper_text=config.USERNAME_HELPER_TEXT,
-    password_regex=config.PASSWORD_REGEX,
-    password_helper_text=config.PASSWORD_HELPER_TEXT,
-)
-
-AdminCreateUserRequest = get_user_model(
-    username_regex=config.USERNAME_REGEX,
-    username_helper_text=config.USERNAME_HELPER_TEXT,
-    password_regex=config.PASSWORD_REGEX,
-    password_helper_text=config.PASSWORD_HELPER_TEXT,
-    admin=True,
-)
-
-PasswordChangeUserModel = get_user_model(
-    username_regex=config.USERNAME_REGEX,
-    username_helper_text=config.USERNAME_HELPER_TEXT,
-    password_regex=config.PASSWORD_REGEX,
-    password_helper_text=config.PASSWORD_HELPER_TEXT,
-    password_change=True,
-)
+def get_config_depends():
+    return get_config(_env)
 
 
-class LibreFormsUser(BaseUser):
-    def __init__(
-        self, 
-        username: str,
-        id: int, 
-        email: str,
-        groups: list[str], 
-        api_key: str,
-        site_admin:bool,
-        permissions: dict,
-    ) -> None:
-    
-        self.username = username
-        self.id = id
-        self.email = email
-        self.groups = groups
-        self.api_key = api_key
-        self.site_admin = site_admin
-        self.permissions = permissions
+# This is a remarkably ugly way to approach this, but necessary for the time being 
+# to complete the requirements in https://github.com/signebedi/libreforms-fastapi/issues/5.
+# In the long-run, we will encapsulate the majority of the components instantiated within the
+# following `with` statement and add them as dependencies to each fastapi route.
+with get_config_context() as config:
 
-    @property
-    def is_authenticated(self) -> bool:
-        return True
+    if config.DEBUG:
+        print(config.model_dump())
 
-    @property
-    def display_name(self) -> str:
-        return self.username
+    # Run our assumptions checks defined in
+    # libreforms_fastapi.utis.scripts
+    assert check_configuration_assumptions(config=config)
 
-    def __repr__(self) -> str:
-        return f"LibreFormsUser(username={self.username}, id={self.id}, email={self.email}, groups={self.groups}, " \
-            "api_key={self.api_key}, site_admin={self.site_admin}, permissions={self.permissions}"
+    # Built using instructions at https://fastapi.tiangolo.com/tutorial/metadata/,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/31.
+    app = FastAPI(
+        title=config.SITE_NAME,
+        # description=description,
+        summary="FastAPI implementation of the libreForms spec",
+        version=__version__,
+        # terms_of_service="http://example.com/terms/",
+        contact={
+            "name": __maintainer__,
+            "url": __url__,
+            "email": __email__,
+        },
+        license_info={
+            "name": __license__,
+            "url": "https://github.com/signebedi/libreforms-fastapi/blob/master/LICENSE",
+        },
+    )
+
+    # Here we instantiate our oauth object, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/19
+    oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login")
+    # Here we read / generate an RSA keypair for this environment, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/79
+    site_key_pair = RuntimeKeypair(env=config.ENVIRONMENT)
+
+    # Here we instantiate the user model, which we are using a factory
+    # function for to avoid needing to import the config to pydantic...
+    CreateUserRequest = get_user_model(
+        username_regex=config.USERNAME_REGEX,
+        username_helper_text=config.USERNAME_HELPER_TEXT,
+        password_regex=config.PASSWORD_REGEX,
+        password_helper_text=config.PASSWORD_HELPER_TEXT,
+    )
+
+    AdminCreateUserRequest = get_user_model(
+        username_regex=config.USERNAME_REGEX,
+        username_helper_text=config.USERNAME_HELPER_TEXT,
+        password_regex=config.PASSWORD_REGEX,
+        password_helper_text=config.PASSWORD_HELPER_TEXT,
+        admin=True,
+    )
+
+    PasswordChangeUserModel = get_user_model(
+        username_regex=config.USERNAME_REGEX,
+        username_helper_text=config.USERNAME_HELPER_TEXT,
+        password_regex=config.PASSWORD_REGEX,
+        password_helper_text=config.PASSWORD_HELPER_TEXT,
+        password_change=True,
+    )
 
 
-# Authentication Backend Class, see https://www.starlette.io/authentication,
-# https://github.com/tiangolo/fastapi/issues/3043#issuecomment-914316010, and
-# https://github.com/signebedi/libreforms-fastapi/issues/19. Is this redundant
-# with get_current_user?
-class BearerTokenAuthBackend(AuthenticationBackend):
-    """
-    This is a custom auth backend class that will allow you to authenticate your request and return auth and user as
-    a tuple
-    """
-    async def authenticate(self, request):
-        # This function is inherited from the base class and called by some other class
-        if "cookie" not in request.headers:
+    class LibreFormsUser(BaseUser):
+        def __init__(
+            self, 
+            username: str,
+            id: int, 
+            email: str,
+            groups: list[str], 
+            api_key: str,
+            site_admin:bool,
+            permissions: dict,
+        ) -> None:
+        
+            self.username = username
+            self.id = id
+            self.email = email
+            self.groups = groups
+            self.api_key = api_key
+            self.site_admin = site_admin
+            self.permissions = permissions
 
-            # print("\n\n\n\n,", request.headers)
-            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+        @property
+        def is_authenticated(self) -> bool:
+            return True
 
-        cookie = SimpleCookie()
-        cookie.load(request.headers["cookie"])
+        @property
+        def display_name(self) -> str:
+            return self.username
 
-        auth = cookie['access_token'].value if 'access_token' in cookie else None
+        def __repr__(self) -> str:
+            return f"LibreFormsUser(username={self.username}, id={self.id}, email={self.email}, groups={self.groups}, " \
+                "api_key={self.api_key}, site_admin={self.site_admin}, permissions={self.permissions}"
 
-        try:
-            scheme, token = auth.split()
 
-            # print("\n\n\n", scheme)
-            if scheme.strip().lower() != 'bearer':
+    # Authentication Backend Class, see https://www.starlette.io/authentication,
+    # https://github.com/tiangolo/fastapi/issues/3043#issuecomment-914316010, and
+    # https://github.com/signebedi/libreforms-fastapi/issues/19. Is this redundant
+    # with get_current_user?
+    class BearerTokenAuthBackend(AuthenticationBackend):
+        """
+        This is a custom auth backend class that will allow you to authenticate your request and return auth and user as
+        a tuple
+        """
+        async def authenticate(self, request):
+            # This function is inherited from the base class and called by some other class
+            if "cookie" not in request.headers:
+
+                # print("\n\n\n\n,", request.headers)
                 return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
 
-            payload = jwt.decode(
-                token, 
-                site_key_pair.get_public_key(), 
-                issuer=config.SITE_NAME, 
-                audience=f"{config.SITE_NAME}WebUser", 
-                algorithms=['RS256']
+            cookie = SimpleCookie()
+            cookie.load(request.headers["cookie"])
+
+            auth = cookie['access_token'].value if 'access_token' in cookie else None
+
+            try:
+                scheme, token = auth.split()
+
+                # print("\n\n\n", scheme)
+                if scheme.strip().lower() != 'bearer':
+                    return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
+                payload = jwt.decode(
+                    token, 
+                    site_key_pair.get_public_key(), 
+                    issuer=config.SITE_NAME, 
+                    audience=f"{config.SITE_NAME}WebUser", 
+                    algorithms=['RS256']
+                )
+
+                with SessionLocal() as session:
+                    user = session.query(User).filter_by(id=payload.get("id", None)).first()
+                    _groups = [g.name for g in user.groups]
+
+            except:
+                return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
+            # If the user validation check fails or they don't exist, set them as unauthenticated
+            if any ([not user, not user.active, not user.username == payload['sub']]):
+                return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
+            user_to_return = LibreFormsUser(
+                username=user.username,
+                id=user.id,
+                email=user.email,
+                groups=_groups,
+                api_key=user.api_key,
+                site_admin=user.site_admin,
+                permissions=user.compile_permissions(),
             )
 
-            with SessionLocal() as session:
-                user = session.query(User).filter_by(id=payload.get("id", None)).first()
-                _groups = [g.name for g in user.groups]
+            # print("\n\n\n", user_to_return)
 
-        except:
-            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+            if user.site_admin:
+                return AuthCredentials(["authenticated", "admin"]), user_to_return
 
-        # If the user validation check fails or they don't exist, set them as unauthenticated
-        if any ([not user, not user.active, not user.username == payload['sub']]):
-            return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+            return AuthCredentials(["authenticated"]), user_to_return
 
-        user_to_return = LibreFormsUser(
-            username=user.username,
-            id=user.id,
-            email=user.email,
-            groups=_groups,
-            api_key=user.api_key,
-            site_admin=user.site_admin,
-            permissions=user.compile_permissions(),
-        )
+    # Set up logger, see https://github.com/signebedi/libreforms-fastapi/issues/26,
+    # again using a factory pattern defined in libreforms_fastapi.utis.logging.
+    logger = set_logger(
+        environment=config.ENVIRONMENT, 
+        log_file_name='uvicorn.log', 
+        namespace='uvicorn.error'
+    )
 
-        # print("\n\n\n", user_to_return)
-
-        if user.site_admin:
-            return AuthCredentials(["authenticated", "admin"]), user_to_return
-
-        return AuthCredentials(["authenticated"]), user_to_return
-
-# Set up logger, see https://github.com/signebedi/libreforms-fastapi/issues/26,
-# again using a factory pattern defined in libreforms_fastapi.utis.logging.
-logger = set_logger(
-    environment=config.ENVIRONMENT, 
-    log_file_name='uvicorn.log', 
-    namespace='uvicorn.error'
-)
-
-sqlalchemy_logger = set_logger(
-    environment=config.ENVIRONMENT, 
-    log_file_name='sqlalchemy.log', 
-    namespace='sqlalchemy.engine'
-)
+    sqlalchemy_logger = set_logger(
+        environment=config.ENVIRONMENT, 
+        log_file_name='sqlalchemy.log', 
+        namespace='sqlalchemy.engine'
+    )
 
 
-async def check_key_rotation(period: int):
-    while True:
-        await asyncio.sleep(period)
+    async def check_key_rotation(period: int):
+        while True:
+            await asyncio.sleep(period)
 
-        # Query for signatures with scope 'api_key' that expire in the next hour
-        keypairs = signatures.rotate_keys(time_until=1, scope="api_key")
+            # Query for signatures with scope 'api_key' that expire in the next hour
+            keypairs = signatures.rotate_keys(time_until=1, scope="api_key")
 
-        if len(keypairs) == 0:
-            logger.info(f'Ran key rotation - 0 key/s rotated')
-            continue
-            
-        # For each key that has just been rotated, update the user model with the new key
-        for tup in keypairs:
+            if len(keypairs) == 0:
+                logger.info(f'Ran key rotation - 0 key/s rotated')
+                continue
+                
+            # For each key that has just been rotated, update the user model with the new key
+            for tup in keypairs:
 
-            old_key, new_key = tup
+                old_key, new_key = tup
 
-            with SessionLocal() as session:
-                user = session.query(User).filter_by(api_key=old_key).first()
+                with SessionLocal() as session:
+                    user = session.query(User).filter_by(api_key=old_key).first()
 
-                if not user:
-                    continue
+                    if not user:
+                        continue
 
-                user.api_key = new_key
-                db.session.commit()
+                    user.api_key = new_key
+                    db.session.commit()
 
-                if app.config['SMTP_ENABLED']:
+                    if app.config['SMTP_ENABLED']:
 
-                    subject=f"{config.SITE_NAME} API Key Rotated"
-                    content=f"This email serves to notify you that an API key for user {user.username} has just rotated at {config.DOMAIN}. Please note that your past API key will no longer work if you are employing it in applications. Your new key will be active for 365 days. You can see your new key by visiting {config.DOMAIN}/profile."
+                        subject=f"{config.SITE_NAME} API Key Rotated"
+                        content=f"This email serves to notify you that an API key for user {user.username} has just rotated at {config.DOMAIN}. Please note that your past API key will no longer work if you are employing it in applications. Your new key will be active for 365 days. You can see your new key by visiting {config.DOMAIN}/profile."
 
-                    mailer.send_mail(subject=subject, content=content, to_address=user.email)
+                        mailer.send_mail(subject=subject, content=content, to_address=user.email)
 
-        logger.info(f'Ran key rotation - {len(keypairs)} key/s rotated')
+            logger.info(f'Ran key rotation - {len(keypairs)} key/s rotated')
 
-@app.on_event("startup")
-async def start_check_key_rotation():
-    task = asyncio.create_task(check_key_rotation(3600))
-
-
-# async def test_logger(period: int):
-#     while True:
-#         logger.info('This is a background task heartbeat')
-#         await asyncio.sleep(period)
-
-# @app.on_event("startup")
-# async def start_test_logger():
-#     task = asyncio.create_task(test_logger(6000))
-
-app.mount("/static", StaticFiles(directory="libreforms_fastapi/app/static"), name="static")
-templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
-app.add_middleware(AuthenticationMiddleware, backend=BearerTokenAuthBackend())
+    @app.on_event("startup")
+    async def start_check_key_rotation():
+        task = asyncio.create_task(check_key_rotation(3600))
 
 
-# Add obfuscating validation error handlers in production
-if not config.DEBUG:
-    # Custom exception handler
-    def validation_exception_handler(request: Request, exc: RequestValidationError):
-        # For simplicity, we are returning a generic error message
-        return JSONResponse(
-            status_code=422,
-            content={"detail": "Data validation error."},
-        )
-
-    # Override the default request validation error handler with your custom handler
-    app.add_exception_handler(RequestValidationError, validation_exception_handler)
-
-# Instantiate the Mailer object
-mailer = Mailer(
-    enabled = config.SMTP_ENABLED,
-    mail_server = config.SMTP_MAIL_SERVER,
-    port = config.SMTP_PORT,
-    username = config.SMTP_USERNAME,
-    password = config.SMTP_PASSWORD,
-    from_address = config.SMTP_FROM_ADDRESS,
-)
-if config.SMTP_ENABLED:
-    logger.info('SMTP has been initialized')
-
-
-# Here we build our relational database model using a sqlalchemy factory, 
-# see https://github.com/signebedi/libreforms-fastapi/issues/136.
-models, SessionLocal, signatures, engine = get_sqlalchemy_models(
-    sqlalchemy_database_uri = config.SQLALCHEMY_DATABASE_URI,
-    set_timezone = config.TIMEZONE,
-    create_all = True,
-    rate_limiting=config.RATE_LIMITS_ENABLED,
-    rate_limiting_period=config.RATE_LIMITS_PERIOD,
-    rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
-)
-
-User = models['User']
-Group = models['Group']
-TransactionLog = models['TransactionLog']
-SignatureRoles = models['SignatureRoles']
-Signing = models['Signing']
-
-# Adding user relationship models below, see
-# https://github.com/signebedi/libreforms-fastapi/issues/173
-RelationshipType = models['RelationshipType']
-UserRelationship = models['UserRelationship']
-
-logger.info('Relational database has been initialized')
-
-# Create default group if it does not exist
-with SessionLocal() as session:
-    # Check if a group with id 1 exists
-    _default_group = session.query(Group).get(1)
-
-    if not _default_group:
-        # If not, create and add the new default group
-        default_permissions = [
-            "example_form:create",
-            "example_form:read_own",
-            "example_form:read_all",
-            "example_form:update_own",
-            "example_form:update_all",
-            "example_form:delete_own",
-            "example_form:delete_all",
-            # "example_form:sign_own"
-        ]
-        _default_group = Group(id=1, name="default", permissions=default_permissions)
-        session.add(_default_group)
-        session.commit()
-        logger.info("Default group created")
-    else:
-        # print(default_group.get_permissions())
-        logger.info("Default group already exists")
-
-    # Check if a signature role with id 1 exists
-    _default_signature_role = session.query(SignatureRoles).get(1)
-
-    if not _default_signature_role:
-        # If not, create and add the new signature for the example_form
-        _default_signature_role = SignatureRoles(
-            id=1, 
-            role_name="default signature role", 
-            role_method="signature",
-            form_name="example_form"
-        )
-        session.add(_default_signature_role)
-        session.commit()
-        logger.info("Default signature role created")
-    else:
-        logger.info("Default signature role already exists")
-
-
-    # class SignatureRoles(Base):
-    #     __tablename__ = 'signature_roles'
-    #     id = Column(Integer, primary_key=True)
-    #     role_name = Column(String, unique=True)
-    #     role_method = Column(Enum('signature', 'relationship', 'group', 'static'), default='relationship')
-    #     form_name = Column(String)
-    #     preceded_by_id = Column(Integer, ForeignKey('signature_roles.id'), nullable=True)
-    #     succeeded_by_id = Column(Integer, ForeignKey('signature_roles.id'),nullable=True)
-    #     on_approve = Column(Enum('step_up', 'finish'), default='finish')
-    #     on_deny = Column(Enum('restart', 'step_down', 'kill'), default='restart')
-    #     on_return = Column(Enum('restart', 'step_down'), default='restart')
-    #     comments_required = Column(Boolean, default=False)
-
-    #     last_updated = Column(DateTime, nullable=False, default=tz_aware_datetime, onupdate=tz_aware_datetime)
-    #     created_on = Column(DateTime, nullable=False, default=tz_aware_datetime)
-
-    #     preceded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[preceded_by_id], backref="preceding_role")
-    #     succeeded_by = relationship("SignatureRoles", remote_side=[id], foreign_keys=[succeeded_by_id], backref="succeeding_role")
-
-    #     group_target = Column(Integer, ForeignKey('group.id'))
-    #     relationship_target = Column(Integer, ForeignKey('relationship_types.id'))
-    #     static_target = Column(Integer, ForeignKey('user.id'))
+    app.mount("/static", StaticFiles(directory="libreforms_fastapi/app/static"), name="static")
+    templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
+    app.add_middleware(AuthenticationMiddleware, backend=BearerTokenAuthBackend())
 
 
 
-# Initialize the document database
-doc_db = get_document_database(
-    form_names_callable=get_form_names,
-    form_config_path=config.FORM_CONFIG_PATH,
-    timezone=config.TIMEZONE, 
-    env=config.ENVIRONMENT, 
-    use_mongodb=config.MONGODB_ENABLED, 
-    mongodb_uri=config.MONGODB_URI
-)
-logger.info('Document Database has been initialized.')
+    # Add obfuscating validation error handlers in production
+    if not config.DEBUG:
+        # Custom exception handler
+        def validation_exception_handler(request: Request, exc: RequestValidationError):
+            # For simplicity, we are returning a generic error message
+            return JSONResponse(
+                status_code=422,
+                content={"detail": "Data validation error."},
+            )
+
+        # Override the default request validation error handler with your custom handler
+        app.add_exception_handler(RequestValidationError, validation_exception_handler)
+
+
+
+
+    # Instantiate the Mailer object
+    mailer = Mailer(
+        enabled = config.SMTP_ENABLED,
+        mail_server = config.SMTP_MAIL_SERVER,
+        port = config.SMTP_PORT,
+        username = config.SMTP_USERNAME,
+        password = config.SMTP_PASSWORD,
+        from_address = config.SMTP_FROM_ADDRESS,
+    )
+    if config.SMTP_ENABLED:
+        logger.info('SMTP has been initialized')
+
+
+
+
+    # Here we build our relational database model using a sqlalchemy factory, 
+    # see https://github.com/signebedi/libreforms-fastapi/issues/136.
+    models, SessionLocal, signatures, engine = get_sqlalchemy_models(
+        sqlalchemy_database_uri = config.SQLALCHEMY_DATABASE_URI,
+        set_timezone = config.TIMEZONE,
+        create_all = True,
+        rate_limiting=config.RATE_LIMITS_ENABLED,
+        rate_limiting_period=config.RATE_LIMITS_PERIOD,
+        rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
+    )
+
+
+    User = models['User']
+    Group = models['Group']
+    TransactionLog = models['TransactionLog']
+    SignatureRoles = models['SignatureRoles']
+    Signing = models['Signing']
+
+    # Adding user relationship models below, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/173
+    RelationshipType = models['RelationshipType']
+    UserRelationship = models['UserRelationship']
+
+    logger.info('Relational database has been initialized')
+
+    # Create default group if it does not exist
+    with SessionLocal() as session:
+        # Check if a group with id 1 exists
+        _default_group = session.query(Group).get(1)
+
+        if not _default_group:
+            # If not, create and add the new default group
+            default_permissions = [
+                "example_form:create",
+                "example_form:read_own",
+                "example_form:read_all",
+                "example_form:update_own",
+                "example_form:update_all",
+                "example_form:delete_own",
+                "example_form:delete_all",
+                # "example_form:sign_own"
+            ]
+            _default_group = Group(id=1, name="default", permissions=default_permissions)
+            session.add(_default_group)
+            session.commit()
+            logger.info("Default group created")
+        else:
+            # print(default_group.get_permissions())
+            logger.info("Default group already exists")
+
+        # Check if a signature role with id 1 exists
+        _default_signature_role = session.query(SignatureRoles).get(1)
+
+        if not _default_signature_role:
+            # If not, create and add the new signature for the example_form
+            _default_signature_role = SignatureRoles(
+                id=1, 
+                role_name="default signature role", 
+                role_method="signature",
+                form_name="example_form"
+            )
+            session.add(_default_signature_role)
+            session.commit()
+            logger.info("Default signature role created")
+        else:
+            logger.info("Default signature role already exists")
+
+
+    # Initialize the document database
+    doc_db = get_document_database(
+        form_names_callable=get_form_names,
+        form_config_path=config.FORM_CONFIG_PATH,
+        timezone=config.TIMEZONE, 
+        env=config.ENVIRONMENT, 
+        use_mongodb=config.MONGODB_ENABLED, 
+        mongodb_uri=config.MONGODB_URI
+    )
+    logger.info('Document Database has been initialized.')
+
+
+
 
 # Here we define an API key header for the api view functions.
 X_API_KEY = APIKeyHeader(name="X-API-Key")
@@ -532,6 +530,7 @@ def write_api_call_to_transaction_log(
     query_params:Optional[dict]=None,
     # Adding option below per https://github.com/signebedi/libreforms-fastapi/issues/152
     send_mail_on_failure:bool=config.HELP_PAGE_ENABLED, 
+    config=get_config(_env),
 ):
     """This function writes an API call to the TransactionLog"""
 
@@ -606,6 +605,7 @@ async def api_form_create(
     form_name: str, 
     background_tasks: BackgroundTasks, 
     request: Request, 
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY), 
     body: Dict = Body(...)
@@ -707,6 +707,7 @@ async def api_form_read_one(
     document_id: str, 
     background_tasks: BackgroundTasks, 
     request: Request, 
+    config = Depends(get_config_depends),  
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -775,6 +776,7 @@ async def api_form_read_all(
     form_name: str, 
     background_tasks: BackgroundTasks, 
     request: Request, 
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -842,6 +844,7 @@ async def api_form_update(
     document_id: str, 
     background_tasks: BackgroundTasks, 
     request: Request, 
+    config = Depends(get_config_depends),  
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY), 
     body: Dict = Body(...)
@@ -959,7 +962,8 @@ async def api_form_delete(
     form_name: str, 
     document_id:str,
     background_tasks: BackgroundTasks,
-    request: Request,
+    request: Request, 
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
@@ -1052,7 +1056,8 @@ async def api_form_restore(
     form_name: str,
     document_id:str,
     background_tasks: BackgroundTasks,
-    request: Request,
+    request: Request, 
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
@@ -1147,7 +1152,8 @@ async def api_form_restore(
 async def api_form_search(
     form_name: str,
     background_tasks: BackgroundTasks,
-    request: Request,
+    request: Request, 
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
     search_term: str = Query(None, title="Search Term")
@@ -1214,7 +1220,8 @@ async def api_form_search(
 @app.get("/api/form/search", dependencies=[Depends(api_key_auth)])
 async def api_form_search_all(
     background_tasks: BackgroundTasks,
-    request: Request,
+    request: Request, 
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
     search_term: str = Query(None, title="Search Term")
@@ -1282,7 +1289,8 @@ async def api_form_sign(
     form_name:str,
     document_id:str,
     background_tasks: BackgroundTasks,
-    request: Request,
+    request: Request, 
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
 ):
@@ -1387,7 +1395,8 @@ async def api_form_sign(
     form_name:str,
     document_id:str,
     background_tasks: BackgroundTasks,
-    request: Request,
+    request: Request, 
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
 ):
@@ -1497,7 +1506,8 @@ async def api_validate_signatures(
     form_name:str,
     document_id:str,
     background_tasks: BackgroundTasks,
-    request: Request,
+    request: Request, 
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
 ):
@@ -1598,6 +1608,7 @@ async def api_auth_create(
     user_request: CreateUserRequest, 
     background_tasks: BackgroundTasks, 
     request: Request, 
+    config = Depends(get_config_depends),  
     session: SessionLocal = Depends(get_db)
 ):
 
@@ -1714,6 +1725,7 @@ async def api_auth_change_password(
     user_request: PasswordChangeUserModel, 
     background_tasks: BackgroundTasks, 
     request: Request, 
+    config = Depends(get_config_depends),  
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
@@ -1810,8 +1822,9 @@ async def api_auth_change_password(
 @app.get("/api/auth/get/{id}", dependencies=[Depends(api_key_auth)])
 async def api_auth_get(
     id:int, 
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -1905,6 +1918,7 @@ async def api_auth_get(
 #     user_request: CreateUserRequest, 
 #     background_tasks: BackgroundTasks, 
 #     request: Request, 
+    config = Depends(get_config_depends),  
 #     session: SessionLocal = Depends(get_db)
 # ):
 #     pass
@@ -1927,8 +1941,9 @@ async def api_auth_get(
 @app.post('/api/auth/login')
 async def api_auth_login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()], 
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db),
 ):
 
@@ -2031,8 +2046,9 @@ async def api_auth_login(
 
 @app.post('/api/auth/refresh')
 async def api_auth_refresh(
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db),
 ):
     """
@@ -2120,9 +2136,10 @@ async def api_auth_refresh(
 # This is a help route to submit a help request to the sysadmin
 @app.post("/api/auth/help", dependencies=[Depends(api_key_auth)], response_class=JSONResponse, include_in_schema=config.HELP_PAGE_ENABLED)
 async def api_auth_help(
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
     help_request: HelpRequest,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2200,8 +2217,9 @@ async def api_auth_help(
     response_class=JSONResponse, 
 )
 async def api_admin_get_users(
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2248,8 +2266,9 @@ async def api_admin_get_users(
 )
 async def api_admin_create_user(
     user_request: AdminCreateUserRequest, 
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2339,8 +2358,9 @@ async def api_admin_create_user(
 async def api_admin_update_user(
     id: str,
     user_request: AdminCreateUserRequest, 
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2391,8 +2411,9 @@ async def api_admin_update_user(
 async def api_admin_modify_user(
     field:str,
     id:str,
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2465,8 +2486,9 @@ async def api_admin_modify_user(
 )
 async def api_admin_get_group(
     id:str,
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2513,8 +2535,9 @@ async def api_admin_get_group(
     response_class=JSONResponse, 
 )
 async def api_admin_get_groups(
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2560,8 +2583,9 @@ async def api_admin_get_groups(
     response_class=JSONResponse, 
 )
 async def api_admin_get_documents(
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2611,8 +2635,9 @@ async def api_admin_get_documents(
 )
 async def api_admin_create_group(
     group_request: GroupModel, 
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2673,8 +2698,9 @@ async def api_admin_create_group(
 async def api_admin_update_group(
     group_request: GroupModel, 
     id:str,
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY),
 ):
@@ -2736,8 +2762,9 @@ async def api_admin_update_group(
 )
 async def api_admin_delete_group(
     id:str,
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2788,8 +2815,9 @@ async def api_admin_delete_group(
 )
 async def api_admin_relationship_type(
     new_relationship_request: RelationshipTypeModel, 
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2852,8 +2880,9 @@ async def api_admin_relationship_type(
     response_class=JSONResponse, 
 )
 async def api_admin_get_relationship_types(
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2899,8 +2928,9 @@ async def api_admin_get_relationship_types(
 async def api_admin_update_relationship_type(
     relationship_request: RelationshipTypeModel, 
     id:str,
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY),
 ):
@@ -2972,8 +3002,9 @@ async def api_admin_update_relationship_type(
 )
 async def api_admin_delete_relationship_type(
     id:str,
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3026,8 +3057,9 @@ async def api_admin_delete_relationship_type(
 )
 async def api_admin_create_user_relationship(
     new_relationship_request: UserRelationshipModel, 
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3111,8 +3143,9 @@ async def api_admin_create_user_relationship(
     response_class=JSONResponse, 
 )
 async def api_admin_get_user_relationships(
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3160,8 +3193,9 @@ async def api_admin_get_user_relationships(
 )
 async def api_admin_delete_user_relationship(
     id:str,
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3231,9 +3265,10 @@ def get_string_differences(str1, str2):
     include_in_schema=config.DOCS_ENABLED==True
 )
 async def api_admin_edit_docs(
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
     docs: DocsEditRequest,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3287,8 +3322,9 @@ async def api_admin_edit_docs(
     include_in_schema=True
 )
 async def api_admin_get_form_config(
-    request: Request,
+    request: Request, 
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3303,7 +3339,7 @@ async def api_admin_get_form_config(
         raise HTTPException(status_code=404)
 
 
-    _form_config = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH)
+    _form_config = _get_form_config_yaml(config_path=config.FORM_CONFIG_PATH)
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
@@ -3333,9 +3369,10 @@ async def api_admin_get_form_config(
     include_in_schema=True
 )
 async def api_admin_write_form_config(
-    request: Request,
+    request: Request, 
     _form_config: FormConfigUpdateRequest,
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3391,9 +3428,10 @@ async def api_admin_write_form_config(
     include_in_schema=True
 )
 async def api_admin_update_site_config(
-    request: Request,
+    request: Request, 
     _site_config: SiteConfig,
     background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends), 
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3450,7 +3488,9 @@ def build_ui_context():
 
     kwargs = {}
 
-    kwargs["config"] = config.model_dump()
+    with get_config_context() as _c:
+        kwargs["config"] = _c.model_dump()
+
     kwargs["version"] = __version__
     kwargs["available_forms"] = get_form_names(config_path=config.FORM_CONFIG_PATH)
     kwargs["current_year"] = datetime.now().year
@@ -3460,7 +3500,7 @@ def build_ui_context():
 # Create form
 @app.get("/ui/form/create/{form_name}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-async def ui_form_create(form_name:str, request: Request):
+async def ui_form_create(form_name:str, request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3485,7 +3525,7 @@ async def ui_form_create(form_name:str, request: Request):
 # Read one form
 @app.get("/ui/form/read_one/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-async def ui_form_read_one(form_name:str, document_id:str, request: Request):
+async def ui_form_read_one(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3520,7 +3560,7 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request):
 # Read all forms
 @app.get("/ui/form/read_all", include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-async def ui_form_read_all(request: Request):
+async def ui_form_read_all(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3536,7 +3576,7 @@ async def ui_form_read_all(request: Request):
 # Update form
 @app.get("/ui/form/update/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-async def ui_form_update(form_name:str, document_id:str, request: Request):
+async def ui_form_update(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3560,7 +3600,7 @@ async def ui_form_update(form_name:str, document_id:str, request: Request):
 
 @app.get("/ui/form/duplicate/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-async def ui_form_duplicate(form_name:str, document_id:str, request: Request):
+async def ui_form_duplicate(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3601,7 +3641,8 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request):
 @app.get("/ui/form/search", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_admin_form_search(
-    request: Request,
+    request: Request, 
+    config = Depends(get_config_depends), 
     search_term: str = Query(None, title="Search Term"),
 ):
     if not config.UI_ENABLED:
@@ -3625,7 +3666,7 @@ async def ui_admin_form_search(
 ##########################
 
 @app.get("/", response_class=RedirectResponse, include_in_schema=False)
-async def ui_redirect_to_home(response: Response, request: Request):
+async def ui_redirect_to_home(response: Response, request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3635,7 +3676,7 @@ async def ui_redirect_to_home(response: Response, request: Request):
 
 # Homepage
 @app.get("/ui/home", response_class=HTMLResponse, include_in_schema=False)
-async def ui_home(request: Request):
+async def ui_home(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3649,7 +3690,7 @@ async def ui_home(request: Request):
 
 # Privacy policy
 @app.get("/ui/privacy", response_class=HTMLResponse, include_in_schema=False)
-async def ui_privacy(request: Request):
+async def ui_privacy(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3663,7 +3704,7 @@ async def ui_privacy(request: Request):
 
 @app.get("/ui/help", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-async def ui_auth_help(request: Request):
+async def ui_auth_help(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3681,7 +3722,7 @@ async def ui_auth_help(request: Request):
 
 @app.get("/ui/docs", response_class=HTMLResponse, include_in_schema=False)
 # @requires(['authenticated'], status_code=404)
-async def ui_docs(request: Request):
+async def ui_docs(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3706,7 +3747,7 @@ async def ui_docs(request: Request):
 
 @app.get("/ui/auth/login", response_class=HTMLResponse, include_in_schema=False)
 @requires(['unauthenticated'], status_code=404)
-async def ui_auth_login(request: Request):
+async def ui_auth_login(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3720,7 +3761,7 @@ async def ui_auth_login(request: Request):
 
 @app.get("/ui/auth/logout", response_class=RedirectResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-def ui_auth_logout(response: Response, request: Request):
+def ui_auth_logout(response: Response, request: Request, config = Depends(get_config_depends),):
 
     # Redirect to the homepage
     response = RedirectResponse(request.url_for("ui_home"), status_code=303)
@@ -3734,7 +3775,7 @@ def ui_auth_logout(response: Response, request: Request):
 # Create user
 @app.get("/ui/auth/create", response_class=HTMLResponse, include_in_schema=False)
 @requires(['unauthenticated'], status_code=404)
-async def ui_auth_create(request: Request):
+async def ui_auth_create(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3766,7 +3807,7 @@ async def ui_auth_create(request: Request):
 
 @app.get("/ui/auth/change_password", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-async def ui_auth_change_password(request: Request):
+async def ui_auth_change_password(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3781,7 +3822,7 @@ async def ui_auth_change_password(request: Request):
 # View profile
 @app.get("/ui/auth/profile/", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-def ui_auth_profile(request: Request):
+def ui_auth_profile(request: Request, config = Depends(get_config_depends),):
 
     return templates.TemplateResponse(
         request=request, 
@@ -3793,7 +3834,11 @@ def ui_auth_profile(request: Request):
 
 @app.get("/ui/auth/profile/{id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
-def ui_auth_profile_other(request: Request, id: int):
+def ui_auth_profile_other( 
+    id: int, 
+    request: Request, 
+    config = Depends(get_config_depends),
+):
 
     # If the user is requesting their own profile, redirect to the default profile view.
     if request.user.id == id:
@@ -3826,7 +3871,7 @@ def ui_auth_profile_other(request: Request, id: int):
 # Edit docs
 @app.get("/ui/admin/edit_docs", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_edit_docs(request: Request):
+async def ui_admin_edit_docs(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3856,7 +3901,7 @@ async def ui_admin_edit_docs(request: Request):
 # Update form config
 @app.get("/ui/admin/write_form_config", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_write_form_config(request: Request):
+async def ui_admin_write_form_config(request: Request, config = Depends(get_config_depends),):
     
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -3886,7 +3931,7 @@ async def ui_admin_write_form_config(request: Request):
 # Edit privacy policy
 @app.get("/ui/admin/config_privacy", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_config_privacy(request: Request):
+async def ui_admin_config_privacy(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3906,7 +3951,7 @@ async def ui_admin_config_privacy(request: Request):
 # Edit homepage message
 @app.get("/ui/admin/config_homepage_message", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_config_homepage_message(request: Request):
+async def ui_admin_config_homepage_message(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3925,7 +3970,7 @@ async def ui_admin_config_homepage_message(request: Request):
 # form config lock
 @app.get("/ui/admin/form_config_lock", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_form_config_lock(request: Request):
+async def ui_admin_form_config_lock(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3941,11 +3986,106 @@ async def ui_admin_form_config_lock(request: Request):
     )
 
 
+# Edit site config
+# @app.get("/ui/admin/config_site", response_class=HTMLResponse, include_in_schema=False)
+# @requires(['admin'], status_code=404)
+# async def ui_admin_config_site(request: Request, config = Depends(get_config_depends),):
+#     if not config.UI_ENABLED:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     if not request.user.site_admin:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     return templates.TemplateResponse(
+#         request=request, 
+#         name="admin_config_site.html.jinja", 
+#         context={
+#             **build_ui_context(),
+#         }
+#     )
+
+
+# Edit relational database config
+# @app.get("/ui/admin/config_relational_db", response_class=HTMLResponse, include_in_schema=False)
+# @requires(['admin'], status_code=404)
+# async def ui_admin_config_relational_db(request: Request, config = Depends(get_config_depends),):
+#     if not config.UI_ENABLED:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     if not request.user.site_admin:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     return templates.TemplateResponse(
+#         request=request, 
+#         name="admin_config_relational_db.html.jinja", 
+#         context={
+#             **build_ui_context(),
+#         }
+#     )
+
+
+# Edit document database config
+# @app.get("/ui/admin/config_document_db", response_class=HTMLResponse, include_in_schema=False)
+# @requires(['admin'], status_code=404)
+# async def ui_admin_config_document_db(request: Request, config = Depends(get_config_depends),):
+#     if not config.UI_ENABLED:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     if not request.user.site_admin:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     return templates.TemplateResponse(
+#         request=request, 
+#         name="admin_config_document_db.html.jinja", 
+#         context={
+#             **build_ui_context(),
+#         }
+#     )
+
+# Edit smtp config
+# @app.get("/ui/admin/config_smtp", response_class=HTMLResponse, include_in_schema=False)
+# @requires(['admin'], status_code=404)
+# async def ui_admin_config_smtp(request: Request, config = Depends(get_config_depends),):
+#     if not config.UI_ENABLED:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     if not request.user.site_admin:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     return templates.TemplateResponse(
+#         request=request, 
+#         name="admin_config_smtp.html.jinja", 
+#         context={
+#             **build_ui_context(),
+#         }
+#     )
+
+
+
+
+# Schedule application reboot
+# @app.get("/ui/admin/reload_application", response_class=HTMLResponse, include_in_schema=False)
+# @requires(['admin'], status_code=404)
+# async def ui_admin_reload_application(request: Request, config = Depends(get_config_depends),):
+#     if not config.UI_ENABLED:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     if not request.user.site_admin:
+#         raise HTTPException(status_code=404, detail="This page does not exist")
+
+#     return templates.TemplateResponse(
+#         request=request, 
+#         name="admin_reload_application.html.jinja", 
+#         context={
+#             **build_ui_context(),
+#         }
+#     )
+
 
 # Manage users
 @app.get("/ui/admin/manage_users", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_manage_users(request: Request):
+async def ui_admin_manage_users(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3964,7 +4104,7 @@ async def ui_admin_manage_users(request: Request):
 # Add new user
 @app.get("/ui/admin/create_user", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_create_user(request: Request):
+async def ui_admin_create_user(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3986,7 +4126,7 @@ async def ui_admin_create_user(request: Request):
 # Edit user
 @app.get("/ui/admin/update_user/{id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_update_user(id: str, request: Request):
+async def ui_admin_update_user(id: str, request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4013,7 +4153,7 @@ async def ui_admin_update_user(id: str, request: Request):
 # for a "recent activity" UI route.
 @app.get("/ui/admin/log", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_log(request: Request):
+async def ui_admin_log(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4053,7 +4193,7 @@ async def ui_admin_log(request: Request):
 # Manage groups
 @app.get("/ui/admin/manage_groups", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_manage_groups(request: Request):
+async def ui_admin_manage_groups(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4071,7 +4211,7 @@ async def ui_admin_manage_groups(request: Request):
 # Create group
 @app.get("/ui/admin/create_group", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_create_group(request: Request):
+async def ui_admin_create_group(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4104,7 +4244,7 @@ async def ui_admin_create_group(request: Request):
 # Edit Group
 @app.get("/ui/admin/update_group/{id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_update_group(id:str, request: Request):
+async def ui_admin_update_group(id:str, request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4146,7 +4286,7 @@ async def ui_admin_update_group(id:str, request: Request):
 # Create relationship
 @app.get("/ui/admin/create_relationship_type", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_create_relationship_type(request: Request):
+async def ui_admin_create_relationship_type(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4165,7 +4305,7 @@ async def ui_admin_create_relationship_type(request: Request):
 # Manage relationship types
 @app.get("/ui/admin/manage_relationship_types", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_manage_relationship_types(request: Request):
+async def ui_admin_manage_relationship_types(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4184,7 +4324,7 @@ async def ui_admin_manage_relationship_types(request: Request):
 # Edit Group
 @app.get("/ui/admin/update_relationship_type/{id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_update_group(id:str, request: Request):
+async def ui_admin_update_group(id:str, request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4211,7 +4351,7 @@ async def ui_admin_update_group(id:str, request: Request):
 # Create user relationship pairing
 @app.get("/ui/admin/create_user_relationship", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_create_user_relationship(request: Request):
+async def ui_admin_create_user_relationship(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4235,7 +4375,7 @@ async def ui_admin_create_user_relationship(request: Request):
 # Manage user relationship pairings
 @app.get("/ui/admin/manage_user_relationships", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_manage_user_relationships(request: Request):
+async def ui_admin_manage_user_relationships(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4253,7 +4393,7 @@ async def ui_admin_manage_user_relationships(request: Request):
 
 @app.get("/ui/admin/manage_documents", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_manage_documents(request: Request):
+async def ui_admin_manage_documents(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
