@@ -49,14 +49,13 @@ def get_config(env):
             with open(env_file_path, 'w') as f: pass
 
     # Here we return the corresponding model based on the env
-    if env == 'testing':
+    elif env == 'testing':
         env_file_path = ""
 
     else:
         # Else, just return the development config, see 
         # https://github.com/signebedi/libreforms-fastapi/issues/182
         env_file_path = os.path.join(instance_directory, "dev.env")
-
                 
         if not os.path.exists(env_file_path):
             with open(env_file_path, 'w') as f: pass

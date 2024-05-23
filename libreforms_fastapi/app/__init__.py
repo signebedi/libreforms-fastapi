@@ -149,6 +149,7 @@ with get_config_context() as config:
 
     if config.DEBUG:
         print(config.model_dump())
+    print(config.model_dump())
 
     # Run our assumptions checks defined in
     # libreforms_fastapi.utis.scripts
