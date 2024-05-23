@@ -3467,10 +3467,20 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request):
 
 
 # Read all forms
-    # @app.get("/ui/form/read_all/{form_name}", include_in_schema=False)
-    # async def ui_form_read_all():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/form/read_all", include_in_schema=False)
+@requires(['authenticated'], status_code=404)
+async def ui_form_read_all(request: Request):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="read_all_forms.html.jinja", 
+        context={
+            "form_names": list(get_form_names(config_path=config.FORM_CONFIG_PATH)),
+            **build_ui_context(),
+        }
+    )
 
 # Update form
 @app.get("/ui/form/update/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)

@@ -16,6 +16,7 @@
         <thead>
             <tr>
                 <th>Record</th>
+                <th>Form</th>
                 <th>Details</th>
                 <th>Last Editor</th>
                 <th>Last Modified</th>
@@ -37,7 +38,7 @@ $(document).ready(function () {
     const spinner = document.querySelector('.loading-circle');
     const searchTable = document.getElementById('searchTable');
     const apiKey = "{{ request.user.api_key }}";
-    const searchTerm = "{{ search_term }}";
+    const searchTerm = "{{ search_term }};
 
     // https://www.geeksforgeeks.org/how-to-truncate-a-string-in-javascript/
     function GFG(str, maxLength) {
@@ -60,6 +61,7 @@ $(document).ready(function () {
 
                 let row = `<tr>
                                 <td><a href="/ui/form/read_one/${form['metadata']['form_name']}/${form['metadata']['document_id']}">${form['metadata']['document_id']}</a></td>
+                                <td>${form['metadata']['form_name'].replace(/_/g, ' ')}</td>
                                 <td>${GFG(JSON.stringify(form['data']), 60)}</td>
                                 <td>${form['metadata']['last_editor']}</td>
                                 <td>${form['metadata']['last_modified']}</td>

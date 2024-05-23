@@ -774,6 +774,12 @@ class ManageTinyDB(ManageDocumentDB):
         """Retrieves all entries from the specified form's database."""
         self._check_form_exists(form_name)
 
+        # In case we want to support pulling all forms at once
+        # if form_name is None:
+        #     documents = []
+        #     for form_name, _db in self.databases.items():
+        #         documents.append(_db.all())
+
         documents = self.databases[form_name].all()
 
         if not documents or len(documents) == 0:
