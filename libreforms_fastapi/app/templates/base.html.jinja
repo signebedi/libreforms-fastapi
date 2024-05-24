@@ -59,6 +59,7 @@
                         <ul class="dropdown-menu" aria-labelledby="AdminMenu">
                             <li><a class="dropdown-item" href="{{ url_for('ui_form_read_all') }}">View All</a></li>
                             <!-- Users Menu -->
+                            {% if config["EXCEL_EXPORT_ENABLED"] %}
                             <li>
                                 <div class="btn-group dropend">
                                     <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">
@@ -70,6 +71,7 @@
                                         {% endfor %}                                    </ul>
                                 </div>
                             </li>
+                            {% endif %}
                         </ul>
                     </div>
 

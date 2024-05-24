@@ -158,7 +158,7 @@ def get_config(env):
         # https://github.com/signebedi/libreforms-fastapi/issues/215. 
         # Note that this will require the installation of openpyxl, which 
         # can be done by running `pip install libreforms_fastapi[data]`.
-        EXCEL_EXPORT_ENABLED:bool = os.getenv('EXCEL_EXPORT_ENABLED', 'True') == 'True'
+        EXCEL_EXPORT_ENABLED:bool = os.getenv('EXCEL_EXPORT_ENABLED', 'False') == 'True'
 
         SMTP_ENABLED:bool = os.getenv('SMTP_ENABLED', 'False') == 'True'
         SMTP_MAIL_SERVER:str = os.getenv('SMTP_MAIL_SERVER', "")
