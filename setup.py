@@ -18,12 +18,17 @@ version = read_version()
 with open("README.md", "r", encoding="utf-8") as fh:
     long_description = fh.read()
 
-requirements_file = os.getenv('REQUIREMENTS', 'requirements/base.txt')
+requirements_file = "requirements/base.txt"
 
 # Read requirements/base.txt for install_requires
 with open(requirements_file, encoding="utf-8") as f:
     install_requires = f.read().splitlines()
-    
+
+data_extras_file = "requirements/data.txt"
+
+with open(data_extras_file, encoding="utf-8") as f:
+    install_extras_data = f.read().splitlines()
+
 setup(
     name='libreforms_fastapi',
     version=version,
@@ -45,5 +50,8 @@ setup(
         'console_scripts': [
             'libreformsctl=libreforms_fastapi.cli.__init__:cli',
         ],
+    },
+    extras_require={
+        "data": install_extras_data,
     },
 )
