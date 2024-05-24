@@ -154,6 +154,12 @@ def get_config(env):
         DOCS_ENABLED:bool = os.getenv('DOCS_ENABLED', 'False') == 'True'
         DOCS_PATH:str = os.getenv('DOCS_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "docs.md")))
 
+        # Here we allow users to export form data as excel, see 
+        # https://github.com/signebedi/libreforms-fastapi/issues/215. 
+        # Note that this will require the installation of openpyxl, which 
+        # can be done by running `pip install libreforms_fastapi[data]`.
+        EXCEL_EXPORT_ENABLED:bool = os.getenv('EXCEL_EXPORT_ENABLED', 'True') == 'True'
+
         SMTP_ENABLED:bool = os.getenv('SMTP_ENABLED', 'False') == 'True'
         SMTP_MAIL_SERVER:str = os.getenv('SMTP_MAIL_SERVER', "")
         SMTP_PORT:int = int(os.getenv('SMTP_PORT', 25))    

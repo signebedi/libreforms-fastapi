@@ -76,6 +76,13 @@ class NoChangesProvided(Exception):
             "No new data was provided."
         super().__init__(message)
 
+class ImproperExcelFilenameFormat(Exception):
+    """Exception raised when attempting to export as excel but the file format is incorrect."""
+    def __init__(self, form_name, file_name,):
+        message = f"Failed to create excel export for collection '{form_name}'. " \
+            f"File format `{file_name}` is incorrect. Does your file end in `.xlsx`?"
+        super().__init__(message)
+
 
 # Pulled from https://github.com/signebedi/gita-api
 def fuzzy_search_normalized(text_string, search_term, segment_length=None):
@@ -119,6 +126,7 @@ def get_document_database(
     env="development",
     use_mongodb=False,
     mongodb_uri=None,
+    use_excel=False,
 ):
     """
     This is a factory function that will return one of Document Database manangement classes 
@@ -136,7 +144,9 @@ def get_document_database(
             use_logger=use_logger, 
             env=env,
             mongodb_uri=mongodb_uri,
+            use_excel=use_excel,
         )
+
     # Default to a TinyDB database
     return ManageTinyDB(
         form_names_callable=form_names_callable, 
@@ -145,11 +155,12 @@ def get_document_database(
         db_path=db_path, 
         use_logger=use_logger, 
         env=env,
+        use_excel=use_excel,
     )
 
 
 class ManageDocumentDB(ABC):
-    def __init__(self, form_names_callable, form_config_path, timezone: ZoneInfo):
+    def __init__(self, form_names_callable, form_config_path, timezone: ZoneInfo, use_excel:bool):
         self.form_names_callable = form_names_callable
         self.form_config_path = form_config_path
 
@@ -162,6 +173,8 @@ class ManageDocumentDB(ABC):
 
         # These configs will be helpful later for managing time consistently
         self.timezone = timezone
+
+        self.use_excel = use_excel
 
         # Finally we'll initialize the database instances
         self._initialize_database_collections()
@@ -249,8 +262,14 @@ class ManageDocumentDB(ABC):
         """Deletes entries that match the search query, permanently or soft delete."""
         pass
 
+    @abstractmethod
     def get_all_documents_for_user(self, username: str, exclude_deleted:bool=True) -> list:
         """Retrieves all the documents created by a given user"""
+        pass
+
+    @abstractmethod
+    def get_all_documents_as_excel(self, form_name:str, file_path:str, username: str, exclude_deleted:bool=True) -> list:
+        """Retrieves all the documents for the specified form and saves to excel"""
         pass
 
     @abstractmethod
@@ -280,7 +299,17 @@ class ManageDocumentDB(ABC):
 
 
 class ManageTinyDB(ManageDocumentDB):
-    def __init__(self, form_names_callable, form_config_path, timezone: ZoneInfo, db_path: str = "instance/", use_logger=True, env="development"):
+    def __init__(
+        self, 
+        form_names_callable, 
+        form_config_path, 
+        timezone: ZoneInfo, 
+        db_path: str = "instance/", 
+        use_logger=True, 
+        env="development",
+        use_excel: bool = False,
+    ):
+
         self.db_path = db_path
         os.makedirs(self.db_path, exist_ok=True)
 
@@ -297,7 +326,7 @@ class ManageTinyDB(ManageDocumentDB):
                 namespace=self.log_name
             )
 
-        super().__init__(form_names_callable, form_config_path, timezone)
+        super().__init__(form_names_callable, form_config_path, timezone, use_excel)
 
         # Here we create a Query object to ship with the class
         self.Form = Query()
@@ -763,12 +792,64 @@ class ManageTinyDB(ManageDocumentDB):
 
         return documents
 
+    def get_all_documents_as_excel(
+        self,
+        form_name:str, 
+        file_path:str=os.path.join("instance", "export"),
+        limit_users:Union[bool, str]=False, 
+        exclude_deleted:bool=True,
+        escape_output:bool=True,
+        exclude_journal:bool=True,
+    ):
+        """Retrieves all the documents for the specified form and saves to excel"""
+
+        if not self.use_excel:
+            return False
+        
+        # if not file_path.endswith(".xlsx"):
+        #     raise ImproperExcelFilenameFormat(form_name, file_path)
+
+        documents = self.get_all_documents(
+            form_name=form_name,
+            limit_users=limit_users,
+            exclude_deleted=exclude_deleted,
+            escape_output=escape_output,
+            collapse_data=True,
+        )
+
+        if len (documents) < 1:
+            return False
+
+        # Create the dataframe using flattened data
+        import pandas as pd
+        df = pd.DataFrame(documents)
+
+        # Drpo the journal if exclude_journal is passed (this is the default behavior) 
+        if exclude_journal:
+            df = df.drop("__metadata__journal", axis=1)
+
+        # Get a file-name-safe timestamp
+        datetime_format = datetime.now(self.timezone).strftime("%Y%m%d%H%M%S")
+
+        # Make the export directory if it does not exist
+        os.makedirs(file_path, exist_ok=True)
+
+        # Concat the file path to the unique file name
+        path_to_file = os.path.join(file_path, f'{form_name}-export-{datetime_format}.xlsx')
+
+        # Write to excel
+        df.to_excel(path_to_file, index=False)
+
+        # Return the file path
+        return path_to_file
+
     def get_all_documents(
         self,
         form_name:str, 
         limit_users:Union[bool, str]=False, 
         exclude_deleted:bool=True,
-        escape_output:bool=True
+        escape_output:bool=True,
+        collapse_data:bool=True,
     ):
 
         """Retrieves all entries from the specified form's database."""
@@ -795,6 +876,28 @@ class ManageTinyDB(ManageDocumentDB):
         if escape_output:
             for document in documents:
                 document['data'] = escape_data_field(document['data'])
+
+        if collapse_data:
+            _documents = []
+            for document in documents:
+                _document = {}
+
+                # Add data in a flat format
+                for key, value in document['data'].items():
+                    _document[key] = value
+                    # print(key, value)
+
+                # Add metadata with a prefix to make flattening easy without colliding with data fields
+                for key, value in document['metadata'].items():
+                    _document[f"__metadata__{key}"] = value
+                    # print(f"__metadata__{key}", value)
+
+                # print(_document)
+                _documents.append(_document)
+
+
+            # print(_documents)
+            return _documents
 
         return documents
 

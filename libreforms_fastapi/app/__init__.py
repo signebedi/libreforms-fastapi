@@ -1,6 +1,7 @@
 import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib
 from datetime import datetime, timedelta
 from contextlib import contextmanager
+from pathlib import Path
 from typing import Dict, Optional, Annotated
 from markupsafe import escape
 from bson import ObjectId
@@ -19,6 +20,7 @@ from fastapi import (
 )
 from fastapi.responses import (
     HTMLResponse, 
+    FileResponse,
     JSONResponse, 
     RedirectResponse
 )
@@ -463,7 +465,8 @@ def get_doc_db(config=get_config(_env)):
         timezone=config.TIMEZONE, 
         env=config.ENVIRONMENT, 
         use_mongodb=config.MONGODB_ENABLED, 
-        mongodb_uri=config.MONGODB_URI
+        mongodb_uri=config.MONGODB_URI,
+        use_excel=config.EXCEL_EXPORT_ENABLED,
     )
 
     return doc_db
@@ -826,6 +829,78 @@ async def api_form_read_all(
         "message": "Data successfully retrieved", 
         "documents": documents, 
     }
+
+
+@app.get("/api/form/export_excel/{form_name}", response_class=FileResponse, dependencies=[Depends(api_key_auth)])
+async def api_form_export_excel(
+    form_name: str, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Retrieves all documents of a specified form type, identified by the form name in the URL.
+    It verifies the form's existence, checks user permissions, retrieves documents from the 
+    database, and returns the form as an excel file before logging the query.
+    """
+
+    if not config.EXCEL_EXPORT_ENABLED:
+        raise HTTPException(status_code=404)
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    # Here we validate the user groups permit them to see their own forms, which they
+    # should do as a matter of bureaucratic best practice, but might sometimes limit.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_own")
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
+    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_all")
+        limit_query_to = False
+    except Exception as e:
+        limit_query_to = user.username
+
+
+    document_path = doc_db.get_all_documents_as_excel(
+        form_name, 
+        limit_users=limit_query_to
+    )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    if not document_path:
+        raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+
+    file_name = Path(document_path).name
+
+    return FileResponse(path=document_path, filename=file_name, media_type='application/octet-stream')
+
+
 
 # Update form
 # # *** Should we use PATCH instead of PUT? In libreForms-flask, we only pass 
