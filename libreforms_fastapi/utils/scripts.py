@@ -78,6 +78,39 @@ def percentage_alphanumeric_generate_password(
 
 
 
+def prettify_time_diff(time:float):
+    if time < 3600:
+        if (time / 60) < 1:
+            return "less than a minute ago"
+        elif (time / 90) < 1 <= (time / 60):
+            return "about a minute ago"
+        elif (time / 420) < 1 <= (time / 90):
+            return "a few minutes ago"
+        elif (time / 900) < 1 <= (time / 420):
+            return "about ten minutes ago"
+        elif (time / 1500) < 1 <= (time / 900):
+            return "about twenty minutes ago"
+        elif (time / 2100) < 1 <= (time / 1500):
+            return "about thirty minutes ago"
+        elif (time / 2700) < 1 <= (time / 2100):
+            return "about thirty minutes ago"
+        elif (time / 3300) < 1 <= (time / 2700):
+            return "about forty minutes ago"
+        elif (time / 3600) < 1 <= (time / 3300):
+            return "about fifty minutes ago"
+    elif 7200 > time >= 3600: 
+        return f"about an hour ago"
+    elif 84600 > time >= 7200: # we short 86400 seconds by 1800 seconds to manage rounding issues
+        return f"about {round(time / 3600)} hours ago"
+    elif 84600 <= time <= 171000: # we short 172800 seconds by 1800 seconds to manage rounding issues
+        return f"about a day ago"
+    elif 171000 <= time: # we short 172800 seconds by 1800 seconds to manage rounding issues
+        return f"about {round(time / 86400)} days ago"
+    else:
+        return ""
+
+
+
 # Wrote an exception for configuration errors
 class ConfigurationError(Exception):
     """Exception raised for errors in the flask app configuration."""
