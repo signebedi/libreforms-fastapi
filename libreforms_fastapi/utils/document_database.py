@@ -849,7 +849,7 @@ class ManageTinyDB(ManageDocumentDB):
         limit_users:Union[bool, str]=False, 
         exclude_deleted:bool=True,
         escape_output:bool=True,
-        collapse_data:bool=True,
+        collapse_data:bool=False,
     ):
 
         """Retrieves all entries from the specified form's database."""

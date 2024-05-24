@@ -51,10 +51,27 @@
                         </div>
                     </li>
 
-                    <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('ui_form_read_all') }}">View Submissions</a>
-                    </li>
-
+                    <div class="nav-item dropdown">
+                        <button class="nav-link dropdown-toggle" type="button" id="AdminMenu"
+                                data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
+                            View Submissions
+                        </button>
+                        <ul class="dropdown-menu" aria-labelledby="AdminMenu">
+                            <li><a class="dropdown-item" href="{{ url_for('ui_form_read_all') }}">View All</a></li>
+                            <!-- Users Menu -->
+                            <li>
+                                <div class="btn-group dropend">
+                                    <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">
+                                        Export
+                                    </a>
+                                    <ul class="dropdown-menu">
+                                        {% for form in available_forms %}
+                                        <li><button class="btn-link dropdown-item" onclick="exportExcel('{{ form }}', '{{ request.user.api_key }}')">{{ form | replace("_", " ") | title }}</button></li>
+                                        {% endfor %}                                    </ul>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
 
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Account</a>
@@ -348,6 +365,41 @@
     <script src="{{ url_for('static', path='js/custom.js') }}"></script>
 
     <script>
+
+    // Not using Jquery for the file export 
+    function exportExcel(formName, apiKey) {
+        fetch(`/api/form/export_excel/${formName}`, {
+            headers: {
+                'X-API-KEY': apiKey,
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok ' + response.statusText);
+            }
+            return response.blob();
+        })
+        .then(blob => {
+
+            // Create a link and set the URL as the download link for the blob
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            // Use the form name to name the downloaded file
+            a.download = `${formName}.xlsx`;
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            flashMessage("Successfully exported form", AlertCategories.SUCCESS);
+        })
+        .catch(error => {
+            console.error('Failed to export form', error);
+            flashMessage(error.message, 'danger');
+        });
+    }
+
+
 
         $(document).ready(function() {
 
