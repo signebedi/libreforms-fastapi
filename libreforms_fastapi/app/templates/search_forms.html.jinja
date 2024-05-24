@@ -38,7 +38,7 @@ $(document).ready(function () {
     const spinner = document.querySelector('.loading-circle');
     const searchTable = document.getElementById('searchTable');
     const apiKey = "{{ request.user.api_key }}";
-    const searchTerm = "{{ search_term }};
+    const searchTerm = "{{ search_term }}";
 
     // https://www.geeksforgeeks.org/how-to-truncate-a-string-in-javascript/
     function GFG(str, maxLength) {

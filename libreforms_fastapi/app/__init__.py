@@ -4078,7 +4078,9 @@ async def ui_admin_config_homepage_message(request: Request, config = Depends(ge
 # form config lock
 @app.get("/ui/admin/form_config_lock", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
-async def ui_admin_form_config_lock(request: Request, config = Depends(get_config_depends),
+async def ui_admin_form_config_lock(
+    request: Request, 
+    config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
