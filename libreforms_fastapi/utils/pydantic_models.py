@@ -64,7 +64,6 @@ def get_user_model(
         This is the model used to update a user's password. It requires an old_password, 
         new_password, and verify_new_password field.
         """
-        # username: str = Field(...)
         old_password: SecretStr = Field(...)
         new_password: SecretStr = Field(...)
         verify_new_password: SecretStr = Field(...)
@@ -131,7 +130,7 @@ def get_user_model(
             if not pattern.match(password):
                 raise ValueError(password_helper_text)
             return value
-            
+
     return UserModel
 
 

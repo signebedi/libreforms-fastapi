@@ -102,3 +102,49 @@ function renderUserRelationships(users) {
       return `${user.relationship} <a href='/ui/auth/profile/${user.related_user_id}'>${user.related_user_username}</a>`;
   }).join(", ");
 }
+
+
+
+function prettifyTimeDiff(dateTimeStr) {
+  // Parse the date string into a Date object
+  const date = new Date(dateTimeStr);
+
+  // Get the current date and time
+  const now = new Date();
+
+  // Calculate the difference in seconds
+  const timeDiff = (now - date) / 1000; // convert milliseconds to seconds
+
+  if (timeDiff < 3600) {
+      if (timeDiff / 60 < 1) {
+          return "less than a minute ago";
+      } else if (timeDiff / 90 < 1) {
+          return "about a minute ago";
+      } else if (timeDiff / 420 < 1) {
+          return "a few minutes ago";
+      } else if (timeDiff / 900 < 1) {
+          return "about ten minutes ago";
+      } else if (timeDiff / 1500 < 1) {
+          return "about twenty minutes ago";
+      } else if (timeDiff / 2100 < 1) {
+          return "about thirty minutes ago";
+      } else if (timeDiff / 2700 < 1) {
+          return "about thirty minutes ago";
+      } else if (timeDiff / 3300 < 1) {
+          return "about forty minutes ago";
+      } else if (timeDiff / 3600 < 1) {
+          return "about fifty minutes ago";
+      }
+  } else if (timeDiff >= 3600 && timeDiff < 7200) {
+      return "about an hour ago";
+  } else if (timeDiff >= 7200 && timeDiff < 84600) { // Shortened 86400 seconds by 1800 seconds to manage rounding issues
+      return `about ${Math.round(timeDiff / 3600)} hours ago`;
+  } else if (timeDiff >= 84600 && timeDiff <= 171000) { // Shortened 172800 seconds by 1800 seconds to manage rounding issues
+      return "about a day ago";
+  } else if (timeDiff > 171000) { // Shortened 172800 seconds by 1800 seconds to manage rounding issues
+      return `about ${Math.round(timeDiff / 86400)} days ago`;
+  } else {
+      return "";
+  }
+}
+

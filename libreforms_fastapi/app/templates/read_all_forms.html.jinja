@@ -83,12 +83,14 @@ $(document).ready(function () {
                             <td>${form['metadata']['form_name'].replace(/_/g, ' ')}</td>
                             <td>${GFG(JSON.stringify(form['data']), 60)}</td>
                             <td>${form['metadata']['last_editor']}</td>
-                            <td>${form['metadata']['last_modified']}</td>
+                            <td><span title="${form['metadata']['last_modified']}">${prettifyTimeDiff(form['metadata']['last_modified'])}</span></td>
                             <td>${form['metadata']['created_by']}</td>
-                            <td>${form['metadata']['created_at']}</td>
+                            <td><span title="${form['metadata']['created_at']}">${prettifyTimeDiff(form['metadata']['created_at'])}</span></td>
                         </tr>`;
             $("#readAllTable tbody").append(row);
         });
+
+
 
         spinner.style.display = 'none'; // Hide the spinner
         readAllTable.style.display = ''; // Show the table

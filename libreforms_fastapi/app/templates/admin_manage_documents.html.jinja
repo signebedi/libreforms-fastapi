@@ -87,9 +87,9 @@ $(document).ready(function() {
                 </td>
                 <td>${document['metadata']['form_name'].replace(/_/g, ' ')}</td>
                 <td>${document['metadata']['last_editor']}</td>
-                <td>${document['metadata']['last_modified']}</td>
+                <td><span title="${document['metadata']['last_modified']}">${prettifyTimeDiff(document['metadata']['last_modified'])}</span></td>
                 <td>${document['metadata']['created_by']}</td>
-                <td>${document['metadata']['created_at']}</td>
+                <td><span title="${document['metadata']['created_at']}">${prettifyTimeDiff(document['metadata']['created_at'])}</span></td>
             </tr>`;
 
         });
