@@ -4186,59 +4186,59 @@ async def ui_admin_config_site(request: Request, config = Depends(get_config_dep
 
 
 # Edit relational database config
-# @app.get("/ui/admin/config_relational_db", response_class=HTMLResponse, include_in_schema=False)
-# @requires(['admin'], status_code=404)
-# async def ui_admin_config_relational_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
-#     if not config.UI_ENABLED:
-#         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/admin/config_relational_db", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_config_relational_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
-#     if not request.user.site_admin:
-#         raise HTTPException(status_code=404, detail="This page does not exist")
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
-#     return templates.TemplateResponse(
-#         request=request, 
-#         name="admin_config_relational_db.html.jinja", 
-#         context={
-#             **build_ui_context(),
-#         }
-#     )
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_config_relational_db.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
 
 
 # Edit document database config
-# @app.get("/ui/admin/config_document_db", response_class=HTMLResponse, include_in_schema=False)
-# @requires(['admin'], status_code=404)
-# async def ui_admin_config_document_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
-#     if not config.UI_ENABLED:
-#         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/admin/config_document_db", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_config_document_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
-#     if not request.user.site_admin:
-#         raise HTTPException(status_code=404, detail="This page does not exist")
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
-#     return templates.TemplateResponse(
-#         request=request, 
-#         name="admin_config_document_db.html.jinja", 
-#         context={
-#             **build_ui_context(),
-#         }
-#     )
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_config_document_db.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
 
 # Edit smtp config
-# @app.get("/ui/admin/config_smtp", response_class=HTMLResponse, include_in_schema=False)
-# @requires(['admin'], status_code=404)
-# async def ui_admin_config_smtp(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
-#     if not config.UI_ENABLED:
-#         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/admin/config_smtp", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_config_smtp(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
-#     if not request.user.site_admin:
-#         raise HTTPException(status_code=404, detail="This page does not exist")
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
-#     return templates.TemplateResponse(
-#         request=request, 
-#         name="admin_config_smtp.html.jinja", 
-#         context={
-#             **build_ui_context(),
-#         }
-#     )
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_config_smtp.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
 
 
 

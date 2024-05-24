@@ -169,8 +169,8 @@ def get_config(env):
 
         RATE_LIMITS_ENABLED:bool = os.getenv('RATE_LIMITS_ENABLED', 'False') == 'True'
         # Rate limiting period should be an int corresponding to the number of minutes
-        RATE_LIMITS_MAX_REQUESTS:int = int(os.getenv('RATE_LIMITS_MAX_REQUESTS', 15))
-        RATE_LIMITS_PERIOD: timedelta = timedelta(minutes=1)  # First we set a default value
+        RATE_LIMITS_MAX_REQUESTS: int = int(os.getenv('RATE_LIMITS_MAX_REQUESTS', 15))
+        RATE_LIMITS_PERIOD: str | int | timedelta = timedelta(minutes=1)  # First we set a default value
 
         @field_validator('RATE_LIMITS_PERIOD')
         def set_rate_limits_period(cls, v):
