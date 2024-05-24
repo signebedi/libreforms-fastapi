@@ -824,7 +824,7 @@ class ManageTinyDB(ManageDocumentDB):
         import pandas as pd
         df = pd.DataFrame(documents)
 
-        # Drpo the journal if exclude_journal is passed (this is the default behavior) 
+        # Drop the journal if exclude_journal is passed (this is the default behavior) 
         if exclude_journal:
             df = df.drop("__metadata__journal", axis=1)
 

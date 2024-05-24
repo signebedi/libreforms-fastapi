@@ -24,6 +24,9 @@ libreformsctl uvicorn --environment production
 libreformsctl nginx production # Optional if you want a reverse proxy 
 ```
 
+#### Troubleshooting errors
+
+You may sometimes run into inexplicable runtime errors. These often result from permission issues on the filesystem. When in doubt, try running the following command as root.
 
 
 #### Running in Docker
