@@ -1,0 +1,181 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+{{ config.SITE_NAME }} — Site Configuration
+{% endblock %}
+
+{% block content %}
+<h1>
+    Site Configuration
+    <sup title="This is an admin page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star-fill" viewBox="0 0 16 16">
+            <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
+        </svg>
+    </sup>
+</h1>
+<hr>
+
+<form id="siteConfigForm">
+    <!-- Text input for SITE_NAME -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-group">
+            <label for="siteName">Site Name</label>
+            <input type="text" class="form-control" id="siteName" value="{{ config.SITE_NAME }}">
+        </div>
+    </fieldset>
+
+
+    <!-- Text input for SITE_SOURCE_URL -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-group">
+            <label for="siteSourceUrl">Site Source URL</label>
+            <input type="text" class="form-control" id="siteSourceUrl" value="{{ config.SITE_SOURCE_URL }}">
+        </div>
+    </fieldset>
+
+    <!-- Checkbox for OTHER_PROFILES_ENABLED -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="otherProfilesEnabled" id="otherProfilesEnabled" onchange="updateLabel(this, 'Viewing other profiles allowed', 'Viewing other profiles disabled')" {% if config.OTHER_PROFILES_ENABLED %}checked{% endif %}>
+            <label class="form-check-label" for="otherProfilesEnabled">Allow viewing other profiles</label>
+        </div>
+    </fieldset>
+
+    <!-- Checkbox for SEARCH_BAR_ENABLED -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="searchBarEnabled" id="searchBarEnabled" onchange="updateLabel(this, 'Search bar enabled', 'Search bar disabled')" {% if config.SEARCH_BAR_ENABLED %}checked{% endif %}>
+            <label class="form-check-label" for="searchBarEnabled">Enable search bar</label>
+        </div>
+    </fieldset>
+
+    <!-- Checkbox for DISABLE_FOOTER -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="disableFooter" id="disableFooter" onchange="updateLabel(this, 'Footer disabled', 'Footer enabled')" {% if config.DISABLE_FOOTER %}checked{% endif %}>
+            <label class="form-check-label" for="disableFooter">Disable footer</label>
+        </div>
+    </fieldset>
+
+    <!-- Checkbox for DOCS_ENABLED -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="docsEnabled" id="docsEnabled" onchange="updateLabel(this, 'Documentation enabled', 'Documentation disabled')" {% if config.DOCS_ENABLED %}checked{% endif %}>
+            <label class="form-check-label" for="docsEnabled">Enable documentation</label>
+        </div>
+    </fieldset>
+
+    <!-- Checkbox for COLLECT_USAGE_STATISTICS -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="collectUsageStatistics" id="collectUsageStatistics" onchange="updateLabel(this, 'Usage statistics collected', 'Usage statistics not collected')" {% if config.COLLECT_USAGE_STATISTICS %}checked{% endif %}>
+            <label class="form-check-label" for="collectUsageStatistics">Collect usage statistics</label>
+        </div>
+    </fieldset>
+
+    <!-- Checkbox for DISABLE_NEW_USERS -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="disableNewUsers" id="disableNewUsers" onchange="updateLabel(this, 'New user registration disabled', 'New user registration enabled')" {% if config.DISABLE_NEW_USERS %}checked{% endif %}>
+            <label class="form-check-label" for="disableNewUsers">Disable new user registration</label>
+        </div>
+    </fieldset>
+
+    <!-- Checkbox for RATE_LIMITS_ENABLED -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" name="rateLimitsEnabled" id="rateLimitsEnabled" onchange="updateLabel(this, 'Rate limits enabled', 'Rate limits disabled')" {% if config.RATE_LIMITS_ENABLED %}checked{% endif %}>
+            <label class="form-check-label" for="rateLimitsEnabled">Enable rate limits</label>
+        </div>
+    </fieldset>
+
+    <!-- Numerical input for RATE_LIMITS_MAX_REQUESTS -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-group">
+            <label for="rateLimitsMaxRequests">Rate Limits - Max Requests</label>
+            <input type="number" class="form-control" id="rateLimitsMaxRequests" value="{{ config.RATE_LIMITS_MAX_REQUESTS }}">
+        </div>
+    </fieldset>
+
+
+    <!-- Numeric input for RATE_LIMITS_PERIOD -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-group">
+            <label for="rateLimitsPeriod">Rate Limits Period (minutes)</label>
+            <input type="number" class="form-control" id="rateLimitsPeriod" value="{{ config.RATE_LIMITS_PERIOD.total_seconds() // 60 }}">
+        </div>
+    </fieldset>
+
+
+    <!-- Numerical input for MAX_LOGIN_ATTEMPTS -->
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <div class="form-group">
+            <label for="maxLoginAttempts">Max Login Attempts</label>
+            <input type="number" class="form-control" id="maxLoginAttempts" value="{{ config.MAX_LOGIN_ATTEMPTS | round }}">
+        </div>
+    </fieldset>
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="submit" class="btn btn-primary" id="updateSiteButton">Update Site Config</button>
+    </fieldset>
+
+</form>
+{% endblock %}
+
+{% block scripts %}
+<script>
+
+function updateLabel(checkbox, enabledText, disabledText) {
+    var label = checkbox.nextElementSibling;
+    label.textContent = checkbox.checked ? enabledText : disabledText;
+}
+
+$(document).ready(function() {
+    $('#siteConfigForm').submit(function(event) {
+        event.preventDefault();
+        var formData = {
+            "content": {
+                "SITE_NAME": $('#siteName').val(),
+                "SITE_SOURCE_URL": $('#siteSourceUrl').val(),
+                "OTHER_PROFILES_ENABLED": $('#otherProfilesEnabled').is(':checked'),
+                "SEARCH_BAR_ENABLED": $('#searchBarEnabled').is(':checked'),
+                "DISABLE_FOOTER": $('#disableFooter').is(':checked'),
+                "DOCS_ENABLED": $('#docsEnabled').is(':checked'),
+                "RATE_LIMITS_ENABLED": $('#rateLimitsEnabled').is(':checked'),
+                "RATE_LIMITS_MAX_REQUESTS": parseInt($('#rateLimitsMaxRequests').val(), 10),
+                "MAX_LOGIN_ATTEMPTS": parseInt($('#maxLoginAttempts').val(), 10),
+                "COLLECT_USAGE_STATISTICS": $('#collectUsageStatistics').is(':checked'), 
+                "DISABLE_NEW_USERS": $('#disableNewUsers').is(':checked'), 
+                "RATE_LIMITS_PERIOD": parseInt($('#rateLimitsPeriod').val(), 10) * 60
+            }
+        };
+        var apiKey = "{{ request.user.api_key }}"; 
+
+        $.ajax({
+            url: `/api/admin/update_site_config`,
+            type: 'POST',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            data: JSON.stringify(formData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                flashMessage("Successfully updated site configuration", "success");
+            },
+            error: function(xhr) {
+                console.error('Operation failed', xhr.responseText);
+                flashMessage(xhr.responseText, 'warning');
+            }
+        });
+    });
+
+
+    // Initialize label texts based on current checkbox states
+    $('#siteConfigForm input[type="checkbox"]').each(function() {
+        this.dispatchEvent(new Event('change'));
+    });
+});
+
+</script>
+{% endblock %}

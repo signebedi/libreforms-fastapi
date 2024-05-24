@@ -28,6 +28,10 @@ libreformsctl nginx production # Optional if you want a reverse proxy
 
 You may sometimes run into inexplicable runtime errors. These often result from permission issues on the filesystem. When in doubt, try running the following command as root.
 
+```bash
+chown -R fastapi:fastapi /opt/libreforms_fastapi
+```
+
 
 #### Running in Docker
 

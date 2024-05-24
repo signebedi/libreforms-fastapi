@@ -3773,12 +3773,6 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request, co
 
 
 
-# Delete form
-    # @app.get("/ui/form/delete/{form_name}", include_in_schema=False)
-    # async def ui_form_delete():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
-
 # Approve form
     # @app.get("/ui/form/approve/{form_name}", include_in_schema=False)
     # async def ui_form_approve():
@@ -4173,22 +4167,22 @@ async def ui_admin_form_config_lock(
 
 
 # Edit site config
-# @app.get("/ui/admin/config_site", response_class=HTMLResponse, include_in_schema=False)
-# @requires(['admin'], status_code=404)
-# async def ui_admin_config_site(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
-#     if not config.UI_ENABLED:
-#         raise HTTPException(status_code=404, detail="This page does not exist")
+@app.get("/ui/admin/config_site", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_config_site(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
-#     if not request.user.site_admin:
-#         raise HTTPException(status_code=404, detail="This page does not exist")
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
-#     return templates.TemplateResponse(
-#         request=request, 
-#         name="admin_config_site.html.jinja", 
-#         context={
-#             **build_ui_context(),
-#         }
-#     )
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_config_site.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
 
 
 # Edit relational database config
@@ -4371,18 +4365,6 @@ async def ui_admin_log(request: Request, config = Depends(get_config_depends),
             **build_ui_context(),
         }
     )
-
-
-
-# Site Config
-
-# SMTP Config
-
-# Database Config
-
-# Site Reload
-
-# Edit form config
 
 # Manage groups
 @app.get("/ui/admin/manage_groups", response_class=HTMLResponse, include_in_schema=False)
