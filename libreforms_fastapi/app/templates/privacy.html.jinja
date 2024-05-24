@@ -8,7 +8,7 @@
 {% block content %}
 <h1>Privacy</h1>
 
-{{ config['PRIVACY_MESSAGE'] | safe }}
+{{ render_markdown_content(config['PRIVACY_MESSAGE']) | safe }}
 
 <p>By continuing to use this site, you agree to abide by the terms of the privacy policy.</p>
 {% endblock %}

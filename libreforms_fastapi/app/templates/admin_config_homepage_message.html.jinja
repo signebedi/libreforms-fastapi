@@ -53,7 +53,7 @@ require(['vs/editor/editor.main'], function() {
 
     var editor = monaco.editor.create(document.getElementById('editor'), {
         value: "{{ config['HOMEPAGE_MESSAGE'] | replace('\n', '\\n') | replace('\"', '\\\"') | safe }}",
-        language: 'html',
+        language: 'markdown',
         wordWrap: 'on',
         theme: getMonacoTheme()
     });

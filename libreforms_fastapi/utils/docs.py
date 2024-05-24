@@ -150,3 +150,29 @@ def write_docs(docs_path, content, scrub_unsafe=False):
         # print(f"Document written to: {docs_path}")
     
     return True
+
+
+
+def render_markdown_content(
+    markdown_str:str, 
+    scrub_unsafe:bool = True, 
+):
+    """
+    Render markdown strings as HTML
+
+    Args:
+        markdown_str (str): Markdown text to be rendered as HTML.
+        scrub_unsafe (bool): If True, scrub unsafe HTML patterns from the content.
+    
+    """
+    try:
+
+        if scrub_unsafe:
+            markdown_str = escape_unsafe_html(markdown_str)
+        markdown_str = markdown.markdown(markdown_str)
+
+        return markdown_str
+
+    except Exception as e:
+        raise e
+    

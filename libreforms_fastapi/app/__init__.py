@@ -117,6 +117,7 @@ from libreforms_fastapi.utils.pydantic_models import (
 from libreforms_fastapi.utils.docs import (
     get_docs,
     write_docs,
+    render_markdown_content,
 )
 
 from libreforms_fastapi.utils.custom_tinydb import CustomEncoder
@@ -149,7 +150,6 @@ with get_config_context() as config:
 
     if config.DEBUG:
         print(config.model_dump())
-    print(config.model_dump())
 
     # Run our assumptions checks defined in
     # libreforms_fastapi.utis.scripts
@@ -3495,6 +3495,7 @@ def build_ui_context():
     kwargs["version"] = __version__
     kwargs["available_forms"] = get_form_names(config_path=config.FORM_CONFIG_PATH)
     kwargs["current_year"] = datetime.now().year
+    kwargs["render_markdown_content"] = render_markdown_content
 
     return kwargs
 

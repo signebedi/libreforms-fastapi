@@ -72,7 +72,7 @@ def get_config(env):
         SITE_SOURCE_URL:str = os.getenv('SITE_SOURCE_URL', 'https://github.com/signebedi/libreforms-fastapi')
 
 
-        HOMEPAGE_MESSAGE:str | Markup = os.getenv('HOMEPAGE_MESSAGE', '<p>Welcome to <code>libreforms-fastapi</code>, an open-source form management application based on the <a href="https://github.com/libreForms/spec">libreForms API</a> and built using FastAPI.</p>')
+        HOMEPAGE_MESSAGE:str | Markup = os.getenv('HOMEPAGE_MESSAGE', 'Welcome to `libreforms-fastapi`, an open-source form management application based on the [libreForms API](https://github.com/libreForms/spec) and built using FastAPI.')
 
 
         # @field_validator('HOMEPAGE_MESSAGE')

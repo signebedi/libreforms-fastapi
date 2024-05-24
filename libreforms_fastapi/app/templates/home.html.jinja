@@ -8,7 +8,7 @@
 {% block content %}
 <h1>Home</h1>
 
-{{ config['HOMEPAGE_MESSAGE'] | safe }}
+{{ render_markdown_content(config['HOMEPAGE_MESSAGE']) | safe }}
 
 
 {% endblock %}
