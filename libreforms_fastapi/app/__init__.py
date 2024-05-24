@@ -142,7 +142,7 @@ def get_config_depends():
     return get_config(_env)
 
 
-def get_mailer(config=get_config_depends()):
+def get_mailer(config=get_config(_env)):
 
     # Instantiate the Mailer object
     mailer = Mailer(
@@ -420,18 +420,6 @@ with get_config_context() as config:
             logger.info("Default signature role already exists")
 
 
-    # Initialize the document database
-    doc_db = get_document_database(
-        form_names_callable=get_form_names,
-        form_config_path=config.FORM_CONFIG_PATH,
-        timezone=config.TIMEZONE, 
-        env=config.ENVIRONMENT, 
-        use_mongodb=config.MONGODB_ENABLED, 
-        mongodb_uri=config.MONGODB_URI
-    )
-
-    logger.info('Document Database has been initialized.')
-
 
 # Here we define an API key header for the api view functions.
 X_API_KEY = APIKeyHeader(name="X-API-Key")
@@ -466,6 +454,20 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
             status_code=401,
             detail="API key expired"
         )
+
+def get_doc_db(config=get_config(_env)):
+    # Initialize the document database
+    doc_db = get_document_database(
+        form_names_callable=get_form_names,
+        form_config_path=config.FORM_CONFIG_PATH,
+        timezone=config.TIMEZONE, 
+        env=config.ENVIRONMENT, 
+        use_mongodb=config.MONGODB_ENABLED, 
+        mongodb_uri=config.MONGODB_URI
+    )
+
+    return doc_db
+
 
 def get_db():
     db = SessionLocal()
@@ -592,6 +594,7 @@ async def api_form_create(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY), 
     body: Dict = Body(...)
@@ -694,7 +697,8 @@ async def api_form_read_one(
     background_tasks: BackgroundTasks, 
     request: Request, 
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -765,6 +769,7 @@ async def api_form_read_all(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -833,7 +838,8 @@ async def api_form_update(
     background_tasks: BackgroundTasks, 
     request: Request, 
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),  
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),  
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY), 
     body: Dict = Body(...)
@@ -954,6 +960,7 @@ async def api_form_delete(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
@@ -1049,6 +1056,7 @@ async def api_form_restore(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
@@ -1146,6 +1154,7 @@ async def api_form_search(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
     search_term: str = Query(None, title="Search Term")
@@ -1215,6 +1224,7 @@ async def api_form_search_all(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
     search_term: str = Query(None, title="Search Term")
@@ -1285,6 +1295,7 @@ async def api_form_sign(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
 ):
@@ -1392,6 +1403,7 @@ async def api_form_sign(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
 ):
@@ -1504,6 +1516,7 @@ async def api_validate_signatures(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
 ):
@@ -1605,7 +1618,8 @@ async def api_auth_create(
     background_tasks: BackgroundTasks, 
     request: Request, 
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),  
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),  
     session: SessionLocal = Depends(get_db)
 ):
 
@@ -1723,7 +1737,8 @@ async def api_auth_change_password(
     background_tasks: BackgroundTasks, 
     request: Request, 
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),  
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),  
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
@@ -1823,7 +1838,8 @@ async def api_auth_get(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -1918,7 +1934,8 @@ async def api_auth_get(
 #     background_tasks: BackgroundTasks, 
 #     request: Request, 
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),  
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),  
 #     session: SessionLocal = Depends(get_db)
 # ):
 #     pass
@@ -1944,7 +1961,8 @@ async def api_auth_login(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db),
 ):
 
@@ -2050,7 +2068,8 @@ async def api_auth_refresh(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db),
 ):
     """
@@ -2142,7 +2161,8 @@ async def api_auth_help(
     background_tasks: BackgroundTasks,
     help_request: HelpRequest,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2223,7 +2243,8 @@ async def api_admin_get_users(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2273,7 +2294,8 @@ async def api_admin_create_user(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2366,7 +2388,8 @@ async def api_admin_update_user(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2420,7 +2443,8 @@ async def api_admin_modify_user(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2496,7 +2520,8 @@ async def api_admin_get_group(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2546,7 +2571,8 @@ async def api_admin_get_groups(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2595,7 +2621,8 @@ async def api_admin_get_documents(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2648,7 +2675,8 @@ async def api_admin_create_group(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2712,7 +2740,8 @@ async def api_admin_update_group(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY),
 ):
@@ -2777,7 +2806,8 @@ async def api_admin_delete_group(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2831,7 +2861,8 @@ async def api_admin_relationship_type(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2897,7 +2928,8 @@ async def api_admin_get_relationship_types(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -2946,7 +2978,8 @@ async def api_admin_update_relationship_type(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY),
 ):
@@ -3021,7 +3054,8 @@ async def api_admin_delete_relationship_type(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3077,7 +3111,8 @@ async def api_admin_create_user_relationship(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3164,7 +3199,8 @@ async def api_admin_get_user_relationships(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3215,7 +3251,8 @@ async def api_admin_delete_user_relationship(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3289,7 +3326,8 @@ async def api_admin_edit_docs(
     background_tasks: BackgroundTasks,
     docs: DocsEditRequest,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3346,7 +3384,8 @@ async def api_admin_get_form_config(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3396,6 +3435,7 @@ async def api_admin_write_form_config(
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3456,6 +3496,7 @@ async def api_admin_update_site_config(
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
@@ -3526,7 +3567,8 @@ def build_ui_context():
 @app.get("/ui/form/create/{form_name}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_form_create(form_name:str, request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3552,7 +3594,8 @@ async def ui_form_create(form_name:str, request: Request, config = Depends(get_c
 @app.get("/ui/form/read_one/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_form_read_one(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3588,7 +3631,8 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request, con
 @app.get("/ui/form/read_all", include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_form_read_all(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3605,7 +3649,8 @@ async def ui_form_read_all(request: Request, config = Depends(get_config_depends
 @app.get("/ui/form/update/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_form_update(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3630,7 +3675,8 @@ async def ui_form_update(form_name:str, document_id:str, request: Request, confi
 @app.get("/ui/form/duplicate/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_form_duplicate(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3674,6 +3720,7 @@ async def ui_admin_form_search(
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
     search_term: str = Query(None, title="Search Term"),
 ):
     if not config.UI_ENABLED:
@@ -3698,7 +3745,8 @@ async def ui_admin_form_search(
 
 @app.get("/", response_class=RedirectResponse, include_in_schema=False)
 async def ui_redirect_to_home(response: Response, request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3709,7 +3757,8 @@ async def ui_redirect_to_home(response: Response, request: Request, config = Dep
 # Homepage
 @app.get("/ui/home", response_class=HTMLResponse, include_in_schema=False)
 async def ui_home(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3724,7 +3773,8 @@ async def ui_home(request: Request, config = Depends(get_config_depends),
 # Privacy policy
 @app.get("/ui/privacy", response_class=HTMLResponse, include_in_schema=False)
 async def ui_privacy(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3739,7 +3789,8 @@ async def ui_privacy(request: Request, config = Depends(get_config_depends),
 @app.get("/ui/help", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_auth_help(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3758,7 +3809,8 @@ async def ui_auth_help(request: Request, config = Depends(get_config_depends),
 @app.get("/ui/docs", response_class=HTMLResponse, include_in_schema=False)
 # @requires(['authenticated'], status_code=404)
 async def ui_docs(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3784,7 +3836,8 @@ async def ui_docs(request: Request, config = Depends(get_config_depends),
 @app.get("/ui/auth/login", response_class=HTMLResponse, include_in_schema=False)
 @requires(['unauthenticated'], status_code=404)
 async def ui_auth_login(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3799,7 +3852,8 @@ async def ui_auth_login(request: Request, config = Depends(get_config_depends),
 @app.get("/ui/auth/logout", response_class=RedirectResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 def ui_auth_logout(response: Response, request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
 
     # Redirect to the homepage
     response = RedirectResponse(request.url_for("ui_home"), status_code=303)
@@ -3814,7 +3868,8 @@ def ui_auth_logout(response: Response, request: Request, config = Depends(get_co
 @app.get("/ui/auth/create", response_class=HTMLResponse, include_in_schema=False)
 @requires(['unauthenticated'], status_code=404)
 async def ui_auth_create(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3847,7 +3902,8 @@ async def ui_auth_create(request: Request, config = Depends(get_config_depends),
 @app.get("/ui/auth/change_password", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 async def ui_auth_change_password(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3863,7 +3919,8 @@ async def ui_auth_change_password(request: Request, config = Depends(get_config_
 @app.get("/ui/auth/profile/", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], status_code=404)
 def ui_auth_profile(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
 
     return templates.TemplateResponse(
         request=request, 
@@ -3879,7 +3936,8 @@ def ui_auth_profile_other(
     id: int, 
     request: Request, 
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
 ):
 
     # If the user is requesting their own profile, redirect to the default profile view.
@@ -3914,7 +3972,8 @@ def ui_auth_profile_other(
 @app.get("/ui/admin/edit_docs", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_edit_docs(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3945,7 +4004,8 @@ async def ui_admin_edit_docs(request: Request, config = Depends(get_config_depen
 @app.get("/ui/admin/write_form_config", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_write_form_config(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -3976,7 +4036,8 @@ async def ui_admin_write_form_config(request: Request, config = Depends(get_conf
 @app.get("/ui/admin/config_privacy", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_config_privacy(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -3997,7 +4058,8 @@ async def ui_admin_config_privacy(request: Request, config = Depends(get_config_
 @app.get("/ui/admin/config_homepage_message", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_config_homepage_message(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4017,7 +4079,8 @@ async def ui_admin_config_homepage_message(request: Request, config = Depends(ge
 @app.get("/ui/admin/form_config_lock", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_form_config_lock(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4036,7 +4099,7 @@ async def ui_admin_form_config_lock(request: Request, config = Depends(get_confi
 # Edit site config
 # @app.get("/ui/admin/config_site", response_class=HTMLResponse, include_in_schema=False)
 # @requires(['admin'], status_code=404)
-# async def ui_admin_config_site(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer),):
+# async def ui_admin_config_site(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
 #     if not config.UI_ENABLED:
 #         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4055,7 +4118,7 @@ async def ui_admin_form_config_lock(request: Request, config = Depends(get_confi
 # Edit relational database config
 # @app.get("/ui/admin/config_relational_db", response_class=HTMLResponse, include_in_schema=False)
 # @requires(['admin'], status_code=404)
-# async def ui_admin_config_relational_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer),):
+# async def ui_admin_config_relational_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
 #     if not config.UI_ENABLED:
 #         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4074,7 +4137,7 @@ async def ui_admin_form_config_lock(request: Request, config = Depends(get_confi
 # Edit document database config
 # @app.get("/ui/admin/config_document_db", response_class=HTMLResponse, include_in_schema=False)
 # @requires(['admin'], status_code=404)
-# async def ui_admin_config_document_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer),):
+# async def ui_admin_config_document_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
 #     if not config.UI_ENABLED:
 #         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4092,7 +4155,7 @@ async def ui_admin_form_config_lock(request: Request, config = Depends(get_confi
 # Edit smtp config
 # @app.get("/ui/admin/config_smtp", response_class=HTMLResponse, include_in_schema=False)
 # @requires(['admin'], status_code=404)
-# async def ui_admin_config_smtp(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer),):
+# async def ui_admin_config_smtp(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
 #     if not config.UI_ENABLED:
 #         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4113,7 +4176,7 @@ async def ui_admin_form_config_lock(request: Request, config = Depends(get_confi
 # Schedule application reboot
 # @app.get("/ui/admin/reload_application", response_class=HTMLResponse, include_in_schema=False)
 # @requires(['admin'], status_code=404)
-# async def ui_admin_reload_application(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer),):
+# async def ui_admin_reload_application(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
 #     if not config.UI_ENABLED:
 #         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4133,7 +4196,8 @@ async def ui_admin_form_config_lock(request: Request, config = Depends(get_confi
 @app.get("/ui/admin/manage_users", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_manage_users(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4153,7 +4217,8 @@ async def ui_admin_manage_users(request: Request, config = Depends(get_config_de
 @app.get("/ui/admin/create_user", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_create_user(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4176,7 +4241,8 @@ async def ui_admin_create_user(request: Request, config = Depends(get_config_dep
 @app.get("/ui/admin/update_user/{id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_update_user(id: str, request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4204,7 +4270,8 @@ async def ui_admin_update_user(id: str, request: Request, config = Depends(get_c
 @app.get("/ui/admin/log", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_log(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4245,7 +4312,8 @@ async def ui_admin_log(request: Request, config = Depends(get_config_depends),
 @app.get("/ui/admin/manage_groups", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_manage_groups(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4264,7 +4332,8 @@ async def ui_admin_manage_groups(request: Request, config = Depends(get_config_d
 @app.get("/ui/admin/create_group", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_create_group(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4298,7 +4367,8 @@ async def ui_admin_create_group(request: Request, config = Depends(get_config_de
 @app.get("/ui/admin/update_group/{id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_update_group(id:str, request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4341,7 +4411,8 @@ async def ui_admin_update_group(id:str, request: Request, config = Depends(get_c
 @app.get("/ui/admin/create_relationship_type", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_create_relationship_type(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4361,7 +4432,8 @@ async def ui_admin_create_relationship_type(request: Request, config = Depends(g
 @app.get("/ui/admin/manage_relationship_types", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_manage_relationship_types(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4381,7 +4453,8 @@ async def ui_admin_manage_relationship_types(request: Request, config = Depends(
 @app.get("/ui/admin/update_relationship_type/{id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_update_group(id:str, request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4409,7 +4482,8 @@ async def ui_admin_update_group(id:str, request: Request, config = Depends(get_c
 @app.get("/ui/admin/create_user_relationship", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_create_user_relationship(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4434,7 +4508,8 @@ async def ui_admin_create_user_relationship(request: Request, config = Depends(g
 @app.get("/ui/admin/manage_user_relationships", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_manage_user_relationships(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4453,7 +4528,8 @@ async def ui_admin_manage_user_relationships(request: Request, config = Depends(
 @app.get("/ui/admin/manage_documents", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], status_code=404)
 async def ui_admin_manage_documents(request: Request, config = Depends(get_config_depends),
-    mailer = Depends(get_mailer),):
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
