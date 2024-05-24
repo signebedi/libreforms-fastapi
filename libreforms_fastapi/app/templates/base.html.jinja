@@ -377,21 +377,21 @@
             if (!response.ok) {
                 throw new Error('Network response was not ok ' + response.statusText);
             }
-            return response.blob();
+            // Retrieve the filename from the Content-Disposition header
+            const filename = response.headers.get('Content-Disposition').split('filename=')[1].replace(/\"/g, '');
+            return response.blob().then(blob => ({ blob, filename }));
         })
-        .then(blob => {
-
+        .then(({ blob, filename }) => {
             // Create a link and set the URL as the download link for the blob
             const url = window.URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.style.display = 'none';
             a.href = url;
-            // Use the form name to name the downloaded file
-            a.download = `${formName}.xlsx`;
+            a.download = filename || `${formName}.xlsx`;  // Use the API provided filename, fallback to formName if unavailable
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
-            flashMessage("Successfully exported form", AlertCategories.SUCCESS);
+            setFlashMessage("Successfully exported form", AlertCategories.SUCCESS);
         })
         .catch(error => {
             console.error('Failed to export form', error);

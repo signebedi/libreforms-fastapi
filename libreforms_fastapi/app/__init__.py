@@ -895,7 +895,6 @@ async def api_form_export_excel(
     if not document_path:
         raise HTTPException(status_code=404, detail=f"Requested data could not be found")
 
-
     file_name = Path(document_path).name
 
     return FileResponse(path=document_path, filename=file_name, media_type='application/octet-stream')
