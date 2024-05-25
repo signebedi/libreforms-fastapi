@@ -36,6 +36,28 @@ default_tz = ZoneInfo("America/New_York")
 # Instantiatate a declarative base
 Base = declarative_base()
 
+
+def test_relational_database_connection(sqlalchemy_database_uri, engine=None):
+
+    if not engine:
+        engine = create_engine(
+            sqlalchemy_database_uri,
+            connect_args={"check_same_thread": False},
+            isolation_level="READ UNCOMMITTED", 
+        )
+
+    try:
+        # Try to execute a simple SELECT statement
+        with engine.connect() as connection:
+            result = connection.execute("SELECT 1")
+            # for row in result:
+            #     print("Connection test successful:", row)
+        return True
+    except Exception as e:
+        print("Connection test failed:", str(e))
+        return False
+
+
 def get_sqlalchemy_models(
     sqlalchemy_database_uri: str,
     set_timezone: ZoneInfo = default_tz,

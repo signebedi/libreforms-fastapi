@@ -68,7 +68,11 @@ from libreforms_fastapi.utils.config import (
     validate_and_write_configs,
 )
 
-from libreforms_fastapi.utils.sqlalchemy_models import Base, get_sqlalchemy_models
+from libreforms_fastapi.utils.sqlalchemy_models import (
+    Base, 
+    get_sqlalchemy_models,
+    test_relational_database_connection,
+)
 
 from libreforms_fastapi.utils.scripts import (
     check_configuration_assumptions,
@@ -460,7 +464,6 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
         )
 
 def get_doc_db():
-
 
     with get_config_context() as config:
 
@@ -3827,7 +3830,7 @@ async def api_admin_test_smtp(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params={"test_result": smtp_test_result},
+            query_params={"test_result": "success" if smtp_test_result else "failure"},
         )
 
     # Respond with the result of the SMTP test
@@ -3840,6 +3843,52 @@ async def api_admin_test_smtp(
     )
 
 
+@app.get(
+    "/api/admin/test_relational_database", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_test_relational_database(
+    request: Request, 
+    background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Tests relational database connectivity and authentication to ensure that services can operate correctly.
+    Requires site admin permissions and logs the action for audit purposes.
+    """
+
+    # Authenticate the requesting user
+    user = session.query(User).filter_by(api_key=key).first()
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    # Perform the database connection test
+    db_test_result = test_relational_database_connection(config.SQLALCHEMY_DATABASE_URI)
+
+    # Log the test attempt
+    if config.COLLECT_USAGE_STATISTICS:
+        endpoint = request.url.path
+        remote_addr = request.client.host
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"test_result": "success" if db_test_result else "failure"},
+        )
+
+    # Respond with the result of the SMTP test
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success" if db_test_result else "failure",
+            "message": "Relational database connection successful" if db_test_result else "Relational database connection failed"
+        },
+    )
 
 
 ##########################
