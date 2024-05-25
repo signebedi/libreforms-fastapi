@@ -340,6 +340,17 @@ class ManageTinyDB(ManageDocumentDB):
             # self.databases[form_name] = TinyDB(self._get_db_path(form_name))
             self.databases[form_name] = CustomTinyDB(self._get_db_path(form_name), cls=CustomEncoder)
 
+    def _test_connection(self) -> bool:
+
+        try:
+            self._initialize_database_collections()
+
+            return True
+
+        except:
+            return False
+
+
     def _get_db_path(self, form_name:str):
         """Constructs a file path for the given form's database."""
         return os.path.join(self.db_path, f"{form_name}.json")

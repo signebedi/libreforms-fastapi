@@ -3904,6 +3904,69 @@ async def api_admin_test_relational_database(
 
 
 
+@app.post(
+    "/api/admin/test_document_database", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_test_document_database(
+    request: Request, 
+    _site_config: SiteConfig,
+    background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Tests document database connectivity and authentication to ensure that services can operate correctly.
+    Requires site admin permissions and logs the action for audit purposes.
+    """
+
+    # Authenticate the requesting user
+    user = session.query(User).filter_by(api_key=key).first()
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    # print("\n\n\n", _site_config.model_dump())
+
+
+    # Initialize the document database
+    _doc_db = get_document_database(
+        form_names_callable=get_form_names,
+        form_config_path=config.FORM_CONFIG_PATH,
+        timezone=config.TIMEZONE, 
+        env=config.ENVIRONMENT, 
+        use_mongodb=_site_config.content['MONGODB_ENABLED'], 
+        mongodb_uri=_site_config.content['MONGODB_URI'],
+        use_excel=config.EXCEL_EXPORT_ENABLED,
+    )
+
+    # Perform the database connection test
+    db_test_result = _doc_db._test_connection()
+
+    # Log the test attempt
+    if config.COLLECT_USAGE_STATISTICS:
+        endpoint = request.url.path
+        remote_addr = request.client.host
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"test_result": "success" if db_test_result else "failure"},
+        )
+
+    # Respond with the result of the SMTP test
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success" if db_test_result else "failure",
+            "message": "Document database connection successful" if db_test_result else "Document database connection failed"
+        },
+    )
+
+
 
 
 ##########################

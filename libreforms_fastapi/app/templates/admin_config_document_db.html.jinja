@@ -37,6 +37,7 @@
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <button type="submit" class="btn btn-primary" id="updateSiteButton">Update</button>
+        <button type="button" class="btn btn-secondary" id="testButton">Test Connection</button>
     </fieldset>
 
 </form>
@@ -51,6 +52,9 @@ function updateLabel(checkbox, enabledText, disabledText) {
 }
 
 $(document).ready(function() {
+
+    var apiKey = "{{ request.user.api_key }}"; 
+
     $('#siteConfigForm').submit(function(event) {
         event.preventDefault();
         var formData = {
@@ -59,7 +63,6 @@ $(document).ready(function() {
                 "MONGODB_URI": $('#mongodbUri').val()
             }
         };
-        var apiKey = "{{ request.user.api_key }}"; 
 
         $.ajax({
             url: `/api/admin/update_site_config`,
@@ -80,6 +83,39 @@ $(document).ready(function() {
         });
     });
 
+
+    // Test button click event
+    $('#testButton').click(function() {
+        event.preventDefault();
+        var formData = {
+            "content": {
+                "MONGODB_ENABLED": $('#mongodbEnabled').is(':checked'),
+                "MONGODB_URI": $('#mongodbUri').val()
+            }
+        };
+
+        $.ajax({
+            url: '/api/admin/test_document_database',
+            type: 'POST',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            data: JSON.stringify(formData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === "success") {
+                    flashMessage("Document Database Connection Successful", "success");
+                } else {
+                    flashMessage("Document Database Connection Failed: " + response.message, "danger");
+                }
+            },
+            error: function(xhr) {
+                console.error('Document Database Test failed', xhr.responseText);
+                flashMessage("Error testing Document Database connection: " + xhr.responseText, 'danger');
+            }
+        });
+    });
 
     // Initialize label texts based on current checkbox states
     $('#siteConfigForm input[type="checkbox"]').each(function() {
