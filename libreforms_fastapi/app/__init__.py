@@ -3795,13 +3795,14 @@ async def api_admin_update_site_config(
     )
 
 
-@app.get(
+@app.post(
     "/api/admin/test_smtp", 
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
 )
 async def api_admin_test_smtp(
     request: Request, 
+    _site_config: SiteConfig,
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
@@ -3818,8 +3819,16 @@ async def api_admin_test_smtp(
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
 
+    # print("\n\n\n", _site_config.model_dump())
+
     # Perform the SMTP connection test
-    smtp_test_result = mailer.test_connection()
+    smtp_test_result = mailer.test_connection(
+        enabled=_site_config.content['SMTP_ENABLED'],
+        mail_server=_site_config.content['SMTP_MAIL_SERVER'],
+        port=_site_config.content['SMTP_PORT'],
+        username=_site_config.content['SMTP_USERNAME'],
+        password=_site_config.content['SMTP_PASSWORD'],
+    )
 
     # Log the SMTP test attempt
     if config.COLLECT_USAGE_STATISTICS:
@@ -3843,13 +3852,14 @@ async def api_admin_test_smtp(
     )
 
 
-@app.get(
+@app.post(
     "/api/admin/test_relational_database", 
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
 )
 async def api_admin_test_relational_database(
     request: Request, 
+    _site_config: SiteConfig,
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
@@ -3866,8 +3876,10 @@ async def api_admin_test_relational_database(
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
 
+    # print("\n\n\n", _site_config.model_dump())
+
     # Perform the database connection test
-    db_test_result = test_relational_database_connection(config.SQLALCHEMY_DATABASE_URI)
+    db_test_result = test_relational_database_connection(_site_config.content['SQLALCHEMY_DATABASE_URI'])
 
     # Log the test attempt
     if config.COLLECT_USAGE_STATISTICS:
@@ -3889,6 +3901,9 @@ async def api_admin_test_relational_database(
             "message": "Relational database connection successful" if db_test_result else "Relational database connection failed"
         },
     )
+
+
+
 
 
 ##########################

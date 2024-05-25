@@ -13,6 +13,7 @@
         </svg>
     </sup>
 </h1>
+<p>You should run "test connection" before saving to avoid breaking the application.</p>
 <hr>
 
 <form id="siteConfigForm">
@@ -27,6 +28,7 @@
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <button type="submit" class="btn btn-primary" id="updateSiteButton">Update</button>
+        <button type="button" class="btn btn-secondary" id="testButton">Test Connection</button>
     </fieldset>
 
 </form>
@@ -41,6 +43,9 @@ function updateLabel(checkbox, enabledText, disabledText) {
 }
 
 $(document).ready(function() {
+
+    var apiKey = "{{ request.user.api_key }}"; 
+
     $('#siteConfigForm').submit(function(event) {
         event.preventDefault();
         var formData = {
@@ -48,7 +53,6 @@ $(document).ready(function() {
                 "SQLALCHEMY_DATABASE_URI": $('#sqlalchemyDatabaseUri').val()
             }
         };
-        var apiKey = "{{ request.user.api_key }}"; 
 
         $.ajax({
             url: `/api/admin/update_site_config`,
@@ -68,6 +72,40 @@ $(document).ready(function() {
             }
         });
     });
+
+
+    // Test button click event
+    $('#testButton').click(function() {
+        event.preventDefault();
+        var formData = {
+            "content": {
+                "SQLALCHEMY_DATABASE_URI": $('#sqlalchemyDatabaseUri').val()
+            }
+        };
+
+        $.ajax({
+            url: '/api/admin/test_relational_database',
+            type: 'POST',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            data: JSON.stringify(formData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                if (response.status === "success") {
+                    flashMessage("Relational Database Connection Successful", "success");
+                } else {
+                    flashMessage("Relational Database Connection Failed: " + response.message, "danger");
+                }
+            },
+            error: function(xhr) {
+                console.error('Relational Database Test failed', xhr.responseText);
+                flashMessage("Error testing Relational Database connection: " + xhr.responseText, 'danger');
+            }
+        });
+    });
+
 
 
     // Initialize label texts based on current checkbox states

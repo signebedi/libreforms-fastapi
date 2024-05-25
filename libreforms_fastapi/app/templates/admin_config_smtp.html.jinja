@@ -13,6 +13,7 @@
         </svg>
     </sup>
 </h1>
+<p>You should run "test connection" before saving to avoid breaking the application.</p>
 <hr>
 
 <form id="siteConfigForm">
@@ -124,12 +125,27 @@ $(document).ready(function() {
 
     // SMTP test button click event
     $('#testSmtpButton').click(function() {
+        event.preventDefault();
+        var formData = {
+            "content": {
+                "SMTP_ENABLED": $('#smtpEnabled').is(':checked'),
+                "SMTP_MAIL_SERVER": $('#smtpMailServer').val(),
+                "SMTP_PORT": parseInt($('#smtpPort').val(), 10),
+                "SMTP_USERNAME": $('#smtpUsername').val(),
+                "SMTP_PASSWORD": $('#smtpPassword').val(),
+                "SMTP_FROM_ADDRESS": $('#smtpFromAddress').val()
+            }
+        };
+
         $.ajax({
             url: '/api/admin/test_smtp',
-            type: 'GET',
+            type: 'POST',
             headers: {
                 'X-API-KEY': apiKey,
             },
+            data: JSON.stringify(formData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
             success: function(response) {
                 if (response.status === "success") {
                     flashMessage("SMTP Connection Successful", "success");

@@ -87,14 +87,28 @@ class Mailer():
             return False
 
 
-    def test_connection(self):
-        if not self.enabled:
+    def test_connection(
+        self, 
+        enabled=None, 
+        mail_server=None, 
+        port=None, 
+        username=None, 
+        password=None
+    ):
+
+        enabled = self.enabled if enabled is None else enabled
+        mail_server = self.mail_server if mail_server is None else mail_server
+        port = self.port if port is None else port
+        username = self.username if username is None else username
+        password = self.password if password is None else password
+
+        if not enabled:
             return False
         
         try:
-            with smtplib.SMTP(self.mail_server, self.port) as server:
+            with smtplib.SMTP(mail_server, port) as server:
                 server.starttls(context=self.context)  # Start TLS encryption
-                server.login(self.username, self.password)  # Attempt to log in to the SMTP server
+                server.login(username, password)  # Attempt to log in to the SMTP server
                 return True  # If login is successful, return True
 
         except Exception as e:

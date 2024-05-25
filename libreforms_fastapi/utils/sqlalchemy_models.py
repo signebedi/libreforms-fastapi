@@ -15,6 +15,7 @@ from sqlalchemy import (
     LargeBinary,
     create_engine,
     UniqueConstraint,
+    text,
 )
 from sqlalchemy.inspection import inspect
 from sqlalchemy.orm import (
@@ -37,25 +38,35 @@ default_tz = ZoneInfo("America/New_York")
 Base = declarative_base()
 
 
-def test_relational_database_connection(sqlalchemy_database_uri, engine=None):
+def test_relational_database_connection(sqlalchemy_database_uri):
+    """
+    Test the connection using the given SQLAlchemy engine.
+    This function tries to open a session and execute a simple SELECT statement.
+    If the connection is live, it will return True, otherwise, it will return False.
+    """
+    
+    engine = create_engine(
+        sqlalchemy_database_uri, 
+        connect_args={"check_same_thread": False} if sqlalchemy_database_uri.startswith("sqlite") else {},
+        isolation_level="READ UNCOMMITTED", 
+        echo=True, 
+        pool_pre_ping=True
+    )
 
-    if not engine:
-        engine = create_engine(
-            sqlalchemy_database_uri,
-            connect_args={"check_same_thread": False},
-            isolation_level="READ UNCOMMITTED", 
-        )
-
+    SessionLocal = sessionmaker(bind=engine)
+    session = SessionLocal()
     try:
-        # Try to execute a simple SELECT statement
-        with engine.connect() as connection:
-            result = connection.execute("SELECT 1")
-            # for row in result:
-            #     print("Connection test successful:", row)
+        # The SELECT 1 will be executed due to pool_pre_ping if the connection is bad it will raise an error.
+        session.execute(text("SELECT 1"))
+        session.commit()
+        print("Connection test successful.")
         return True
     except Exception as e:
-        print("Connection test failed:", str(e))
+        print(f"Connection test failed: {str(e)}")
         return False
+    finally:
+        session.close()
+
 
 
 def get_sqlalchemy_models(
@@ -79,7 +90,7 @@ def get_sqlalchemy_models(
     if not engine:
         engine = create_engine(
             sqlalchemy_database_uri,
-            connect_args={"check_same_thread": False},
+            connect_args={"check_same_thread": False} if sqlalchemy_database_uri.startswith("sqlite") else {},
             # The following prevents caching from breaking our rate limitings system, 
             # see https://stackoverflow.com/a/18225372/13301284 
             isolation_level="READ UNCOMMITTED", 
