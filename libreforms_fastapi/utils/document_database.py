@@ -918,7 +918,9 @@ class ManageTinyDB(ManageDocumentDB):
         document_id:str, 
         limit_users:Union[bool, str]=False, 
         exclude_deleted:bool=True,
-        escape_output:bool=True
+        escape_output:bool=True,
+        to_file:bool=False,
+        file_path:str=os.path.join("instance", "export"),
     ):
         """Retrieves a single entry that matches the search query."""
         self._check_form_exists(form_name)
@@ -937,6 +939,26 @@ class ManageTinyDB(ManageDocumentDB):
         # If we've opted to escape output, then do so here
         if escape_output:
             document['data'] = escape_data_field(document['data'])
+
+        if to_file:
+
+            # Get a file-name-safe timestamp
+            datetime_format = datetime.now(self.timezone).strftime("%Y%m%d%H%M%S")
+
+            # Make the export directory if it does not exist
+            os.makedirs(file_path, exist_ok=True)
+
+            # Concat the file path to the unique file name
+            path_to_file = os.path.join(file_path, f'{form_name}-{document_id}-export-{datetime_format}.json')
+
+            # Write to excel
+
+            with open(path_to_file, "w") as f:
+                f.write(json.dumps(document))
+
+            # Return the file path
+            return path_to_file
+
 
         return document
 

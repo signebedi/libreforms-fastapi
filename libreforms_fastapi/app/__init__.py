@@ -773,6 +773,84 @@ async def api_form_read_one(
     }
 
 
+# export form
+@app.get("/api/form/export/{form_name}/{document_id}/{format}", response_class=FileResponse, dependencies=[Depends(api_key_auth)])
+async def api_form_read_one(
+    form_name: str, 
+    document_id: str, 
+    format: str, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+
+    """
+    Retrieves a specific form document by its name and document ID, provided in the URL.
+    It checks for the form's existence, validates user permissions, fetches the document 
+    from the database, and returns the form as a file after logging the access.
+    """
+    available_formats = ['json']
+
+    if not format in available_formats:
+        raise HTTPException(status_code=404, detail=f"Invalid format. Must choose from {str(available_formats)}")
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    # Here we validate the user groups permit them to see their own forms, which they
+    # should do as a matter of bureaucratic best practice, but might sometimes limit.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_own")
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
+    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_all")
+        limit_query_to = False
+    except Exception as e:
+        limit_query_to = user.username
+
+    document_path = doc_db.get_one_document(
+        form_name=form_name, 
+        document_id=document_id, 
+        limit_users=limit_query_to,
+        to_file=True,
+    )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+
+    if not document_path:
+        raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+    file_name = Path(document_path).name
+
+    return FileResponse(path=document_path, filename=file_name, media_type='application/octet-stream')
+
+
+
+
 # Read all forms
 @app.get("/api/form/read_all/{form_name}", dependencies=[Depends(api_key_auth)])
 async def api_form_read_all(
