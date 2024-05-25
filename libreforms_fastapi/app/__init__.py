@@ -144,17 +144,19 @@ def get_config_depends():
     return get_config(_env)
 
 
-def get_mailer(config=get_config(_env)):
+def get_mailer():
 
-    # Instantiate the Mailer object
-    mailer = Mailer(
-        enabled = config.SMTP_ENABLED,
-        mail_server = config.SMTP_MAIL_SERVER,
-        port = config.SMTP_PORT,
-        username = config.SMTP_USERNAME,
-        password = config.SMTP_PASSWORD,
-        from_address = config.SMTP_FROM_ADDRESS,
-    )
+    with get_config_context() as config:
+
+        # Instantiate the Mailer object
+        mailer = Mailer(
+            enabled = config.SMTP_ENABLED,
+            mail_server = config.SMTP_MAIL_SERVER,
+            port = config.SMTP_PORT,
+            username = config.SMTP_USERNAME,
+            password = config.SMTP_PASSWORD,
+            from_address = config.SMTP_FROM_ADDRESS,
+        )
 
     return mailer
 
@@ -457,17 +459,21 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
             detail="API key expired"
         )
 
-def get_doc_db(config=get_config(_env)):
-    # Initialize the document database
-    doc_db = get_document_database(
-        form_names_callable=get_form_names,
-        form_config_path=config.FORM_CONFIG_PATH,
-        timezone=config.TIMEZONE, 
-        env=config.ENVIRONMENT, 
-        use_mongodb=config.MONGODB_ENABLED, 
-        mongodb_uri=config.MONGODB_URI,
-        use_excel=config.EXCEL_EXPORT_ENABLED,
-    )
+def get_doc_db():
+
+
+    with get_config_context() as config:
+
+        # Initialize the document database
+        doc_db = get_document_database(
+            form_names_callable=get_form_names,
+            form_config_path=config.FORM_CONFIG_PATH,
+            timezone=config.TIMEZONE, 
+            env=config.ENVIRONMENT, 
+            use_mongodb=config.MONGODB_ENABLED, 
+            mongodb_uri=config.MONGODB_URI,
+            use_excel=config.EXCEL_EXPORT_ENABLED,
+        )
 
     return doc_db
 
@@ -3796,7 +3802,7 @@ async def api_admin_test_smtp(
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
-    session: Session = Depends(get_db), 
+    session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
     """

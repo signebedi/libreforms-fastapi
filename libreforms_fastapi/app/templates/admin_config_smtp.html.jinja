@@ -68,7 +68,9 @@
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <button type="submit" class="btn btn-primary" id="updateSiteButton">Update</button>
+        <button type="button" class="btn btn-secondary" id="testSmtpButton">Test SMTP Connection</button>
     </fieldset>
+
 
 </form>
 {% endblock %}
@@ -82,6 +84,9 @@ function updateLabel(checkbox, enabledText, disabledText) {
 }
 
 $(document).ready(function() {
+
+    var apiKey = "{{ request.user.api_key }}"; 
+
     $('#siteConfigForm').submit(function(event) {
         event.preventDefault();
         var formData = {
@@ -94,7 +99,6 @@ $(document).ready(function() {
                 "SMTP_FROM_ADDRESS": $('#smtpFromAddress').val()
             }
         };
-        var apiKey = "{{ request.user.api_key }}"; 
 
         $.ajax({
             url: `/api/admin/update_site_config`,
@@ -111,6 +115,31 @@ $(document).ready(function() {
             error: function(xhr) {
                 console.error('Operation failed', xhr.responseText);
                 flashMessage(xhr.responseText, 'warning');
+            }
+        });
+    });
+
+
+
+
+    // SMTP test button click event
+    $('#testSmtpButton').click(function() {
+        $.ajax({
+            url: '/api/admin/test_smtp',
+            type: 'GET',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            success: function(response) {
+                if (response.status === "success") {
+                    flashMessage("SMTP Connection Successful", "success");
+                } else {
+                    flashMessage("SMTP Connection Failed: " + response.message, "danger");
+                }
+            },
+            error: function(xhr) {
+                console.error('SMTP Test failed', xhr.responseText);
+                flashMessage("Error testing SMTP connection: " + xhr.responseText, 'danger');
             }
         });
     });
