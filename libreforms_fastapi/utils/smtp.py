@@ -85,3 +85,18 @@ class Mailer():
             if logfile: logfile.error(f'could not send an email to {to_address} - {e}')
             
             return False
+
+
+    def test_connection(self):
+        if not self.enabled:
+            return False
+        
+        try:
+            with smtplib.SMTP(self.mail_server, self.port) as server:
+                server.starttls(context=self.context)  # Start TLS encryption
+                server.login(self.username, self.password)  # Attempt to log in to the SMTP server
+                return True  # If login is successful, return True
+
+        except Exception as e:
+            print(f"Connection test failed: {e}")
+            return False  # Return False if there are any exceptions
