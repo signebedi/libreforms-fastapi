@@ -41,96 +41,147 @@
 
     var apiKey = "{{ request.user.api_key }}";
 
-    {# function deleteGroup(id) {
-        $.ajax({
-            url: `/api/admin/delete_group/${id}`,
-            type: 'DELETE',
-            headers: {
-                'X-API-KEY': apiKey,
-            },
-            dataType: 'json',
 
-            success: function(response) {
-                setFlashMessage("Successfully deleted group", AlertCategories.SUCCESS);
-                window.location.reload();
+function deleteForm(formName, documentId) {
+    $.ajax({
+        url: `/api/admin/delete_form/${formName}/${documentId}`,
+        type: 'DELETE',
+        headers: {
+            'X-API-KEY': apiKey,
+        },
+        dataType: 'json',
 
-            },
+        success: function(response) {
+            setFlashMessage("Successfully deleted form", AlertCategories.SUCCESS);
+            window.location.reload();
 
-            error: function(xhr) {
-                // Handle errors
-                console.error('Failed to delete form', xhr.responseText);
-                // Display error message to the user
-                flashMessage(xhr.responseText, 'danger'); 
+        },
+
+        error: function(xhr) {
+            // Handle errors
+            console.error('Failed to delete form', xhr.responseText);
+            // Display error message to the user
+            flashMessage(xhr.responseText, 'danger'); 
+        }
+    });
+}
+
+
+
+function restoreForm(formName, documentId) {
+    $.ajax({
+        url: `/api/admin/restore_form/${formName}/${documentId}`,
+        type: 'PATCH',
+        headers: {
+            'X-API-KEY': apiKey,
+        },
+        dataType: 'json',
+
+        success: function(response) {
+            setFlashMessage("Successfully restored form", AlertCategories.SUCCESS);
+            window.location.reload();
+
+        },
+
+        error: function(xhr) {
+            // Handle errors
+            console.error('Failed to restore form', xhr.responseText);
+            // Display error message to the user
+            flashMessage(xhr.responseText, 'danger'); 
+        }
+    });
+}
+
+
+    $(document).ready(function() {
+
+        function renderTable(documents, tableName) {
+            var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
+            // Define the headers based on the required attributes
+            table += '<th>Record</th><th>Form</th><th>Last Editor</th><th>Last Modified</th><th>Created By</th><th>Created At</th>';
+            table += '</tr></thead><tbody>';
+
+
+
+            // Iterate over the array of users
+            documents.forEach(function(document) {
+
+
+                if ( document['metadata']['is_deleted'] == true ){
+
+                    table += `<tr>
+                        <td title="View document actions" class="nav-item dropdown">
+                            <a style="opacity: 0.6;" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">${document['metadata']['document_id']}</a>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" href="/ui/form/read_one/${document['metadata']['form_name']}/${document['metadata']['document_id']}">View Document</a> 
+                                <a class="dropdown-item" id="deleteLink" onclick="restoreForm('${document['metadata']['form_name']}', '${document['metadata']['document_id']}');" href="#">Restore Form</a>
+
+                            </div>
+                        </td>
+                        <td style="opacity: 0.6;">${document['metadata']['form_name'].replace(/_/g, ' ')}</td>
+                        <td style="opacity: 0.6;">${document['metadata']['last_editor']}</td>
+                        <td style="opacity: 0.6;"><span title="${document['metadata']['last_modified']}">${prettifyTimeDiff(document['metadata']['last_modified'])}</span></td>
+                        <td style="opacity: 0.6;">${document['metadata']['created_by']}</td>
+                        <td style="opacity: 0.6;"><span title="${document['metadata']['created_at']}">${prettifyTimeDiff(document['metadata']['created_at'])}</span></td>
+                    </tr>`;
+
+                } else {
+
+                    table += `<tr>
+                        <td title="View document actions" class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">${document['metadata']['document_id']}</a>
+                            <div class="dropdown-menu">
+                                <a class="dropdown-item" href="/ui/form/read_one/${document['metadata']['form_name']}/${document['metadata']['document_id']}">View Document</a> 
+                                <a class="dropdown-item" id="deleteLink" onclick="deleteForm('${document['metadata']['form_name']}', '${document['metadata']['document_id']}');" href="#">Delete Form</a>
+
+                            </div>
+                        </td>
+                        <td>${document['metadata']['form_name'].replace(/_/g, ' ')}</td>
+                        <td>${document['metadata']['last_editor']}</td>
+                        <td><span title="${document['metadata']['last_modified']}">${prettifyTimeDiff(document['metadata']['last_modified'])}</span></td>
+                        <td>${document['metadata']['created_by']}</td>
+                        <td><span title="${document['metadata']['created_at']}">${prettifyTimeDiff(document['metadata']['created_at'])}</span></td>
+                    </tr>`;
             }
-        });
-    } #}
+            });
 
-$(document).ready(function() {
+            table += '</tbody></table>';
+            return table;
+        }
 
-    function renderTable(documents, tableName) {
-        var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
-        // Define the headers based on the required attributes
-        table += '<th>Record</th><th>Form</th><th>Last Editor</th><th>Last Modified</th><th>Created By</th><th>Created At</th>';
-        table += '</tr></thead><tbody>';
+        function fetchDocument() {
+            $.ajax({
+                url: `/api/admin/get_documents`,
+                type: 'GET',
+                headers: {
+                    'X-API-KEY': apiKey,
+                },
+                dataType: 'json',
 
+                success: function(response) {
 
+                    var documentsTable = renderTable(response.documents, "documentsTable"); 
+                    $('#manageDocuments').html(documentsTable);
 
-        // Iterate over the array of users
-        documents.forEach(function(document) {
+                    $('#documentsTable').DataTable({
+                        autoWidth: false
+                    });
+                },
 
-            table += `<tr>
-                <td title="View document actions" class="nav-item dropdown">
-                    <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">${document['metadata']['document_id']}</a>
-                    <div class="dropdown-menu">
-                        <a class="dropdown-item" href="/ui/form/read_one/${document['metadata']['form_name']}/${document['metadata']['document_id']}">View Document</a> 
-                    </div>
-                </td>
-                <td>${document['metadata']['form_name'].replace(/_/g, ' ')}</td>
-                <td>${document['metadata']['last_editor']}</td>
-                <td><span title="${document['metadata']['last_modified']}">${prettifyTimeDiff(document['metadata']['last_modified'])}</span></td>
-                <td>${document['metadata']['created_by']}</td>
-                <td><span title="${document['metadata']['created_at']}">${prettifyTimeDiff(document['metadata']['created_at'])}</span></td>
-            </tr>`;
+                error: function(xhr) {
+                    // Handle errors
+                    console.error('Failed to fetch data', xhr.responseText);
+                    // Display error message
+                    flashMessage(xhr.responseText, 'danger'); 
+                }
+            });
+        }
 
-        });
-
-        table += '</tbody></table>';
-        return table;
-    }
-
-    function fetchDocument() {
-        $.ajax({
-            url: `/api/admin/get_documents`,
-            type: 'GET',
-            headers: {
-                'X-API-KEY': apiKey,
-            },
-            dataType: 'json',
-
-            success: function(response) {
-
-                var documentsTable = renderTable(response.documents, "documentsTable"); 
-                $('#manageDocuments').html(documentsTable);
-
-                $('#documentsTable').DataTable({
-                    autoWidth: false
-                });
-            },
-
-            error: function(xhr) {
-                // Handle errors
-                console.error('Failed to fetch data', xhr.responseText);
-                // Display error message
-                flashMessage(xhr.responseText, 'danger'); 
-            }
-        });
-    }
-
-    fetchDocument();
+        fetchDocument();
 
 
 
 
-});
+    });
 </script>
 {% endblock %}

@@ -2685,7 +2685,7 @@ async def api_admin_get_groups(
 
 
 
-# Get all groups
+# Get all form submissions
 @app.get(
     "/api/admin/get_documents", 
     dependencies=[Depends(api_key_auth)], 
@@ -2715,9 +2715,9 @@ async def api_admin_get_documents(
     documents = []
 
     for form_name in get_form_names(config_path=config.FORM_CONFIG_PATH):
-        documents = documents + doc_db.get_all_documents(form_name=form_name)
+        documents = documents + doc_db.get_all_documents(form_name=form_name, exclude_deleted=False)
 
-    print("\n\n\n", documents)
+    # print("\n\n\n", documents)
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
@@ -2737,6 +2737,179 @@ async def api_admin_get_documents(
         status_code=200,
         content={"status": "success", "documents": documents},
     )
+
+
+
+
+# Delete form
+@app.delete("/api/admin/delete_form/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+async def api_form_delete(
+    form_name: str, 
+    document_id:str,
+    background_tasks: BackgroundTasks,
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Deletes a specific document from a form based on the form name and document ID in the URL.
+    Validates the existence of the document, user permissions, and logs the deletion.
+    """
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    metadata={
+        doc_db.last_editor_field: user.username,
+    }
+
+    # Add the remote addr host if enabled
+    if config.COLLECT_USAGE_STATISTICS:
+        metadata[doc_db.ip_address_field] = request.client.host
+
+    try:
+        # Process the request as needed
+        success = doc_db.delete_document(
+            form_name=form_name, 
+            document_id=document_id,
+            metadata=metadata,
+        )
+
+    # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
+    # it fails to ensure the user knows their operation was not successful.
+    except DocumentDoesNotExist as e:
+        raise HTTPException(status_code=404, detail=f"{e}")
+
+    except DocumentIsDeleted as e:
+        raise HTTPException(status_code=410, detail=f"{e}")
+
+    except InsufficientPermissions as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
+
+    # Send email
+    if config.SMTP_ENABLED:
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject="Form Deleted", 
+            content=f"This email servers to notify you that a form was deleted at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
+            to_address=user.email,
+        )
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return {
+        "message": "Form successfully deleted", 
+        "document_id": document_id, 
+    }
+
+
+@app.patch("/api/admin/restore_form/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+async def api_form_restore(
+    form_name: str,
+    document_id:str,
+    background_tasks: BackgroundTasks,
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Restores a previously deleted document in a form, identified by form name and document ID in the URL.
+    Checks document existence, validates user permissions, and logs the restoration.
+    """
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    metadata={
+        doc_db.last_editor_field: user.username,
+    }
+
+    # Add the remote addr host if enabled
+    if config.COLLECT_USAGE_STATISTICS:
+        metadata[doc_db.ip_address_field] = request.client.host
+
+    try:
+        # Process the request as needed
+        success = doc_db.restore_document(
+            form_name=form_name, 
+            document_id=document_id,
+            metadata=metadata,
+        )
+
+    # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
+    # it fails to ensure the user knows their operation was not successful.
+    except DocumentDoesNotExist as e:
+        raise HTTPException(status_code=404, detail=f"{e}")
+
+    except DocumentIsNotDeleted as e:
+        raise HTTPException(status_code=200, detail=f"{e}")
+
+    except InsufficientPermissions as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
+
+    # Send email
+    if config.SMTP_ENABLED:
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject="Form Restored", 
+            content=f"This email servers to notify you that a deleted form was restored at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
+            to_address=user.email,
+        )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return {
+        "message": "Form successfully restored", 
+        "document_id": document_id, 
+    }
+
 
 # Add new group
 @app.post(

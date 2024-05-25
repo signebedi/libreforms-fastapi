@@ -116,7 +116,9 @@ function prettifyTimeDiff(dateTimeStr) {
   const timeDiff = (now - date) / 1000; // convert milliseconds to seconds
 
   if (timeDiff < 3600) {
-      if (timeDiff / 60 < 1) {
+      if (timeDiff / 30 < 1) {
+          return "seconds ago";
+      } else if (timeDiff / 60 < 1) {
           return "less than a minute ago";
       } else if (timeDiff / 90 < 1) {
           return "about a minute ago";
