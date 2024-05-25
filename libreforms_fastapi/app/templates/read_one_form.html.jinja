@@ -39,6 +39,7 @@
             <a class="dropdown-item" id="signLink" onclick="signForm();" href="#">Sign Form</a>
             {% endif %} #}
             <a class="dropdown-item" id="signLink" onclick="signForm();" href="#">Sign Form</a>
+            <a class="dropdown-item" id="signLink" onclick="exportForm('json');" href="#">Export as JSON</a>
             <a class="dropdown-item disabled" id="historyLink" href="#">View Form History</a>
             <a class="dropdown-item" id="duplicateLink" href="/ui/form/duplicate/{{ form_name }}/{{ document_id }}">Duplicate Form</a>
             <a class="dropdown-item" id="deleteLink" onclick="deleteForm();" href="#">Delete Form</a>
@@ -115,6 +116,40 @@ function deleteForm() {
             // Display error message to the user
             flashMessage(xhr.responseText, 'danger'); 
         }
+    });
+}
+
+
+// Not using Jquery for the file export 
+function exportForm(format) {
+    fetch(`/api/form/export/${formName}/${documentId}/${format}`, {
+        headers: {
+            'X-API-KEY': apiKey,
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error('Network response was not ok ' + response.statusText);
+        }
+        // Retrieve the filename from the Content-Disposition header
+        const filename = response.headers.get('Content-Disposition').split('filename=')[1].replace(/\"/g, '');
+        return response.blob().then(blob => ({ blob, filename }));
+    })
+    .then(({ blob, filename }) => {
+        // Create a link and set the URL as the download link for the blob
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = filename || `${formName}.${format}`;  // Use the API provided filename, fallback to formName if unavailable
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        setFlashMessage("Successfully exported form", AlertCategories.SUCCESS);
+    })
+    .catch(error => {
+        console.error('Failed to export form', error);
+        flashMessage(error.message, 'danger');
     });
 }
 

@@ -775,7 +775,7 @@ async def api_form_read_one(
 
 # export form
 @app.get("/api/form/export/{form_name}/{document_id}/{format}", response_class=FileResponse, dependencies=[Depends(api_key_auth)])
-async def api_form_read_one(
+async def api_form_export(
     form_name: str, 
     document_id: str, 
     format: str, 

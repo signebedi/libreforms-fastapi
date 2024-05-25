@@ -951,14 +951,12 @@ class ManageTinyDB(ManageDocumentDB):
             # Concat the file path to the unique file name
             path_to_file = os.path.join(file_path, f'{form_name}-{document_id}-export-{datetime_format}.json')
 
-            # Write to excel
-
+            # Write to file
             with open(path_to_file, "w") as f:
                 f.write(json.dumps(document))
 
             # Return the file path
             return path_to_file
-
 
         return document
 
