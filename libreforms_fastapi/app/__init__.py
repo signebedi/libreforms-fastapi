@@ -3786,6 +3786,53 @@ async def api_admin_update_site_config(
     )
 
 
+@app.get(
+    "/api/admin/test_smtp", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_test_smtp(
+    request: Request, 
+    background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    session: Session = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Tests SMTP server connectivity and authentication to ensure that email services can operate correctly.
+    Requires site admin permissions and logs the action for audit purposes.
+    """
+
+    # Authenticate the requesting user
+    user = session.query(User).filter_by(api_key=key).first()
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    # Perform the SMTP connection test
+    smtp_test_result = mailer.test_connection()
+
+    # Log the SMTP test attempt
+    if config.COLLECT_USAGE_STATISTICS:
+        endpoint = request.url.path
+        remote_addr = request.client.host
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"test_result": smtp_test_result},
+        )
+
+    # Respond with the result of the SMTP test
+    return JSONResponse(
+        status_code=200,
+        content={
+            "status": "success" if smtp_test_result else "failure",
+            "message": "SMTP connection successful" if smtp_test_result else "SMTP connection failed"
+        },
+    )
+
 
 
 
