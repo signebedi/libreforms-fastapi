@@ -1024,5 +1024,54 @@ class ManageTinyDB(ManageDocumentDB):
         # Reinitialize the databse instances
         self._initialize_database_collections()
 
+    def unpack_document_journal(
+        self, 
+        document_id: str, 
+        form_name: str,
+        limit_users:Union[bool, str]=False, 
+    ) -> dict:
+        """
+        Retrieves the journal of a document with the given document_id and form_name, 
+        returning a dictionary where keys are datetime stamps of entries and values are the 
+        corresponding content of the form data and metadata at that timestamp.
+
+        """
+        self._check_form_exists(form_name)  # Ensure the form exists
+        
+        document = self.databases[form_name].get(doc_id=document_id)
+        if not document:
+            raise DocumentDoesNotExist("The specified document does not exist.")
+
+        # If we are limiting user access based on group-based access controls, and this user is 
+        # not the document creator, then return None
+        if isinstance(limit_users, str) and document['metadata'][self.created_by_field] != limit_users:
+            if self.use_logger:
+                self.logger.warning(f"Insufficient permissions to update document for {form_name} with document_id {document_id}")
+            raise InsufficientPermissions(form_name, document_id, limit_users)
+
+
+        journal = document['metadata'].get(self.journal_field, [])
+        unpacked_journal = {}
+        current_state = {'data': {}, 'metadata': {}}
+
+        for entry in journal:
+            data_changes = entry.get('data', {})
+            metadata_changes = entry.get('metadata', {})
+            
+            # Update the current state with new changes
+            current_state['data'].update(data_changes)
+            current_state['metadata'].update(metadata_changes)
+            
+            # Extract the timestamp for this journal entry
+            datetime_key = metadata_changes.get(self.last_modified_field, "Unknown timestamp")
+            
+            # Deep copy to ensure each entry in the unpacked journal is unique
+            unpacked_journal[datetime_key] = {
+                'data': dict(current_state['data']),
+                'metadata': dict(current_state['metadata'])
+            }
+        
+        return unpacked_journal
+
 class ManageMongoDB(ManageDocumentDB):
     pass
