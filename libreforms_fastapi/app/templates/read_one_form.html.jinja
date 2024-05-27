@@ -56,6 +56,9 @@
   <div class="tab-pane fade active show" id="documentContent" role="tabpanel"></div>
   <div class="tab-pane fade" id="documentMetadata" role="tabpanel"></div>
 </div>
+<div id="documentHistory">
+
+</div>
 
 
 {% endblock %}
@@ -263,44 +266,116 @@ $(document).ready(function() {
                     "autoWidth": false
                 });
 
-            $.ajax({
-                url: `/api/validate/signatures/${formName}/${documentId}`,
-                type: 'GET',
-                headers: {
-                    'X-API-KEY': apiKey,
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.signature_count < 1) {
-                        $("#signatures-value-field").html(`
-                            <span class="badge bg-secondary">No Signatures</span> 
-                        `);
-                    } else {
-                        
-                        var badgeHTML = "";
+                $.ajax({
+                    url: `/api/validate/signatures/${formName}/${documentId}`,
+                    type: 'GET',
+                    headers: {
+                        'X-API-KEY': apiKey,
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        if (response.signature_count < 1) {
+                            $("#signatures-value-field").html(`
+                                <span class="badge bg-secondary">No Signatures</span> 
+                            `);
+                        } else {
+                            
+                            var badgeHTML = "";
 
-                        for (let key in response.results) {
+                            for (let key in response.results) {
 
-                            let valid = response.results[key];
+                                let valid = response.results[key];
 
-                            if (valid == true) {
-                                badgeHTML = badgeHTML + `<span class="badge bg-primary">${key}</span>`;
-                            } else {
-                                badgeHTML = badgeHTML + `<span class="badge bg-danger">${key} (Invalid)</span>`;
+                                if (valid == true) {
+                                    badgeHTML = badgeHTML + `<span class="badge bg-primary">${key}</span>`;
+                                } else {
+                                    badgeHTML = badgeHTML + `<span class="badge bg-danger">${key} (Invalid)</span>`;
+                                }
                             }
+
+                            $("#signatures-value-field").html(badgeHTML);
                         }
-
-                        $("#signatures-value-field").html(badgeHTML);
+                    },
+                    error: function(xhr) {
+                        // Handle errors
+                        console.error('Failed to validate signatures', xhr.responseText);
+                        // Display error message to the user
+                        flashMessage(xhr.responseText, 'danger'); 
                     }
-                },
-                error: function(xhr) {
-                    // Handle errors
-                    console.error('Failed to validate signatures', xhr.responseText);
-                    // Display error message to the user
-                    flashMessage(xhr.responseText, 'danger'); 
-                }
-            });
+                });
 
+
+
+                $.ajax({
+                    url: `/api/form/read_history/${formName}/${documentId}`,
+                    type: 'GET',
+                    headers: {
+                        'X-API-KEY': apiKey,
+                    },
+                    dataType: 'json',
+                    success: function(response) {
+                        // Create fieldset and related elements
+                        var fieldset = $('<fieldset style="padding-top: 10px;"></fieldset>');
+                        var label = $('<label for="historySelect" class="form-check-label">Past Versions</label>');
+                        var span = $('<span class="form-text"> | Select past versions of this form to view their details.</span>');
+
+                        // Append label and description to the fieldset
+                        fieldset.append(label);
+                        fieldset.append(span);
+
+                        // Create a select element
+                        var select = $('<select id="historySelect" class="form-select"></select>');
+
+                        // Populate the select element with options from historyData
+                        $.each(response.history, function(key, value) {
+                            var option = $('<option></option>').attr({
+                                "value": JSON.stringify(value),
+                                "title": "Version from " + key
+                            }).text(key);
+                            select.append(option);
+                        });
+
+                        // Append the select element to the fieldset
+                        fieldset.append(select);
+
+                        // Append the fieldset to the div with id 'documentHistory'
+                        $('#documentHistory').append(fieldset);
+
+                        // Handle change event on select element
+                        $('#historySelect').on('change', function() {
+                            var selectedValue = $(this).val();
+                            var selectedData = JSON.parse(selectedValue);
+
+                            var dataTable = renderTable(selectedData.data, "dataTable", fieldMappings=formFieldMask);
+                            var metadataTable = renderTable(selectedData.metadata, "metadataTable", fieldMappings=metadataFieldMask, dateFields = ['Created At', 'Last Modified']);
+
+                            $('#documentContent').html(dataTable);
+                            $('#documentMetadata').html(metadataTable);
+
+                            setActionElements(selectedData.metadata.created_by);
+
+                            $('#dataTable').DataTable({
+                                "ordering": false,
+                                "info": false,
+                                "paging": false,
+                                "searching": false, 
+                                "autoWidth": false
+                            });
+                            
+                            $('#metadataTable').DataTable({
+                                "ordering": false,
+                                "info": false,
+                                "paging": false,
+                                "searching": false,
+                                "autoWidth": false
+                            });
+                        });
+                    },
+                    error: function(xhr) {
+                        console.error('Failed to get document history', xhr.responseText);
+                        flashMessage(xhr.responseText, 'danger'); 
+                    }
+                });
 
 
 
