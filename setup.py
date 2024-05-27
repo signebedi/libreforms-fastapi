@@ -24,10 +24,17 @@ requirements_file = "requirements/base.txt"
 with open(requirements_file, encoding="utf-8") as f:
     install_requires = f.read().splitlines()
 
-data_extras_file = "requirements/data.txt"
-
-with open(data_extras_file, encoding="utf-8") as f:
+with open("requirements/data.txt", encoding="utf-8") as f:
     install_extras_data = f.read().splitlines()
+
+with open("requirements/postgres.txt", encoding="utf-8") as f:
+    install_extras_postgres = f.read().splitlines()
+
+with open("requirements/mariadb.txt", encoding="utf-8") as f:
+    install_extras_mariadb = f.read().splitlines()
+
+with open("requirements/saml.txt", encoding="utf-8") as f:
+    install_extras_saml = f.read().splitlines()
 
 setup(
     name='libreforms_fastapi',
@@ -53,5 +60,8 @@ setup(
     },
     extras_require={
         "data": install_extras_data,
+        "postgres": install_extras_postgres,
+        "mariadb": install_extras_mariadb,
+        "saml": install_extras_saml,
     },
 )
