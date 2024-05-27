@@ -772,6 +772,68 @@ async def api_form_read_one(
         "metadata": document["metadata"],
     }
 
+#
+
+@app.get("/api/form/read_history/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+async def api_form_read_history(
+    form_name: str, 
+    document_id: str, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Retrieves the history of a specific form document by its name and document ID provided in the URL.
+    It checks for the form's existence, validates user permissions, fetches the document history 
+    from the database, and logs the access.
+    """
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    user = session.query(User).filter_by(api_key=key).first()
+    
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_own")
+    except Exception as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
+
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_all")
+        limit_query_to = False
+    except Exception as e:
+        limit_query_to = user.username
+
+    history = doc_db.unpack_document_journal(
+        document_id=document_id, 
+        form_name=form_name
+    )
+
+    if not history:
+        raise HTTPException(status_code=404, detail="No history found for the requested document")
+
+    # Log the API call
+    if config.COLLECT_USAGE_STATISTICS:
+        endpoint = request.url.path
+        remote_addr = request.client.host
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr,
+            query_params={},
+        )
+
+    return {
+        "message": "History successfully retrieved", 
+        "document_id": document_id, 
+        "history": history,
+    }
+
 
 # export form
 @app.get("/api/form/export/{form_name}/{document_id}/{format}", response_class=FileResponse, dependencies=[Depends(api_key_auth)])

@@ -297,6 +297,11 @@ class ManageDocumentDB(ABC):
         """Restores the specified form's database from its backup."""
         pass
 
+    @abstractmethod
+    def unpack_document_journal(self, document_id: str, form_name: str) -> dict:
+        """Retrieves the journal of a document."""
+
+
 
 class ManageTinyDB(ManageDocumentDB):
     def __init__(
@@ -1034,7 +1039,6 @@ class ManageTinyDB(ManageDocumentDB):
         Retrieves the journal of a document with the given document_id and form_name, 
         returning a dictionary where keys are datetime stamps of entries and values are the 
         corresponding content of the form data and metadata at that timestamp.
-
         """
         self._check_form_exists(form_name)  # Ensure the form exists
         
