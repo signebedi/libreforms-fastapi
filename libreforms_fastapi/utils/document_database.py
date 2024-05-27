@@ -1075,7 +1075,8 @@ class ManageTinyDB(ManageDocumentDB):
                 'metadata': dict(current_state['metadata'])
             }
         
-        return unpacked_journal
+        return dict(reversed(unpacked_journal.items()))
+
 
 class ManageMongoDB(ManageDocumentDB):
     pass

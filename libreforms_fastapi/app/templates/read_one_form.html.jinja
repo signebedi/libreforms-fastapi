@@ -40,7 +40,7 @@
             {% endif %} #}
             <a class="dropdown-item" id="signLink" onclick="signForm();" href="#">Sign Form</a>
             <a class="dropdown-item" id="signLink" onclick="exportForm('json');" href="#">Export as JSON</a>
-            <a class="dropdown-item disabled" id="historyLink" href="#">View Form History</a>
+            {# <a class="dropdown-item disabled" id="historyLink" href="#">View Form History</a> #}
             <a class="dropdown-item" id="duplicateLink" href="/ui/form/duplicate/{{ form_name }}/{{ document_id }}">Duplicate Form</a>
             <a class="dropdown-item" id="deleteLink" onclick="deleteForm();" href="#">Delete Form</a>
             {# <a class="dropdown-item disabled" id="downloadLink" href="#">Download Form</a> #}
@@ -157,6 +157,10 @@ function exportForm(format) {
 }
 
 
+function restoreVersion(){
+    console.log("Blargh");
+
+}
 
 
 $(document).ready(function() {
@@ -185,7 +189,7 @@ $(document).ready(function() {
                 value = formatValue(value);
 
 
-                console.log(attributeName);
+                // console.log(attributeName);
                 if (dateFields.includes(attributeName)) {
                     table += `<td id="${key}-value-field"><span title="${value}">${prettifyTimeDiff(value)}</td>`; 
                 } else {
@@ -254,7 +258,11 @@ $(document).ready(function() {
                     "info": false,
                     "paging": false,
                     "searching": false, 
-                    "autoWidth": false
+                    "autoWidth": false,
+                    "columns": [
+                        { "width": "30%" },
+                        { "width": "70%" }
+                    ]
                 });
 
                 
@@ -263,7 +271,11 @@ $(document).ready(function() {
                     "info": false,
                     "paging": false,
                     "searching": false,
-                    "autoWidth": false
+                    "autoWidth": false,
+                    "columns": [
+                        { "width": "30%" },
+                        { "width": "70%" }
+                    ]
                 });
 
                 $.ajax({
@@ -326,13 +338,31 @@ $(document).ready(function() {
                         // Create a select element
                         var select = $('<select id="historySelect" class="form-select"></select>');
 
-                        // Populate the select element with options from historyData
+                        // Flag to identify the first element/ current version
+                        {# var isFirst = true;  #}
+
                         $.each(response.history, function(key, value) {
                             var option = $('<option></option>').attr({
                                 "value": JSON.stringify(value),
                                 "title": "Version from " + key
                             }).text(key);
                             select.append(option);
+
+                        //    // Skip the button creation for the first element
+                        //    if (!isFirst) {
+                        //        var button = $('<button type="button" class="btn btn-primary ms-2"></button>')
+                        //            .text('Restore this version')
+                        //            .on('click', function() {
+                        //                restoreVersion(JSON.stringify(value));
+                        //            });
+
+                        //        // Consider placing the button in a specific location or in relation to the select
+                        //        // This example appends the button directly after the select element
+                        //        select.after(button); 
+                        //    }
+
+                        //    // After the first iteration, set isFirst to false
+                        //    isFirst = false;
                         });
 
                         // Append the select element to the fieldset
@@ -359,7 +389,11 @@ $(document).ready(function() {
                                 "info": false,
                                 "paging": false,
                                 "searching": false, 
-                                "autoWidth": false
+                                "autoWidth": false,
+                                "columns": [
+                                    { "width": "30%" },
+                                    { "width": "70%" }
+                                ]
                             });
                             
                             $('#metadataTable').DataTable({
@@ -367,7 +401,11 @@ $(document).ready(function() {
                                 "info": false,
                                 "paging": false,
                                 "searching": false,
-                                "autoWidth": false
+                                "autoWidth": false,
+                                "columns": [
+                                    { "width": "30%" },
+                                    { "width": "70%" }
+                                ]
                             });
                         });
                     },
