@@ -586,7 +586,7 @@ if config.DEBUG:
     # These routes help debug the auth backend
 
     @app.get("/test/auth", response_class=HTMLResponse, include_in_schema=False)
-    @requires(['authenticated'], status_code=404)
+    @requires(['authenticated'], redirect="ui_auth_login")
     async def test_auth_scope(request: Request):
         return JSONResponse({"a": "blargh"})
 
@@ -4214,7 +4214,7 @@ def build_ui_context():
 
 # Create form
 @app.get("/ui/form/create/{form_name}", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 async def ui_form_create(form_name:str, request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4241,7 +4241,7 @@ async def ui_form_create(form_name:str, request: Request, config = Depends(get_c
 
 # Read one form
 @app.get("/ui/form/read_one/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 async def ui_form_read_one(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4278,7 +4278,7 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request, con
 
 # Read all forms
 @app.get("/ui/form/read_all", include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 async def ui_form_read_all(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4296,7 +4296,7 @@ async def ui_form_read_all(request: Request, config = Depends(get_config_depends
 
 # Update form
 @app.get("/ui/form/update/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 async def ui_form_update(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4322,7 +4322,7 @@ async def ui_form_update(form_name:str, document_id:str, request: Request, confi
 
 
 @app.get("/ui/form/duplicate/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 async def ui_form_duplicate(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4358,7 +4358,7 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request, co
 
 # Search forms
 @app.get("/ui/form/search", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 async def ui_admin_form_search(
     request: Request, 
     config = Depends(get_config_depends),
@@ -4430,7 +4430,7 @@ async def ui_privacy(request: Request, config = Depends(get_config_depends),
     )
 
 @app.get("/ui/help", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 async def ui_auth_help(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4450,7 +4450,7 @@ async def ui_auth_help(request: Request, config = Depends(get_config_depends),
 
 
 @app.get("/ui/docs", response_class=HTMLResponse, include_in_schema=False)
-# @requires(['authenticated'], status_code=404)
+# @requires(['authenticated'], redirect="ui_auth_login")
 async def ui_docs(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4493,7 +4493,7 @@ async def ui_auth_login(request: Request, config = Depends(get_config_depends),
     )
 
 @app.get("/ui/auth/logout", response_class=RedirectResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 def ui_auth_logout(response: Response, request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4543,7 +4543,7 @@ async def ui_auth_create(request: Request, config = Depends(get_config_depends),
 
 
 @app.get("/ui/auth/change_password", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 async def ui_auth_change_password(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4560,7 +4560,7 @@ async def ui_auth_change_password(request: Request, config = Depends(get_config_
 
 # View profile
 @app.get("/ui/auth/profile/", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 def ui_auth_profile(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4574,7 +4574,7 @@ def ui_auth_profile(request: Request, config = Depends(get_config_depends),
     )
 
 @app.get("/ui/auth/profile/{id}", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], status_code=404)
+@requires(['authenticated'], redirect="ui_auth_login")
 def ui_auth_profile_other( 
     id: int, 
     request: Request, 
@@ -4613,7 +4613,7 @@ def ui_auth_profile_other(
 
 # Edit docs
 @app.get("/ui/admin/edit_docs", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_edit_docs(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4645,7 +4645,7 @@ async def ui_admin_edit_docs(request: Request, config = Depends(get_config_depen
 
 # Update form config
 @app.get("/ui/admin/write_form_config", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_write_form_config(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4677,7 +4677,7 @@ async def ui_admin_write_form_config(request: Request, config = Depends(get_conf
 
 # Edit privacy policy
 @app.get("/ui/admin/config_privacy", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_config_privacy(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4699,7 +4699,7 @@ async def ui_admin_config_privacy(request: Request, config = Depends(get_config_
 
 # Edit homepage message
 @app.get("/ui/admin/config_homepage_message", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_config_homepage_message(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4720,7 +4720,7 @@ async def ui_admin_config_homepage_message(request: Request, config = Depends(ge
 
 # form config lock
 @app.get("/ui/admin/form_config_lock", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_form_config_lock(
     request: Request, 
     config = Depends(get_config_depends),
@@ -4743,7 +4743,7 @@ async def ui_admin_form_config_lock(
 
 # Edit site config
 @app.get("/ui/admin/config_site", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_config_site(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -4762,7 +4762,7 @@ async def ui_admin_config_site(request: Request, config = Depends(get_config_dep
 
 # Edit relational database config
 @app.get("/ui/admin/config_relational_db", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_config_relational_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -4781,7 +4781,7 @@ async def ui_admin_config_relational_db(request: Request, config = Depends(get_c
 
 # Edit document database config
 @app.get("/ui/admin/config_document_db", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_config_document_db(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -4799,7 +4799,7 @@ async def ui_admin_config_document_db(request: Request, config = Depends(get_con
 
 # Edit smtp config
 @app.get("/ui/admin/config_smtp", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_config_smtp(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -4820,7 +4820,7 @@ async def ui_admin_config_smtp(request: Request, config = Depends(get_config_dep
 
 # Schedule application reboot
 # @app.get("/ui/admin/reload_application", response_class=HTMLResponse, include_in_schema=False)
-# @requires(['admin'], status_code=404)
+# @requires(['admin'], redirect="ui_home")
 # async def ui_admin_reload_application(request: Request, config = Depends(get_config_depends), mailer = Depends(get_mailer), doc_db = Depends(get_doc_db),):
 #     if not config.UI_ENABLED:
 #         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -4839,7 +4839,7 @@ async def ui_admin_config_smtp(request: Request, config = Depends(get_config_dep
 
 # Manage users
 @app.get("/ui/admin/manage_users", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_manage_users(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4860,7 +4860,7 @@ async def ui_admin_manage_users(request: Request, config = Depends(get_config_de
 
 # Add new user
 @app.get("/ui/admin/create_user", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_create_user(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4884,7 +4884,7 @@ async def ui_admin_create_user(request: Request, config = Depends(get_config_dep
 
 # Edit user
 @app.get("/ui/admin/update_user/{id}", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_update_user(id: str, request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4913,7 +4913,7 @@ async def ui_admin_update_user(id: str, request: Request, config = Depends(get_c
 # *** We would pull this from the TransactionLog. This can also be the basis 
 # for a "recent activity" UI route.
 @app.get("/ui/admin/log", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_log(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4943,7 +4943,7 @@ async def ui_admin_log(request: Request, config = Depends(get_config_depends),
 
 # Manage groups
 @app.get("/ui/admin/manage_groups", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_manage_groups(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4963,7 +4963,7 @@ async def ui_admin_manage_groups(request: Request, config = Depends(get_config_d
 
 # Create group
 @app.get("/ui/admin/create_group", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_create_group(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -4998,7 +4998,7 @@ async def ui_admin_create_group(request: Request, config = Depends(get_config_de
 
 # Edit Group
 @app.get("/ui/admin/update_group/{id}", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_update_group(id:str, request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -5042,7 +5042,7 @@ async def ui_admin_update_group(id:str, request: Request, config = Depends(get_c
 
 # Create relationship
 @app.get("/ui/admin/create_relationship_type", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_create_relationship_type(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -5063,7 +5063,7 @@ async def ui_admin_create_relationship_type(request: Request, config = Depends(g
 
 # Manage relationship types
 @app.get("/ui/admin/manage_relationship_types", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_manage_relationship_types(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -5084,7 +5084,7 @@ async def ui_admin_manage_relationship_types(request: Request, config = Depends(
 
 # Edit Group
 @app.get("/ui/admin/update_relationship_type/{id}", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_update_group(id:str, request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -5113,7 +5113,7 @@ async def ui_admin_update_group(id:str, request: Request, config = Depends(get_c
 
 # Create user relationship pairing
 @app.get("/ui/admin/create_user_relationship", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_create_user_relationship(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -5139,7 +5139,7 @@ async def ui_admin_create_user_relationship(request: Request, config = Depends(g
 
 # Manage user relationship pairings
 @app.get("/ui/admin/manage_user_relationships", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_manage_user_relationships(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -5159,7 +5159,7 @@ async def ui_admin_manage_user_relationships(request: Request, config = Depends(
 
 
 @app.get("/ui/admin/manage_documents", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_manage_documents(request: Request, config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),):
@@ -5182,7 +5182,7 @@ async def ui_admin_manage_documents(request: Request, config = Depends(get_confi
 
 
 @app.get("/ui/admin/system_information", response_class=HTMLResponse, include_in_schema=False)
-@requires(['admin'], status_code=404)
+@requires(['admin'], redirect="ui_home")
 async def ui_admin_system_information(
     request: Request, 
     config = Depends(get_config_depends),
