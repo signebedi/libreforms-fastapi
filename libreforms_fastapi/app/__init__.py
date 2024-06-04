@@ -1,5 +1,4 @@
 import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib, importlib, platform
-# import psutil
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 from pathlib import Path
@@ -344,8 +343,17 @@ with get_config_context() as config:
     )
 
 
-    app.mount("/static", StaticFiles(directory="libreforms_fastapi/app/static"), name="static")
-    templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
+    # Bug fix: https://github.com/signebedi/libreforms-fastapi/issues/113
+    import importlib.resources as importlib_resources 
+
+    with importlib_resources.path("libreforms_fastapi.app", "static") as static_dir:
+        app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
+        # app.mount("/static", StaticFiles(directory="libreforms_fastapi/app/static"), name="static")
+    
+    with importlib_resources.path("libreforms_fastapi.app", "templates") as templates_dir:
+        templates = Jinja2Templates(directory=str(templates_dir))
+        # templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
+    
     app.add_middleware(AuthenticationMiddleware, backend=BearerTokenAuthBackend())
 
     # Add obfuscating validation error handlers in production

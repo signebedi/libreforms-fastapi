@@ -6,6 +6,17 @@ FastAPI implementation of the libreForms spec
 Follow the steps below to install the system on your computer. Please note, you need to install Python3.10 (or higher) and Python3.10-Venv through your package manager. If you plan to use MongoDB and a relational database, you will need to install these, too. See your distribution's specific instructions for these steps or [install using Docker](#running-in-docker) to get started.
 
 ```bash
+cd /opt/libreforms-fastapi
+python3 -m venv venv
+source venv/bin/activate
+pip install libreforms_fastapi
+uvicorn libreforms_fastapi.app:app --reload # this will run the development server
+```
+
+
+You can also install manually using the git repository.
+
+```bash
 git clone https://github.com/signebedi/libreforms-fastapi.git
 cd libreforms-fastapi
 python3 -m venv venv
