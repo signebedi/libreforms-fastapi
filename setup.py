@@ -1,6 +1,23 @@
 import os
 from setuptools import setup, find_packages
 
+
+def package_files(directory):
+    paths = []
+    for (path, directories, filenames) in os.walk(directory):
+        for filename in filenames:
+            # Generate the path relative to the package
+            rel_path = os.path.relpath(os.path.join(path, filename), directory)
+            # Replace the directory base in the relative path with the correct package path
+            package_path = os.path.join('libreforms_fastapi/app', rel_path)
+            paths.append(package_path)
+    return paths
+
+# Walk the static and template directories to ensure contents included recursively
+static_files = package_files('libreforms_fastapi/app/static')
+template_files = package_files('libreforms_fastapi/app/templates')
+
+
 def read_version():
     with open('libreforms_fastapi/__metadata__.py', 'r') as f:
         lines = f.readlines()
@@ -61,7 +78,7 @@ setup(
     # 
     include_package_data=True,
     package_data={
-        'libreforms_fastapi.app': ['static/*', 'templates/*.jinja'],
+        'libreforms_fastapi.app': static_files + template_files,
     },
     extras_require={
         "data": install_extras_data,
