@@ -1,4 +1,4 @@
-import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib, pkg_resources, platform
+import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib, importlib, platform
 # import psutil
 from datetime import datetime, timedelta
 from contextlib import contextmanager
@@ -5204,7 +5204,7 @@ async def ui_admin_system_information(
 
     _config_dict.append(("Site Name", config.SITE_NAME))
     _config_dict.append(("libreForms Version", __version__))
-    _config_dict.append(("FastAPI Version", pkg_resources.get_distribution("fastapi").version))
+    _config_dict.append(("FastAPI Version", importlib.metadata.version("fastapi")))
     _config_dict.append(("Environment", config.ENVIRONMENT))
     _config_dict.append(("Domain", config.DOMAIN))
     _config_dict.append(("Timezone", str(config.TIMEZONE)))
