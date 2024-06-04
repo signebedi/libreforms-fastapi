@@ -4,5 +4,5 @@ include requirements/postgres.txt
 include requirements/mariadb.txt
 include requirements/saml.txt
 include README.md
-recursive-include libreforms_fastapi/app/static *
-recursive-include libreforms_fastapi/app/templates *.jinja
+include libreforms_fastapi/app/static/*
+include libreforms_fastapi/app/templates/*

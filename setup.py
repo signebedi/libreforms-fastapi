@@ -58,6 +58,10 @@ setup(
             'libreformsctl=libreforms_fastapi.cli.__init__:cli',
         ],
     },
+    # 
+    package_data={
+        'libreforms_fastapi.app': ['static/*', 'templates/*.jinja'],
+    },
     extras_require={
         "data": install_extras_data,
         "postgres": install_extras_postgres,
