@@ -1,4 +1,5 @@
-import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib
+import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib, pkg_resources, platform
+# import psutil
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 from pathlib import Path
@@ -79,6 +80,7 @@ from libreforms_fastapi.utils.scripts import (
     generate_password_hash,
     check_password_hash,
     percentage_alphanumeric_generate_password,
+    prettify_time_diff,
 )
 
 # Import the tools used to generate signatures
@@ -4108,6 +4110,86 @@ async def api_admin_test_document_database(
 
 
 
+# @app.get(
+#     "/api/admin/get_config", 
+#     dependencies=[Depends(api_key_auth)], 
+#     response_class=JSONResponse, 
+# )
+# async def api_admin_get_config(
+#     request: Request, 
+#     background_tasks: BackgroundTasks,
+#     config = Depends(get_config_depends),
+#     mailer = Depends(get_mailer), 
+#     doc_db = Depends(get_doc_db),
+#     session: SessionLocal = Depends(get_db), 
+#     key: str = Depends(X_API_KEY)
+# ):
+
+#     """
+#     Lists a limited set of configuration information administrative purposes. Requires site admin permissions. 
+#     Logs the action for audit purposes.
+#     """
+
+#     # Get the requesting user details
+#     user = session.query(User).filter_by(api_key=key).first()
+
+#     if not user or not user.site_admin:
+#         raise HTTPException(status_code=404)
+
+
+#     _config_dict = {}
+
+#     _config_dict["Site Name"] = config.SITE_NAME
+#     _config_dict["Environment"] = config.ENVIRONMENT
+#     _config_dict["Domain"] = config.DOMAIN
+#     _config_dict["Timezone"] = str(config.TIMEZONE)
+#     _config_dict["Uptime"] = (datetime.now(config.TIMEZONE) - config.APP_STARTUP_TIME).total_seconds()
+#     _config_dict["UI Enabled"] = "Yes" if config.UI_ENABLED else "No"
+#     _config_dict["UI Other Profile Views Enabled"] = "Yes" if config.OTHER_PROFILES_ENABLED else "No"
+#     _config_dict["UI Search Bar Enabled"] = "Yes" if config.SEARCH_BAR_ENABLED else "No"
+#     _config_dict["UI Footer Enabled"] = "No" if config.DISABLE_FOOTER else "Yes"
+#     _config_dict["Excel Exports Enabled"] = "Yes" if config.EXCEL_EXPORT_ENABLED else "No"
+#     _config_dict["SMTP Enabled"] = "Yes" if config.SMTP_ENABLED else "No"
+#     _config_dict["Rate Limits on API Enabled"] = "Yes" if config.RATE_LIMITS_ENABLED else "No"
+#     _config_dict["Require New Users to Verify Email"] = "Yes" if config.REQUIRE_EMAIL_VERIFICATION else "No"
+#     _config_dict["Help Page Enabled"] = "Yes" if config.HELP_PAGE_ENABLED else "No"
+#     _config_dict["Docs Page Enabled"] = "Yes" if config.DOCS_ENABLED else "No"
+#     _config_dict["MongoDB Enabled"] = "Yes" if config.MONGODB_ENABLED else "No"
+#     _config_dict["Form Config Edits Enabled"] = "Yes" if config.FORM_CONFIG_EDITS_ENABLED else "No"
+#     _config_dict["FastAPI Version"] = pkg_resources.get_distribution("fastapi").version
+
+#     import platform, psutil
+#     try:
+#         _config_dict["Operating System"] = platform.platform()
+#         _config_dict["Architecture"] = platform.machine()
+#         _config_dict["Memory Usage"] = psutil.virtual_memory().percent
+#         _config_dict["CPU Usage"] = psutil.cpu_percent(interval=1)
+
+
+#     except: pass
+
+
+#     # Write this query to the TransactionLog
+#     if config.COLLECT_USAGE_STATISTICS:
+
+#         endpoint = request.url.path
+#         remote_addr = request.client.host
+
+#         background_tasks.add_task(
+#             write_api_call_to_transaction_log, 
+#             api_key=key, 
+#             endpoint=endpoint, 
+#             remote_addr=remote_addr, 
+#             query_params={},
+#         )
+
+#     return JSONResponse(
+#         status_code=200,
+#         content={"status": "success", "users": users},
+#     )
+
+
+
 
 ##########################
 ### UI Routes - Forms
@@ -5098,6 +5180,66 @@ async def ui_admin_manage_documents(request: Request, config = Depends(get_confi
 
 
 
+
+@app.get("/ui/admin/system_information", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], status_code=404)
+async def ui_admin_system_information(
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
+):
+
+
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+
+
+    _config_dict = []
+
+    _config_dict.append(("Site Name", config.SITE_NAME))
+    _config_dict.append(("libreForms Version", __version__))
+    _config_dict.append(("FastAPI Version", pkg_resources.get_distribution("fastapi").version))
+    _config_dict.append(("Environment", config.ENVIRONMENT))
+    _config_dict.append(("Domain", config.DOMAIN))
+    _config_dict.append(("Timezone", str(config.TIMEZONE)))
+    _config_dict.append(("Uptime", (datetime.now(config.TIMEZONE) - config.APP_STARTUP_TIME).total_seconds()))
+    _config_dict.append(("UI Enabled", "Yes" if config.UI_ENABLED else "No"))
+    _config_dict.append(("UI Other Profile Views Enabled", "Yes" if config.OTHER_PROFILES_ENABLED else "No"))
+    _config_dict.append(("UI Search Bar Enabled", "Yes" if config.SEARCH_BAR_ENABLED else "No"))
+    _config_dict.append(("UI Footer Enabled", "No" if config.DISABLE_FOOTER else "Yes"))
+    _config_dict.append(("Excel Exports Enabled", "Yes" if config.EXCEL_EXPORT_ENABLED else "No"))
+    _config_dict.append(("SMTP Enabled", "Yes" if config.SMTP_ENABLED else "No"))
+    _config_dict.append(("Rate Limits on API Enabled", "Yes" if config.RATE_LIMITS_ENABLED else "No"))
+    _config_dict.append(("Require New Users to Verify Email", "Yes" if config.REQUIRE_EMAIL_VERIFICATION else "No"))
+    _config_dict.append(("Help Page Enabled", "Yes" if config.HELP_PAGE_ENABLED else "No"))
+    _config_dict.append(("Docs Page Enabled", "Yes" if config.DOCS_ENABLED else "No"))
+    _config_dict.append(("MongoDB Enabled", "Yes" if config.MONGODB_ENABLED else "No"))
+    _config_dict.append(("Form Config Edits Enabled", "Yes" if config.FORM_CONFIG_EDITS_ENABLED else "No"))
+
+    try:
+        _config_dict.append(("Operating System", platform.platform()))
+        _config_dict.append(("Architecture", platform.machine()))
+        # _config_dict.append(("Memory Usage", psutil.virtual_memory().percent))
+        # _config_dict.append(("CPU Usage", psutil.cpu_percent(interval=1)))
+
+
+    except: pass
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_system_information.html.jinja", 
+        context={
+            "config_dict": _config_dict,
+            **build_ui_context(),
+        }
+    )
 
 
 # Manage approval chains

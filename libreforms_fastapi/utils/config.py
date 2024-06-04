@@ -115,6 +115,8 @@ def get_config(env):
             # Return the original string value, or you could return ZoneInfo(v) to store the object
             return tz
 
+        APP_STARTUP_TIME: datetime = datetime.now(ZoneInfo(os.getenv('TIMEZONE', 'America/New_York')))
+
         SQLALCHEMY_DATABASE_URI:str = os.getenv('SQLALCHEMY_DATABASE_URI', f'sqlite:///{os.path.join(os.getcwd(), "instance", "app.sqlite")}')
         SQLALCHEMY_TRACK_MODIFICATIONS:bool = os.getenv('SQLALCHEMY_TRACK_MODIFICATIONS', 'False') == 'True'
 

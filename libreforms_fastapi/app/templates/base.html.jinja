@@ -28,7 +28,8 @@
     <!-- Navbar -->
     <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
         <div class="container-fluid">
-            <a class="navbar-brand" href="{{ url_for('ui_home') }}">{{ config['SITE_NAME'] }}<small> v.{{ version }}</small></a>
+            {# <a class="navbar-brand" href="{{ url_for('ui_home') }}">{{ config['SITE_NAME'] }}<small> v.{{ version }}</small></a> #}
+            <a class="navbar-brand" href="{{ url_for('ui_home') }}">{{ config['SITE_NAME'] }}</a>
 
             <!-- Navbar toggler button -->
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav" aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
@@ -153,6 +154,7 @@
                                         Monitoring
                                     </a>
                                     <ul class="dropdown-menu">
+                                        <li><a class="dropdown-item" href="{{ url_for('ui_admin_system_information') }}">System Information</a></li>
                                         <li><a class="dropdown-item" href="{{ url_for('ui_admin_log') }}">Transaction Log</a></li>
                                     </ul>
                                 </div>
