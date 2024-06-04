@@ -1,4 +1,8 @@
 include requirements/base.txt
+include requirements/data.txt
+include requirements/postgres.txt
+include requirements/mariadb.txt
+include requirements/saml.txt
 include README.md
 recursive-include libreforms_fastapi/app/static *
 recursive-include libreforms_fastapi/app/templates *.jinja
