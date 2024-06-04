@@ -5208,7 +5208,9 @@ async def ui_admin_system_information(
     _config_dict.append(("Environment", config.ENVIRONMENT))
     _config_dict.append(("Domain", config.DOMAIN))
     _config_dict.append(("Timezone", str(config.TIMEZONE)))
-    _config_dict.append(("Uptime", (datetime.now(config.TIMEZONE) - config.APP_STARTUP_TIME).total_seconds()))
+
+    # uptime = datetime.now(config.TIMEZONE) - config.APP_STARTUP_TIME
+    # _config_dict.append(("Up Since", config.APP_STARTUP_TIME))
     _config_dict.append(("UI Enabled", "Yes" if config.UI_ENABLED else "No"))
     _config_dict.append(("UI Other Profile Views Enabled", "Yes" if config.OTHER_PROFILES_ENABLED else "No"))
     _config_dict.append(("UI Search Bar Enabled", "Yes" if config.SEARCH_BAR_ENABLED else "No"))
