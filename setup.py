@@ -59,6 +59,7 @@ setup(
         ],
     },
     # 
+    include_package_data=True,
     package_data={
         'libreforms_fastapi.app': ['static/*', 'templates/*.jinja'],
     },
