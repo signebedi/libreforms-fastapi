@@ -294,6 +294,11 @@ def get_config(env):
 # View functions should pass config changes as kwargs to the function below
 def validate_and_write_configs(app_config, **kwargs):
 
+
+    # Clear the config cache, see https://github.com/signebedi/libreforms-fastapi/issues/226
+    get_config.cache_clear()
+
+
     # First check assumptions
     app_config_copy = app_config.copy()
     for key in kwargs.keys():
@@ -353,6 +358,3 @@ def validate_and_write_configs(app_config, **kwargs):
                 # This function updates the .env file directly
                 set_key(config_file_path, config_name, config_value_str)
                 print(f"Updated {config_name} in your env file.")
-
-    # Clear the config cache
-    get_config.cache_clear()

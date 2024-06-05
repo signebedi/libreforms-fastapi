@@ -138,7 +138,7 @@ def get_config_context():
     original_environment = dict(os.environ)  # Make a copy of the current environment
     os.environ.clear()  # Clear all modifications
 
-    # Clear the config cache
+    # Clear the config cache, see https://github.com/signebedi/libreforms-fastapi/issues/226
     get_config.cache_clear()
 
     conf = get_config(_env)
@@ -495,7 +495,7 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
             detail="API key expired"
         )
 
-def get_doc_db():
+async def get_doc_db():
 
     with get_config_context() as config:
 
@@ -513,7 +513,7 @@ def get_doc_db():
     return doc_db
 
 
-def get_db():
+async def get_db():
     db = SessionLocal()
     try:
         yield db
@@ -3961,11 +3961,19 @@ async def api_admin_update_site_config(
     print(_site_config.content)
 
 
+    with get_config_context() as _c:
+        config = _c
+
     try:
         _ = validate_and_write_configs(config, **_site_config.content)
 
     except Exception as e:
         raise HTTPException(status_code=422, detail=f"{e}")
+
+
+    # # Clear the config cache, see https://github.com/signebedi/libreforms-fastapi/issues/226
+    # get_config.cache_clear()
+
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
@@ -4252,8 +4260,16 @@ def build_ui_context():
 
     kwargs = {}
 
-    with get_config_context() as _c:
-        kwargs["config"] = _c.model_dump()
+    # with get_config_context() as _c:
+    #     kwargs["config"] = _c.model_dump()
+
+    # I am modifying this to use the default, now cached get_config function instead of the
+    # context managed one, which is called in only a subset of circumstances... including when 
+    # changes to the app config are published through the admin rest api. Hopefully this reduces 
+    # the number of open file handles by a critical amount, along with running the dependencies 
+    # as async.
+    _c = get_config(_env)
+    kwargs["config"] = _c.model_dump()
 
     kwargs["version"] = __version__
     kwargs["available_forms"] = get_form_names(config_path=config.FORM_CONFIG_PATH)
