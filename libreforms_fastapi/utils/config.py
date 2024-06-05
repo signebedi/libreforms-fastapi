@@ -6,6 +6,7 @@ separate source to help preserve the generalizability of this logic.
 
 import os, shutil
 from pathlib import Path
+from functools import lru_cache
 from markupsafe import Markup, escape
 from typing import (
     List,
@@ -32,7 +33,7 @@ from pydantic.functional_validators import field_validator
 
 from libreforms_fastapi.utils.scripts import check_configuration_assumptions
 
-
+@lru_cache
 def get_config(env):
 
     instance_directory = os.path.join(os.getcwd(), 'instance')
@@ -352,3 +353,6 @@ def validate_and_write_configs(app_config, **kwargs):
                 # This function updates the .env file directly
                 set_key(config_file_path, config_name, config_value_str)
                 print(f"Updated {config_name} in your env file.")
+
+    # Clear the config cache
+    get_config.cache_clear()

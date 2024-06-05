@@ -137,6 +137,10 @@ _env = os.environ.get('ENVIRONMENT', 'development')
 def get_config_context():
     original_environment = dict(os.environ)  # Make a copy of the current environment
     os.environ.clear()  # Clear all modifications
+
+    # Clear the config cache
+    get_config.cache_clear()
+
     conf = get_config(_env)
 
     try:
@@ -145,11 +149,11 @@ def get_config_context():
         os.environ.clear()  # Clear all modifications
         os.environ.update(original_environment)  # Restore original environment
 
-def get_config_depends():
+async def get_config_depends():
     return get_config(_env)
 
 
-def get_mailer():
+async def get_mailer():
 
     with get_config_context() as config:
 
