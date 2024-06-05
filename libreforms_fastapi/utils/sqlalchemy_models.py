@@ -244,8 +244,14 @@ def get_sqlalchemy_models(
         # Relationship back to the user
         user = relationship("User", back_populates="password_reuses")
 
-
-
+        def to_dict(self):
+            """Converts a PasswordReuse instance into a dict."""
+            return {
+                'id': self.id,
+                'user_id': self.user_id,
+                'hashed_password': self.hashed_password,
+                'timestamp': self.timestamp.isoformat()
+            }
 
     # Allow admins to define custom groups, see
     # https://github.com/signebedi/libreforms-fastapi/issues/22
