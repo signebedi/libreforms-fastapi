@@ -187,15 +187,14 @@ def get_config(env):
         # Permanent session lifetime should be an int corresponding to the number of minutes
         PERMANENT_SESSION_LIFETIME: timedelta = timedelta(hours=6)  # Again we set a default value
 
-        # In development we do not force HTTPS, see
-        # https://github.com/signebedi/libreforms-fastapi/issues/183
-        FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'False') == 'True'
-
-
         @field_validator('PERMANENT_SESSION_LIFETIME')
         def set_permanent_session_lifetime(cls, v):
             hours = int(os.getenv('PERMANENT_SESSION_LIFETIME', '6'))
             return timedelta(hours=hours)
+
+        # In development we do not force HTTPS, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/183
+        FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'False') == 'True'
 
         COLLECT_USAGE_STATISTICS:bool = os.getenv('COLLECT_USAGE_STATISTICS', 'True') == 'True'
         DISABLE_NEW_USERS:bool = os.getenv('DISABLE_NEW_USERS', 'False') == 'True'
@@ -204,6 +203,10 @@ def get_config(env):
         HELP_PAGE_ENABLED:bool = os.getenv('HELP_PAGE_ENABLED', 'False') == 'True'
         HELP_EMAIL:EmailStr|None = os.getenv('HELP_EMAIL', None)
         # HELP_EMAIL:EmailStr|List[EmailStr] = os.getenv('HELP_EMAIL', "")
+
+
+        LIMIT_PASSWORD_REUSE: bool = os.getenv('LIMIT_PASSWORD_REUSE', 'Flase') == 'True'
+        PASSWORD_REUSE_PERIOD: int
 
         # @validator('HELP_EMAIL', pre=True)
         # def split_str_to_list(cls, v):

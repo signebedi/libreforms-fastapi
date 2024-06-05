@@ -348,11 +348,9 @@ with get_config_context() as config:
 
     with importlib_resources.path("libreforms_fastapi.app", "static") as static_dir:
         app.mount("/static", StaticFiles(directory=str(static_dir)), name="static")
-        # app.mount("/static", StaticFiles(directory="libreforms_fastapi/app/static"), name="static")
     
     with importlib_resources.path("libreforms_fastapi.app", "templates") as templates_dir:
         templates = Jinja2Templates(directory=str(templates_dir))
-        # templates = Jinja2Templates(directory="libreforms_fastapi/app/templates")
     
     app.add_middleware(AuthenticationMiddleware, backend=BearerTokenAuthBackend())
 
@@ -383,6 +381,7 @@ with get_config_context() as config:
 
 
     User = models['User']
+    PasswordReuse = models['PasswordReuse']
     Group = models['Group']
     TransactionLog = models['TransactionLog']
     SignatureRoles = models['SignatureRoles']
@@ -446,6 +445,10 @@ X_API_KEY = APIKeyHeader(name="X-API-Key")
 # https://fastapi.tiangolo.com/reference/security/?h=apikeyheader
 def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
     """ takes the X-API-Key header and validates it"""
+
+    # Do we want to have account locking also disable key use, or just limit
+    # access to the UI, see https://github.com/signebedi/libreforms-fastapi/issues/231.
+
     try:
         verify = signatures.verify_key(x_api_key, scope=['api_key'])
 
@@ -1865,12 +1868,17 @@ async def api_auth_create(
     if config.DISABLE_NEW_USERS:
         raise HTTPException(status_code=404)
 
+    # In the future, consider coercing to lowercase, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/239
+    # new_username = user_request.username.lower()
+    new_username = user_request.username
+
     # Check if user or email already exists
     # See https://stackoverflow.com/a/9270432/13301284 for HTTP Response
-    existing_user = session.query(User).filter(User.username.ilike(user_request.username)).first()
+    existing_user = session.query(User).filter(User.username.ilike(new_username)).first()
     if existing_user:
         # Consider adding IP tracking to failed attempt
-        logger.warning(f'Attempt to register user {user_request.username} but user already exists')
+        logger.warning(f'Attempt to register user {new_username} but user already exists')
 
         raise HTTPException(status_code=409, detail="Registration failed. The provided information cannot be used.")
 
@@ -1895,7 +1903,7 @@ async def api_auth_create(
 
     new_user = User(
         email=user_request.email, 
-        username=user_request.username, 
+        username=new_username, 
         password=generate_password_hash(user_request.password.get_secret_value()),
         active=config.REQUIRE_EMAIL_VERIFICATION == False,
         opt_out=user_request.opt_out if config.COLLECT_USAGE_STATISTICS else False,
@@ -1908,7 +1916,7 @@ async def api_auth_create(
 
     # Here we add user key pair information, namely, the path to the user private key, and the
     # contents of the public key, see https://github.com/signebedi/libreforms-fastapi/issues/71.
-    ds_manager = DigitalSignatureManager(username=user_request.username, env=config.ENVIRONMENT)
+    ds_manager = DigitalSignatureManager(username=new_username, env=config.ENVIRONMENT)
     ds_manager.generate_rsa_key_pair()
     new_user.private_key_ref = ds_manager.get_private_key_file()
     new_user.public_key = ds_manager.public_key_bytes
@@ -1928,10 +1936,10 @@ async def api_auth_create(
         if config.REQUIRE_EMAIL_VERIFICATION:
 
             key = signatures.write_key(scope=['email_verification'], expiration=48, active=True, email=email)
-            content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}. Please verify your email by clicking the following link: {config.DOMAIN}/verify/{key}. Please note this link will expire after 48 hours."
+            content=f"This email serves to notify you that the user {new_username} has just been registered for this email address at {config.DOMAIN}. Please verify your email by clicking the following link: {config.DOMAIN}/verify/{key}. Please note this link will expire after 48 hours."
 
         else:
-            content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}."
+            content=f"This email serves to notify you that the user {new_username} has just been registered for this email address at {config.DOMAIN}."
 
         background_tasks.add_task(
             mailer.send_mail, 
@@ -1952,13 +1960,13 @@ async def api_auth_create(
             api_key=new_user.api_key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params={"user":user_request.username},
+            query_params={"user":new_username},
         )
 
     return {
         "status": "success", 
         "api_key": api_key,
-        "message": f"Successfully created new user {user_request.username}"
+        "message": f"Successfully created new user {new_username}"
     }
 
 
@@ -2205,7 +2213,7 @@ async def api_auth_login(
     """
 
 
-    user = session.query(User).filter_by(username=form_data.username.lower()).first()
+    user = session.query(User).filter_by(username=form_data.username).first()
 
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
@@ -2542,7 +2550,12 @@ async def api_admin_create_user(
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
 
-    existing_user = session.query(User).filter(User.username.ilike(user_request.username)).first()
+    # In the future, consider coercing to lowercase, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/239
+    # new_username = user_request.username.lower()
+    new_username = user_request.username
+
+    existing_user = session.query(User).filter(User.username.ilike(new_username)).first()
     if existing_user:
         raise HTTPException(status_code=409, detail="Registration failed. Username already exists.")
 
@@ -2552,7 +2565,7 @@ async def api_admin_create_user(
 
     new_user = User(
         email=user_request.email, 
-        username=user_request.username, 
+        username=new_username, 
         active=True,
     ) 
 
@@ -2566,7 +2579,7 @@ async def api_admin_create_user(
 
     # Here we add user key pair information, namely, the path to the user private key, and the
     # contents of the public key, see https://github.com/signebedi/libreforms-fastapi/issues/71.
-    ds_manager = DigitalSignatureManager(username=user_request.username, env=config.ENVIRONMENT)
+    ds_manager = DigitalSignatureManager(username=new_username, env=config.ENVIRONMENT)
     ds_manager.generate_rsa_key_pair()
     new_user.private_key_ref = ds_manager.get_private_key_file()
     new_user.public_key = ds_manager.public_key_bytes
@@ -2584,7 +2597,7 @@ async def api_admin_create_user(
     if config.SMTP_ENABLED:
 
         subject=f"{config.SITE_NAME} User Registered"
-        content=f"This email serves to notify you that the user {user_request.username} has just been registered for this email address at {config.DOMAIN}. Your user has been given the following temporary password:\n\n{password}\n\nPlease login to the system and update this password at your earliest convenience."
+        content=f"This email serves to notify you that the user {new_username} has just been registered for this email address at {config.DOMAIN}. Your user has been given the following temporary password:\n\n{password}\n\nPlease login to the system and update this password at your earliest convenience."
 
         background_tasks.add_task(
             mailer.send_mail, 
@@ -2601,12 +2614,12 @@ async def api_admin_create_user(
             api_key=key, 
             endpoint=request.url.path, 
             remote_addr=request.client.host, 
-            query_params={"user":user_request.username},
+            query_params={"user":new_username},
         )
 
     return JSONResponse(
         status_code=200,
-        content={"status": "success", "message": f"New user \"{user_request.username}\" created with the temporary password {password}"},
+        content={"status": "success", "message": f"New user \"{new_username}\" created with the temporary password {password}"},
     )
 
 # This is a glorified "update groups" route..
@@ -2655,7 +2668,7 @@ async def api_admin_update_user(
             api_key=key, 
             endpoint=request.url.path, 
             remote_addr=request.client.host, 
-            query_params={"user":user_request.username, "groups":user_request.groups},
+            query_params={"user":user.username, "groups":user.groups},
         )
 
     return JSONResponse(
@@ -2709,6 +2722,16 @@ async def api_admin_modify_user(
     elif field == "password":
         new_value = percentage_alphanumeric_generate_password(config.PASSWORD_REGEX, 16, .65)
         user_to_change.password = generate_password_hash(new_value)
+
+
+        # Fix for https://github.com/signebedi/libreforms-fastapi/issues/240
+        current_time = datetime.now(config.TIMEZONE)
+        user_to_change.last_password_change = current_time
+        user_to_change.last_login = current_time
+
+        user_to_change.failed_login_attempts = 0
+
+
     elif field == "api_key":
         # Rotate the user's API key 
         new_value = signatures.rotate_key(user_to_change.api_key)
