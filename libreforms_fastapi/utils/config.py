@@ -204,15 +204,22 @@ def get_config(env):
         HELP_EMAIL:EmailStr|None = os.getenv('HELP_EMAIL', None)
         # HELP_EMAIL:EmailStr|List[EmailStr] = os.getenv('HELP_EMAIL', "")
 
-
-        LIMIT_PASSWORD_REUSE: bool = os.getenv('LIMIT_PASSWORD_REUSE', 'Flase') == 'True'
-        PASSWORD_REUSE_PERIOD: int
-
         # @validator('HELP_EMAIL', pre=True)
         # def split_str_to_list(cls, v):
         #     if isinstance(v, str) and "," in v:
         #         return v.split(",")
         #     return v
+
+
+        LIMIT_PASSWORD_REUSE: bool = os.getenv('LIMIT_PASSWORD_REUSE', 'False') == 'True'
+        PASSWORD_REUSE_PERIOD: str | int | timedelta = timedelta(days=1)  # First we set a default value
+
+        @field_validator('PASSWORD_REUSE_PERIOD')
+        def set_password_reuse_period(cls, v):
+            # Next we dectorate
+            days = int(os.getenv('PASSWORD_REUSE_PERIOD', '365'))
+            return timedelta(days=days)
+            
 
         # Set site cookie configs, see https://github.com/signebedi/gita-api/issues/109
         SESSION_COOKIE_SECURE:bool = os.getenv('SESSION_COOKIE_SECURE', 'False') == 'True'
