@@ -394,6 +394,21 @@ with get_config_context() as config:
 
     logger.info('Relational database has been initialized')
 
+
+    # Very temporary! Coerce usernames to lowercase at startup, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/239
+    with SessionLocal() as session:
+        # Fetch all users
+        all_users = session.query(User).all()
+
+        for user in all_users:
+            # Coerce username to lowercase
+            user.username = user.username.lower()
+
+        # Commit the changes to the database
+        session.commit()
+
+
     # Create default group if it does not exist
     with SessionLocal() as session:
         # Check if a group with id 1 exists
@@ -1870,8 +1885,8 @@ async def api_auth_create(
 
     # In the future, consider coercing to lowercase, see
     # https://github.com/signebedi/libreforms-fastapi/issues/239
-    # new_username = user_request.username.lower()
-    new_username = user_request.username
+    new_username = user_request.username.lower()
+    # new_username = user_request.username
 
     # Check if user or email already exists
     # See https://stackoverflow.com/a/9270432/13301284 for HTTP Response
@@ -2213,7 +2228,7 @@ async def api_auth_login(
     """
 
 
-    user = session.query(User).filter_by(username=form_data.username).first()
+    user = session.query(User).filter_by(username=form_data.username.lower()).first()
 
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
@@ -2552,8 +2567,8 @@ async def api_admin_create_user(
 
     # In the future, consider coercing to lowercase, see
     # https://github.com/signebedi/libreforms-fastapi/issues/239
-    # new_username = user_request.username.lower()
-    new_username = user_request.username
+    new_username = user_request.username.lower()
+    # new_username = user_request.username
 
     existing_user = session.query(User).filter(User.username.ilike(new_username)).first()
     if existing_user:
