@@ -1920,10 +1920,12 @@ async def api_auth_create(
 
         raise HTTPException(status_code=409, detail="Registration failed. The provided information cannot be used.")
 
+    hashed_password = generate_password_hash(user_request.password.get_secret_value())
+
     new_user = User(
         email=user_request.email, 
         username=new_username, 
-        password=generate_password_hash(user_request.password.get_secret_value()),
+        password=hashed_password,
         active=config.REQUIRE_EMAIL_VERIFICATION == False,
         opt_out=user_request.opt_out if config.COLLECT_USAGE_STATISTICS else False,
     ) 
@@ -1945,6 +1947,15 @@ async def api_auth_create(
     new_user.groups.append(group)
 
     session.add(new_user)
+    session.flush()
+
+    # Monitor password use, seee https://github.com/signebedi/libreforms-fastapi/issues/230
+    new_password = PasswordReuse(
+        user_id=new_user.id,
+        hashed_password=hashed_password,
+        timestamp=datetime.now(config.TIMEZONE) 
+    )
+    session.add(new_password)
     session.commit()
 
     # Email notification
@@ -2049,12 +2060,27 @@ async def api_auth_change_password(
         current_time = datetime.now(config.TIMEZONE)
         user.last_login = current_time
 
+        hashed_password = generate_password_hash(user_request.new_password.get_secret_value())
+
         # Set the users new password
         user.last_password_change = current_time
-        user.password=generate_password_hash(user_request.new_password.get_secret_value())
+        user.password=hashed_password
 
         session.add(user)
+
+        # Monitor password use, seee https://github.com/signebedi/libreforms-fastapi/issues/230
+        new_password = PasswordReuse(
+            user_id=user.id,
+            hashed_password=hashed_password,
+            timestamp=datetime.now(config.TIMEZONE) 
+        )
+        session.add(new_password)
+
         session.commit()
+
+
+
+
 
     # Email notification
     if config.SMTP_ENABLED:
@@ -2594,7 +2620,9 @@ async def api_admin_create_user(
     new_user.api_key = api_key
 
     password = percentage_alphanumeric_generate_password(config.PASSWORD_REGEX, 16, .65)
-    new_user.password = generate_password_hash(password)
+
+    hashed_password = generate_password_hash(password)
+    new_user.password = hashed_password
 
     # Here we add user key pair information, namely, the path to the user private key, and the
     # contents of the public key, see https://github.com/signebedi/libreforms-fastapi/issues/71.
@@ -2610,6 +2638,15 @@ async def api_admin_create_user(
             new_user.groups.append(group)
 
     session.add(new_user)
+    session.flush()
+
+    # Monitor password use, seee https://github.com/signebedi/libreforms-fastapi/issues/230
+    new_password = PasswordReuse(
+        user_id=new_user.id,
+        hashed_password=hashed_password,
+        timestamp=datetime.now(config.TIMEZONE) 
+    )
+    session.add(new_password)
     session.commit()
 
     # Email notification
@@ -2740,8 +2777,8 @@ async def api_admin_modify_user(
         setattr(user_to_change, field, new_value)
     elif field == "password":
         new_value = percentage_alphanumeric_generate_password(config.PASSWORD_REGEX, 16, .65)
-        user_to_change.password = generate_password_hash(new_value)
-
+        hashed_password = generate_password_hash(new_value)
+        user_to_change.password = hashed_password
 
         # Fix for https://github.com/signebedi/libreforms-fastapi/issues/240
         current_time = datetime.now(config.TIMEZONE)
@@ -2750,6 +2787,13 @@ async def api_admin_modify_user(
 
         user_to_change.failed_login_attempts = 0
 
+        # Monitor password use, seee https://github.com/signebedi/libreforms-fastapi/issues/230
+        new_password = PasswordReuse(
+            user_id=user_to_change.id,
+            hashed_password=hashed_password,
+            timestamp=datetime.now(config.TIMEZONE) 
+        )
+        session.add(new_password)
 
     elif field == "api_key":
         # Rotate the user's API key 
