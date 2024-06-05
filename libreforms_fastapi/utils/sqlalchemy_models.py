@@ -146,6 +146,14 @@ def get_sqlalchemy_models(
             back_populates='related_user'
         )
 
+        # Added password reuse tracking, see https://github.com/signebedi/libreforms-fastapi/issues/230
+        password_reuses = relationship(
+            "PasswordReuse", 
+            order_by="PasswordReuse.id", 
+            back_populates="user"
+        )
+
+
         def __repr__(self) -> str:
 
             # Here we join the group names and represent them as a comma-separated string of values
@@ -223,6 +231,19 @@ def get_sqlalchemy_models(
                 user_dict['password'] = self.password
             
             return user_dict
+
+
+    # Added in https://github.com/signebedi/libreforms-fastapi/issues/230
+    class PasswordReuse(Base):
+        __tablename__ = 'password_reuse'
+        id = Column(Integer, primary_key=True)
+        user_id = Column(Integer, ForeignKey('user.id'), nullable=False)
+        hashed_password = Column(String(1000), nullable=False)
+        timestamp = Column(DateTime, nullable=False, default=tz_aware_datetime)
+
+        # Relationship back to the user
+        user = relationship("User", back_populates="password_reuses")
+
 
 
 
@@ -433,6 +454,7 @@ def get_sqlalchemy_models(
 
     return { # This approach is a little bit of syntactic salt to ensure we 
         "User": User, # purposefully merge new models into the mainline code.
+        "PasswordReuse": PasswordReuse,
         "Group": Group,
         "TransactionLog": TransactionLog,
         "SignatureRoles": SignatureRoles,

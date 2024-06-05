@@ -1,7 +1,7 @@
 # libreforms-fastapi
 FastAPI implementation of the libreForms spec
 
-#### Installation
+#### Getting Started
 
 Follow the steps below to install the system on your computer. Please note, you need to install Python3.10 (or higher) and Python3.10-Venv through your package manager. If you plan to use MongoDB and a relational database, you will need to install these, too. See your distribution's specific instructions for these steps or [install using Docker](#running-in-docker) to get started.
 
@@ -13,8 +13,7 @@ pip install libreforms_fastapi
 uvicorn libreforms_fastapi.app:app --reload # this will run the development server
 ```
 
-
-You can also install manually using the git repository.
+You can also install manually using the git repository, which is recommended for development.
 
 ```bash
 git clone https://github.com/signebedi/libreforms-fastapi.git
@@ -23,6 +22,21 @@ python3 -m venv venv
 source venv/bin/activate
 pip install -e .
 uvicorn libreforms_fastapi.app:app --reload # this will run the development server
+```
+
+#### Installing Extras
+
+If you want to also enable the use data science libraries and Excel exports, you should pip install using the `data` extras tag.
+
+```bash
+pip install libreforms_fastapi[data]
+```
+
+If you plan to use Postgres or MariaDB, then there are additional extras tags for those, too. 
+
+```bash
+pip install libreforms_fastapi[postres] # for Postgres
+pip install libreforms_fastapi[mariadb] # for MariaDB
 ```
 
 #### Running in Production
@@ -35,7 +49,7 @@ libreformsctl uvicorn --environment production
 libreformsctl nginx production # Optional if you want a reverse proxy 
 ```
 
-#### Troubleshooting errors
+#### Troubleshooting Errors
 
 You may sometimes run into inexplicable runtime errors. These often result from permission issues on the filesystem. When in doubt, try running the following command as root.
 
