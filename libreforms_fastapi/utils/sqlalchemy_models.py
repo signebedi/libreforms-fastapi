@@ -150,7 +150,8 @@ def get_sqlalchemy_models(
         password_reuses = relationship(
             "PasswordReuse", 
             order_by="PasswordReuse.id", 
-            back_populates="user"
+            back_populates="user",
+            lazy="dynamic",
         )
 
 
@@ -250,7 +251,7 @@ def get_sqlalchemy_models(
                 'id': self.id,
                 'user_id': self.user_id,
                 'hashed_password': self.hashed_password,
-                'timestamp': self.timestamp.isoformat()
+                'timestamp': self.timestamp,
             }
 
     # Allow admins to define custom groups, see

@@ -2046,40 +2046,66 @@ async def api_auth_change_password(
         raise HTTPException(status_code=400, detail=f"Incorrect username or password{'. Max password failures exceeded. User account locked.' if _report_to_user else ''}")
 
     if not user.active:
-        raise HTTPException(status_code=400, detail="User authentication failed")
+        raise HTTPException(status_code=400, detail="User account is inactive")
 
     # Validate that user has not exceeded the max failed login attempts,
     # see https://github.com/signebedi/libreforms-fastapi/issues/78
     if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
-        raise HTTPException(status_code=400, detail="User authentication failed")
+        raise HTTPException(status_code=400, detail="User account is inactive")
+
+    # Hash the password
+    hashed_password = generate_password_hash(user_request.new_password.get_secret_value())
+
+    # If password reuse is limited by admins, check here, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/230.
+    if config.LIMIT_PASSWORD_REUSE:
+
+        # We set the threshold date. If the PASSWORD_REUSE_PERIOD is set to 0, check all passwords dated since the unix epoch
+        threshold_datetime = datetime.now(config.TIMEZONE) - config.PASSWORD_REUSE_PERIOD if config.PASSWORD_REUSE_PERIOD > 0 else datetime(1970, 1, 1, tzinfo=config.TIMEZONE)
+
+
+        # print("\n\n\n",threshold_datetime)
+
+        # Select past reuses
+        # recent_password_reuses = session.query(PasswordReuse).filter_by(user_id=user.id).all()
+
+        recent_password_reuses = session.query(PasswordReuse).filter(
+            PasswordReuse.user_id == user.id,
+            PasswordReuse.timestamp > threshold_datetime
+        ).all()
+
+
+        # print("\n\n\n", [x.to_dict() for x in session.query(PasswordReuse).all()])
+        # print([x.to_dict()for x in recent_password_reuses])
+
+        # If we find a hit, raise an error
+        for reuse in recent_password_reuses:
+            if check_password_hash(reuse.hashed_password, user_request.new_password.get_secret_value()):
+                raise HTTPException(status_code=400, detail=f"You have tried to change your password to a value that you have used within the last {config.PASSWORD_REUSE_PERIOD.days} days. Please try a different password.")
+
 
     # If the password IS correct, clear the user's failed password attempts, see
     # https://github.com/signebedi/libreforms-fastapi/issues/78.
-    else:
-        user.failed_login_attempts = 0
-        current_time = datetime.now(config.TIMEZONE)
-        user.last_login = current_time
-
-        hashed_password = generate_password_hash(user_request.new_password.get_secret_value())
-
-        # Set the users new password
-        user.last_password_change = current_time
-        user.password=hashed_password
-
-        session.add(user)
-
-        # Monitor password use, seee https://github.com/signebedi/libreforms-fastapi/issues/230
-        new_password = PasswordReuse(
-            user_id=user.id,
-            hashed_password=hashed_password,
-            timestamp=datetime.now(config.TIMEZONE) 
-        )
-        session.add(new_password)
-
-        session.commit()
+    user.failed_login_attempts = 0
+    current_time = datetime.now(config.TIMEZONE)
+    user.last_login = current_time
 
 
+    # Set the users new password
+    user.last_password_change = current_time
+    user.password=hashed_password
 
+    session.add(user)
+
+    # Monitor password use, seee https://github.com/signebedi/libreforms-fastapi/issues/230
+    new_password = PasswordReuse(
+        user_id=user.id,
+        hashed_password=hashed_password,
+        timestamp=datetime.now(config.TIMEZONE) 
+    )
+    session.add(new_password)
+
+    session.commit()
 
 
     # Email notification
