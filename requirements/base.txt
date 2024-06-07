@@ -14,3 +14,4 @@ SQLAlchemy<3.0.0
 sqlalchemy-signing<2.0.0
 tinydb<5.0.0
 uvicorn<1.0.0
+watchdog<5.0.0

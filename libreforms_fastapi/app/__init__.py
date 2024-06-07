@@ -1,10 +1,14 @@
 import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib, importlib, platform
 from datetime import datetime, timedelta
 from contextlib import contextmanager
+from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Optional, Annotated
 from markupsafe import escape
 from bson import ObjectId
+from watchdog.observers import Observer
+from watchdog.events import FileSystemEventHandler
+
 
 from pydantic import ValidationError
 from fastapi import (
@@ -133,13 +137,37 @@ from libreforms_fastapi.utils.custom_tinydb import CustomEncoder
 # factory pattern defined in libreforms_fastapi.utis.config.
 _env = os.environ.get('ENVIRONMENT', 'development')
 
+
+class ConfigFileChangeHandler(FileSystemEventHandler):
+    """
+    I am adding this class to help manage caching for the application configuration, 
+    which otherwise has a tendency to open too many file handles and run into a
+    "too many open files" error that brings the site down, see 
+    https://github.com/signebedi/libreforms-fastapi/issues/226.
+    """
+
+    def __init__(self, cache_clear_func, logger=None):
+        self.cache_clear_func = cache_clear_func
+
+        self.logger = logger
+
+
+    def on_modified(self, event):
+        if event.src_path.endswith(".env"):
+
+            if self.logger:
+                logger.info(f"Detected change in {event.src_path}, clearing config cache.")
+            self.cache_clear_func()
+
+
 @contextmanager
 def get_config_context():
     original_environment = dict(os.environ)  # Make a copy of the current environment
     os.environ.clear()  # Clear all modifications
 
     # Clear the config cache, see https://github.com/signebedi/libreforms-fastapi/issues/226
-    get_config.cache_clear()
+    # get_config.cache_clear()
+    get_config_depends.cache_clear()
 
     conf = get_config(_env)
 
@@ -149,23 +177,32 @@ def get_config_context():
         os.environ.clear()  # Clear all modifications
         os.environ.update(original_environment)  # Restore original environment
 
-async def get_config_depends():
+@lru_cache()
+def get_config_depends():
+    os.environ.clear()
     return get_config(_env)
+
+
+def clear_config_cache():
+    os.environ.clear()
+    get_config_depends.cache_clear()
 
 
 async def get_mailer():
 
-    with get_config_context() as config:
+    # with get_config_context() as config:
 
-        # Instantiate the Mailer object
-        mailer = Mailer(
-            enabled = config.SMTP_ENABLED,
-            mail_server = config.SMTP_MAIL_SERVER,
-            port = config.SMTP_PORT,
-            username = config.SMTP_USERNAME,
-            password = config.SMTP_PASSWORD,
-            from_address = config.SMTP_FROM_ADDRESS,
-        )
+    config = get_config_depends()
+
+    # Instantiate the Mailer object
+    mailer = Mailer(
+        enabled = config.SMTP_ENABLED,
+        mail_server = config.SMTP_MAIL_SERVER,
+        port = config.SMTP_PORT,
+        username = config.SMTP_USERNAME,
+        password = config.SMTP_PASSWORD,
+        from_address = config.SMTP_FROM_ADDRESS,
+    )
 
     return mailer
 
@@ -347,6 +384,27 @@ with get_config_context() as config:
     )
 
 
+    def start_config_watcher():
+        path_to_watch = config.CONFIG_FILE_PATH
+        event_handler = ConfigFileChangeHandler(clear_config_cache, logger=logger)
+        observer = Observer()
+        observer.schedule(event_handler, path=path_to_watch, recursive=True)
+        observer.start()
+        return observer
+
+    @app.on_event("startup")
+    async def startup_event():
+        observer = start_config_watcher()
+
+        # Keep the observer in the app state
+        app.state.config_observer = observer
+
+    @app.on_event("shutdown")
+    async def shutdown_event():
+        app.state.config_observer.stop()
+        app.state.config_observer.join()
+
+
     # Bug fix: https://github.com/signebedi/libreforms-fastapi/issues/113
     import importlib.resources as importlib_resources 
 
@@ -497,18 +555,20 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
 
 async def get_doc_db():
 
-    with get_config_context() as config:
+    # with get_config_context() as config:
 
-        # Initialize the document database
-        doc_db = get_document_database(
-            form_names_callable=get_form_names,
-            form_config_path=config.FORM_CONFIG_PATH,
-            timezone=config.TIMEZONE, 
-            env=config.ENVIRONMENT, 
-            use_mongodb=config.MONGODB_ENABLED, 
-            mongodb_uri=config.MONGODB_URI,
-            use_excel=config.EXCEL_EXPORT_ENABLED,
-        )
+    config = get_config_depends()
+
+    # Initialize the document database
+    doc_db = get_document_database(
+        form_names_callable=get_form_names,
+        form_config_path=config.FORM_CONFIG_PATH,
+        timezone=config.TIMEZONE, 
+        env=config.ENVIRONMENT, 
+        use_mongodb=config.MONGODB_ENABLED, 
+        mongodb_uri=config.MONGODB_URI,
+        use_excel=config.EXCEL_EXPORT_ENABLED,
+    )
 
     return doc_db
 
@@ -2060,7 +2120,7 @@ async def api_auth_change_password(
     # https://github.com/signebedi/libreforms-fastapi/issues/230.
     if config.LIMIT_PASSWORD_REUSE:
 
-        # We set the threshold date. If the PASSWORD_REUSE_PERIOD is set to 0, check all passwords dated since the unix epoch
+        # We set the threshold date. If the PASSWORD_REUSE_PERIOD is set to 0, check all passwords dated since the unix epoch.
         threshold_datetime = datetime.now(config.TIMEZONE) - config.PASSWORD_REUSE_PERIOD if config.PASSWORD_REUSE_PERIOD > 0 else datetime(1970, 1, 1, tzinfo=config.TIMEZONE)
 
 
@@ -4032,7 +4092,8 @@ async def api_admin_update_site_config(
 
 
     with get_config_context() as _c:
-        config = _c
+        # config = _c
+        pass
 
     try:
         _ = validate_and_write_configs(config, **_site_config.content)

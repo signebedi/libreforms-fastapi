@@ -6,7 +6,6 @@ separate source to help preserve the generalizability of this logic.
 
 import os, shutil
 from pathlib import Path
-from functools import lru_cache
 from markupsafe import Markup, escape
 from typing import (
     List,
@@ -33,7 +32,6 @@ from pydantic.functional_validators import field_validator
 
 from libreforms_fastapi.utils.scripts import check_configuration_assumptions
 
-@lru_cache
 def get_config(env):
 
     instance_directory = os.path.join(os.getcwd(), 'instance')
@@ -293,11 +291,6 @@ def get_config(env):
 
 # View functions should pass config changes as kwargs to the function below
 def validate_and_write_configs(app_config, **kwargs):
-
-
-    # Clear the config cache, see https://github.com/signebedi/libreforms-fastapi/issues/226
-    get_config.cache_clear()
-
 
     # First check assumptions
     app_config_copy = app_config.copy()
