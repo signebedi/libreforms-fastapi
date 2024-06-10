@@ -14,7 +14,7 @@ def set_logger(environment, log_file_name, namespace, log_directory=os.path.join
         file_handler = logging.handlers.RotatingFileHandler(
             log_file, 
             maxBytes=10485760,
-            backupCount=5,
+            backupCount=20,
             encoding='utf-8', 
             mode='a'
         )

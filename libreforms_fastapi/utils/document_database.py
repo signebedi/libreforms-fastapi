@@ -123,6 +123,7 @@ def get_document_database(
     timezone: ZoneInfo, 
     db_path: str = "instance/", 
     use_logger=True, 
+    logger=None,
     env="development",
     use_mongodb=False,
     mongodb_uri=None,
@@ -163,10 +164,6 @@ class ManageDocumentDB(ABC):
     def __init__(self, form_names_callable, form_config_path, timezone: ZoneInfo, use_excel:bool):
         self.form_names_callable = form_names_callable
         self.form_config_path = form_config_path
-
-        # Set default log_name if not already set by a subclass
-        if not hasattr(self, 'log_name'):
-            self.log_name = "document_db.log"
 
         # Here we'll set metadata field names
         self.metadata_fields = self._initialize_metadata_fields()
@@ -310,7 +307,8 @@ class ManageTinyDB(ManageDocumentDB):
         form_config_path, 
         timezone: ZoneInfo, 
         db_path: str = "instance/", 
-        use_logger=True, 
+        use_logger=True,
+        logger=None,
         env="development",
         use_excel: bool = False,
     ):
@@ -319,17 +317,22 @@ class ManageTinyDB(ManageDocumentDB):
         os.makedirs(self.db_path, exist_ok=True)
 
         self.env = env
-        self.log_name = "tinydb.log"
         self.use_logger = use_logger
 
         if self.use_logger:
-            from libreforms_fastapi.utils.logging import set_logger
 
-            self.logger = set_logger(
-                environment=self.env, 
-                log_file_name=self.log_name, 
-                namespace=self.log_name
-            )
+            if logger:
+                self.logger = logger
+
+            else:
+
+                from libreforms_fastapi.utils.logging import set_logger
+
+                self.logger = set_logger(
+                    environment=self.env, 
+                    log_file_name="document_db.log", 
+                    namespace="document_db.log",
+                )
 
         super().__init__(form_names_callable, form_config_path, timezone, use_excel)
 
