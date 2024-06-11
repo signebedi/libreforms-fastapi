@@ -3,6 +3,7 @@ email_validator
 fastapi
 fuzzywuzzy
 Jinja2
+html-sanitizer
 Markdown
 pydantic-settings
 PyJWT

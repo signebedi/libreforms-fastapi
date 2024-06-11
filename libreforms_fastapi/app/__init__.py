@@ -188,7 +188,7 @@ def clear_config_cache():
     get_config_depends.cache_clear()
 
 
-async def get_mailer():
+def get_mailer():
 
     # with get_config_context() as config:
 

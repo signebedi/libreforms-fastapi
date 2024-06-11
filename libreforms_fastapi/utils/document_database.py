@@ -4,24 +4,28 @@ from fuzzywuzzy import fuzz
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from markupsafe import escape
-
-from tinydb import (
-    Query, 
-)
+from abc import ABC, abstractmethod
 
 from typing import (
     Union,
     Any,
 )
-from abc import ABC, abstractmethod
 
-# This import is used to afix digital signatures to records
-from libreforms_fastapi.utils.certificates import sign_record, verify_record_signature
+from tinydb import (
+    Query, 
+)
 
 from libreforms_fastapi.utils.custom_tinydb import (
     CustomEncoder,
     CustomTinyDB,
 )
+
+# This import is used to afix digital signatures to records
+from libreforms_fastapi.utils.certificates import sign_record, verify_record_signature
+
+# This import is used to sanitize data on writes
+from libreforms_fastapi.utils.docs import sanitizer
+
 
 
 class CollectionDoesNotExist(Exception):
@@ -101,7 +105,7 @@ def fuzzy_search_normalized(text_string, search_term, segment_length=None):
 def escape_data_field(data: Any) -> Any:
     """
     Recursively escapes all string values in a data structure.
-    Supports dictionaries, lists, and basic stirngs.
+    Supports dictionaries, lists, and basic strings.
     """
     if isinstance(data, dict):
         # Escape each value in the dictionary
@@ -394,7 +398,8 @@ class ManageTinyDB(ManageDocumentDB):
         form_name:str, 
         json_data,
         # data_dict, 
-        metadata={}
+        metadata:dict={},
+        sanitize_data:bool=True,
     ):
         """Adds json data to the specified form's database."""
         self._check_form_exists(form_name)
@@ -403,6 +408,21 @@ class ManageTinyDB(ManageDocumentDB):
 
         # This is a little hackish but TinyDB write data to file as Python dictionaries, not JSON.
         convert_data_to_dict = json.loads(json_data)
+
+        if sanitize_data:
+            for key,value in convert_data_to_dict.items():
+
+                if isinstance(value, str):
+                    convert_data_to_dict[key] = sanitizer.sanitize(value)
+                elif isinstance(value, list):
+                    _temp_list = []
+                    for element in value:
+                        if isinstance(element, str):
+                            _temp_list.append(sanitizer.sanitize(element))
+                        else:
+                            _temp_list.append(element)
+                    convert_data_to_dict[key] = _temp_list
+
 
         document_id = metadata.get(self.document_id_field, str(ObjectId()))
 
@@ -452,7 +472,8 @@ class ManageTinyDB(ManageDocumentDB):
         # updated_data_dict:dict, 
         metadata={}, 
         limit_users:Union[bool, str]=False, 
-        exclude_deleted:bool=True
+        exclude_deleted:bool=True,
+        sanitize_data:bool=True,
     ):
         """Updates existing form in specified form's database."""
 
@@ -517,6 +538,21 @@ class ManageTinyDB(ManageDocumentDB):
             raise NoChangesProvided(form_name, document_id)
 
         # print("\n\n\nDropping Unchanged Fields: ", dropping_unchanged_data)
+
+        if sanitize_data:
+            for key,value in dropping_unchanged_data.items():
+
+                if isinstance(value, str):
+                    dropping_unchanged_data[key] = sanitizer.sanitize(value)
+                elif isinstance(value, list):
+                    _temp_list = []
+                    for element in value:
+                        if isinstance(element, str):
+                            _temp_list.append(sanitizer.sanitize(element))
+                        else:
+                            _temp_list.append(element)
+                    dropping_unchanged_data[key] = _temp_list
+
 
         # Build the journal
         journal = document['metadata'].get(self.journal_field)
@@ -817,7 +853,7 @@ class ManageTinyDB(ManageDocumentDB):
         file_path:str=os.path.join("instance", "export"),
         limit_users:Union[bool, str]=False, 
         exclude_deleted:bool=True,
-        escape_output:bool=True,
+        escape_output:bool=False,
         exclude_journal:bool=True,
     ):
         """Retrieves all the documents for the specified form and saves to excel"""
@@ -867,7 +903,7 @@ class ManageTinyDB(ManageDocumentDB):
         form_name:str, 
         limit_users:Union[bool, str]=False, 
         exclude_deleted:bool=True,
-        escape_output:bool=True,
+        escape_output:bool=False,
         collapse_data:bool=False,
     ):
 
@@ -895,6 +931,16 @@ class ManageTinyDB(ManageDocumentDB):
         if escape_output:
             for document in documents:
                 document['data'] = escape_data_field(document['data'])
+                # for key, value in document['data'].items():
+                #     if isinstance(value, str):
+                #         _ = validate_html_content(value)
+
+                #     elif isinstance(value, list):
+                #         for element in value:
+                #             if isinstance(element, str):
+                #                 _ = validate_html_content(element)
+
+
 
         if collapse_data:
             _documents = []
@@ -926,7 +972,7 @@ class ManageTinyDB(ManageDocumentDB):
         document_id:str, 
         limit_users:Union[bool, str]=False, 
         exclude_deleted:bool=True,
-        escape_output:bool=True,
+        escape_output:bool=False,
         to_file:bool=False,
         file_path:str=os.path.join("instance", "export"),
     ):
@@ -947,6 +993,15 @@ class ManageTinyDB(ManageDocumentDB):
         # If we've opted to escape output, then do so here
         if escape_output:
             document['data'] = escape_data_field(document['data'])
+            # for key, value in document['data'].items():
+            #     if isinstance(value, str):
+            #         _ = validate_html_content(value)
+
+            #     elif isinstance(value, list):
+            #         for element in value:
+            #             if isinstance(element, str):
+            #                 _ = validate_html_content(element)
+
 
         if to_file:
 

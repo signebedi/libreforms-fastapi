@@ -406,11 +406,11 @@ def get_form_backups(config_path=None):
     os.makedirs(directory_path, exist_ok=True)
 
     # Get the list of files in the directory
-    file_list = os.listdir(directory_path)
+    file_list = sorted(os.listdir(directory_path))[::-1]
 
     # Filter out directories, keeping only files
     file_list = [file for file in file_list if os.path.isfile(os.path.join(directory_path, file))]
-    time_string_list = [file.split('.')[-1] for file in file_list if os.path.isfile(os.path.join(directory_path, file))]
+    time_string_list = [file.split('.')[-1] for file in file_list]
 
     # print(file_list)
 
@@ -454,7 +454,7 @@ def get_form_backups(config_path=None):
         subtractions.append(subtractions_count)
 
     # Zip up and return the results
-    return list(zip(file_list, time_string_list, date_list, content_list, additions, subtractions))[::-1]
+    return list(zip(file_list, time_string_list, date_list, content_list, additions, subtractions))
 
 
 def get_form_names(config_path=None):

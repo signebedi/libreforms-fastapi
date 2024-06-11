@@ -1,6 +1,25 @@
 import markdown, os
 from pathlib import Path
 from datetime import datetime
+from html_sanitizer import Sanitizer
+
+
+sanitizer_config = {
+    'tags': {'a', 'br', 'p', 'strong', 'em', 'ul', 'ol', 'li', 'b', 'i', 'u', 'span', 'div', 'img'},
+    'attributes': {
+        'a': ['href', 'title'],
+        'img': ['src', 'alt'], 
+        'div': ['style'],  # Might mkae sense to sanitize style content separately
+    },
+    'empty': {'br'},
+    'separate': {'a', 'p', 'ul', 'ol', 'li', 'br', 'img'}, 
+    'protocols': {'a': ['http', 'https', 'mailto'], 'img': ['http', 'https']}  
+}
+
+
+
+sanitizer = Sanitizer(sanitizer_config)
+
 
 class UnsafeHtmlContentError(Exception):
     """Custom exception for unsafe HTML content."""
@@ -22,7 +41,7 @@ def validate_html_content(html_content):
         "<script", "</script>",  # Script tags
         "<iframe", "</iframe>",  # Iframe tags
         "javascript:",  # Javascript URLs
-        "onerror=", "onload="  # Event handlers
+        "onerror=", "onload=",  # Event handlers
     ]
 
     # Check for unsafe patterns in the provided HTML content.
