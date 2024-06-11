@@ -36,7 +36,9 @@ from fastapi.security import (
     OAuth2PasswordRequestForm,
 )
 from fastapi.exceptions import RequestValidationError
-from starlette.middleware.authentication import AuthenticationMiddleware
+from starlette.middleware.authentication import (
+    AuthenticationMiddleware,
+)
 from starlette.authentication import (
     AuthCredentials, 
     AuthenticationBackend, 
@@ -46,6 +48,7 @@ from starlette.authentication import (
     UnauthenticatedUser,
     requires,
 )
+from starlette.requests import Request
 from http.cookies import SimpleCookie
 
 from sqlalchemy_signing import (
@@ -420,6 +423,13 @@ with get_config_context() as config:
         templates = Jinja2Templates(directory=str(templates_dir))
     
     app.add_middleware(AuthenticationMiddleware, backend=BearerTokenAuthBackend())
+
+
+    # Added based on https://github.com/signebedi/libreforms-fastapi/issues/248
+    if config.ENABLE_PROXY_PASS:
+        from libreforms_fastapi.utils.middleware import ProxiedHeadersMiddleware
+        app.add_middleware(ProxiedHeadersMiddleware)
+
 
     # Add obfuscating validation error handlers in production
     if not config.DEBUG:

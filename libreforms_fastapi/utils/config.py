@@ -195,6 +195,10 @@ def get_config(env):
         # https://github.com/signebedi/libreforms-fastapi/issues/183
         FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'False') == 'True'
 
+        # For some environments we need to enable a proxy pass middleware, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/248
+        ENABLE_PROXY_PASS:bool = os.getenv('SET_PROXY_PASS', 'False') == 'True'
+
         COLLECT_USAGE_STATISTICS:bool = os.getenv('COLLECT_USAGE_STATISTICS', 'True') == 'True'
         DISABLE_NEW_USERS:bool = os.getenv('DISABLE_NEW_USERS', 'False') == 'True'
 
