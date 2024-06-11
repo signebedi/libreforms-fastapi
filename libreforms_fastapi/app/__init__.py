@@ -383,11 +383,11 @@ with get_config_context() as config:
         namespace='sqlalchemy.engine'
     )
 
-    document_database_logger = set_logger(
-                    environment=config.ENVIRONMENT, 
-                    log_file_name="document_db.log", 
-                    namespace="document_db.log",
-                )
+    # document_database_logger = set_logger(
+    #                 environment=config.ENVIRONMENT, 
+    #                 log_file_name="document_db.log", 
+    #                 namespace="document_db.log",
+    # )
 
     def start_config_watcher():
         path_to_watch = config.CONFIG_FILE_PATH
@@ -558,7 +558,7 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
             detail="API key expired"
         )
 
-async def get_doc_db():
+def get_doc_db():
 
     # with get_config_context() as config:
 
@@ -570,7 +570,8 @@ async def get_doc_db():
         form_config_path=config.FORM_CONFIG_PATH,
         timezone=config.TIMEZONE, 
         env=config.ENVIRONMENT, 
-        logger=document_database_logger,
+        use_logger=False, # https://github.com/signebedi/libreforms-fastapi/issues/226
+        # logger=document_database_logger,
         use_mongodb=config.MONGODB_ENABLED, 
         mongodb_uri=config.MONGODB_URI,
         use_excel=config.EXCEL_EXPORT_ENABLED,
@@ -579,7 +580,7 @@ async def get_doc_db():
     return doc_db
 
 
-async def get_db():
+def get_db():
     db = SessionLocal()
     try:
         yield db
