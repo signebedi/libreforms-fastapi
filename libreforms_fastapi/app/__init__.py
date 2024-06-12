@@ -1032,12 +1032,21 @@ async def api_form_read_all(
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db), 
-    key: str = Depends(X_API_KEY)
+    key: str = Depends(X_API_KEY),
+    flatten: bool = False,
+    escape: bool = False,
+    simple_response: bool = False,
+    exclude_journal: bool = False,
+    stringify_output: bool = False,
 ):
     """
     Retrieves all documents of a specified form type, identified by the form name in the URL.
     It verifies the form's existence, checks user permissions, retrieves documents from the 
-    database, and logs the query.
+    database, and logs the query. You can pass flatten=true to return data in a flat format.
+    You can pass escape=true to escape output. You can pass simple_response=true to receive 
+    just the data as a response. You can pass exclude_journal=true to exclude the document
+    journal, which can sometimes complicate data handling because of its nested nature. You
+    can pass stringify_output=true if you would like output types coerced into string format.
     """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
@@ -1063,7 +1072,11 @@ async def api_form_read_all(
 
     documents = doc_db.get_all_documents(
         form_name=form_name, 
-        limit_users=limit_query_to
+        limit_users=limit_query_to,
+        escape_output=escape,
+        collapse_data=flatten,
+        exclude_journal=exclude_journal,
+        stringify_output=stringify_output,
     )
 
     # Write this query to the TransactionLog
@@ -1082,6 +1095,9 @@ async def api_form_read_all(
 
     if not documents:
         raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+    if simple_response:
+        return documents
 
     return {
         "message": "Data successfully retrieved", 

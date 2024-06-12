@@ -870,6 +870,7 @@ class ManageTinyDB(ManageDocumentDB):
             exclude_deleted=exclude_deleted,
             escape_output=escape_output,
             collapse_data=True,
+            exclude_journal=exclude_journal,
         )
 
         if len (documents) < 1:
@@ -880,8 +881,8 @@ class ManageTinyDB(ManageDocumentDB):
         df = pd.DataFrame(documents)
 
         # Drop the journal if exclude_journal is passed (this is the default behavior) 
-        if exclude_journal:
-            df = df.drop("__metadata__journal", axis=1)
+        # if exclude_journal:
+        #     df = df.drop("__metadata__journal", axis=1)
 
         # Get a file-name-safe timestamp
         datetime_format = datetime.now(self.timezone).strftime("%Y%m%d%H%M%S")
@@ -905,6 +906,8 @@ class ManageTinyDB(ManageDocumentDB):
         exclude_deleted:bool=True,
         escape_output:bool=False,
         collapse_data:bool=False,
+        exclude_journal:bool=False,
+        stringify_output:bool=False,
     ):
 
         """Retrieves all entries from the specified form's database."""
@@ -927,6 +930,28 @@ class ManageTinyDB(ManageDocumentDB):
         if exclude_deleted:
             documents = [x for x in documents if x['metadata'][self.is_deleted_field] == False]
 
+        # If we've opted to stringify each field...
+        if stringify_output:
+
+            _documents = []
+            for document in documents:
+                _document = {"data": {}, "metadata": {}}
+
+                # Add data in a strng format
+                for key, value in document['data'].items():
+                    _document['data'][key] = str(value)
+                    # print(key, value)
+
+                # Add data in string format
+                for key, value in document['metadata'].items():
+                    _document['metadata'][key] = str(value)
+
+                _documents.append(_document)
+
+            documents = _documents
+
+
+
         # If we've opted to escape output, then do so here
         if escape_output:
             for document in documents:
@@ -939,6 +964,18 @@ class ManageTinyDB(ManageDocumentDB):
                 #         for element in value:
                 #             if isinstance(element, str):
                 #                 _ = validate_html_content(element)
+
+
+        # If we want to drop the journal from the response
+        if exclude_journal:
+
+            _documents = []
+            
+            for document in documents:
+                document['metadata'].pop(self.journal_field, None)
+                _documents.append(document)
+
+            documents = _documents
 
 
 
@@ -960,9 +997,10 @@ class ManageTinyDB(ManageDocumentDB):
                 # print(_document)
                 _documents.append(_document)
 
-
             # print(_documents)
-            return _documents
+            documents = _documents
+
+
 
         return documents
 
