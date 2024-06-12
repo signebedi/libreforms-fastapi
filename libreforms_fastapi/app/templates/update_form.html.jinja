@@ -5,11 +5,15 @@
 {% endblock %}
 
 {% block content %}
-<h1>Update Form: {{form_name | replace("_", " ") | title}}</h1>
 
 <div class="container">
 
     <form id="dataForm" method="POST">
+
+        <fieldset style="padding-top: 10px;" class="form-check">
+            <h4>Update Form: {{form_name | replace("_", " ") | title}}</h4>
+        </fieldset>
+
 
         {% for field in form_html %}
             {{ field | safe }}
