@@ -125,9 +125,12 @@ function deleteForm() {
 
 // Not using Jquery for the file export 
 function exportForm(format) {
-    fetch(`/api/form/export/${formName}/${documentId}/${format}`, {
+    fetch(`/api/form/export/${formName}/${documentId}`, {
+        data: {
+            "format": format
+        },
         headers: {
-            'X-API-KEY': apiKey,
+            'X-API-KEY': apiKey
         }
     })
     .then(response => {

@@ -944,14 +944,18 @@ async def api_form_read_history(
     }
 
 
+
+# Here we define our available export formats
+available_formats = ['json']
+
 # export form
-@app.get("/api/form/export/{form_name}/{document_id}/{format}", response_class=FileResponse, dependencies=[Depends(api_key_auth)])
+@app.get("/api/form/export/{form_name}/{document_id}", response_class=FileResponse, dependencies=[Depends(api_key_auth)])
 async def api_form_export(
     form_name: str, 
     document_id: str, 
-    format: str, 
     background_tasks: BackgroundTasks, 
     request: Request, 
+    format: str = Query(default="json", enum=available_formats),
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),
@@ -964,7 +968,6 @@ async def api_form_export(
     It checks for the form's existence, validates user permissions, fetches the document 
     from the database, and returns the form as a file after logging the access.
     """
-    available_formats = ['json']
 
     if not format in available_formats:
         raise HTTPException(status_code=404, detail=f"Invalid format. Must choose from {str(available_formats)}")
