@@ -550,7 +550,8 @@ def get_form_html(
 
     form_html = []
     
-    for field_name, field_info in form_config[form_name].items():
+    # Structured this way so we can access the list position
+    for list_index, (field_name, field_info) in enumerate(list(form_config[form_name].items())):
     
 
 
@@ -597,16 +598,19 @@ def get_form_html(
         # https://github.com/signebedi/libreforms-fastapi/issues/204.
         if field_info.get("is_header", False):
 
-            if not visible_field_name:
-                visible_field_name = ""
-                
-            field_html += f'''
-                <fieldset class="form-check" style="padding-top: 10px;">
+            if not visible_field_name or visible_field_name == "":
 
-                    <h5 aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</h5>
-                    <span id="{description_id}" class="form-text">{description_text}</span>
+                field_html += f'''
+                    <fieldset class="form-check" style="padding-top: {'0' if list_index == 0 else '10'}px;">
+                        <span id="{description_id}" class="form-text">{description_text}</span>
+                    </fieldset>'''
 
-                </fieldset>'''
+            else:
+                field_html += f'''
+                    <fieldset class="form-check" style="padding-top: 10px;">
+                        <h5 aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</h5>
+                        <span id="{description_id}" class="form-text">{description_text}</span>
+                    </fieldset>'''
 
 
         elif field_info['input_type'] in ['text', 'number', 'email', 'date']:
