@@ -4362,7 +4362,8 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request, con
     # # Here we load the form config in order to mask data field names correctly
     form_config = load_form_config(config.FORM_CONFIG_PATH)
     this_form = form_config[form_name]
-    form_field_mask = {x: x.replace("_", " ").title() for x in this_form.keys()}
+    form_field_mask = {x: y.get("field_label", x.replace("_", " ").title()) for x, y in this_form.items()}
+
 
 
     return templates.TemplateResponse(
