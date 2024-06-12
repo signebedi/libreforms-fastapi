@@ -395,7 +395,7 @@
             document.body.appendChild(a);
             a.click();
             window.URL.revokeObjectURL(url);
-            setFlashMessage("Successfully exported form", AlertCategories.SUCCESS);
+            flashMessage("Successfully exported form", AlertCategories.SUCCESS);
         })
         .catch(error => {
             console.error('Failed to export form', error);
