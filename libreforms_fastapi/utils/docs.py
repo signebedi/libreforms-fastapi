@@ -5,7 +5,7 @@ from html_sanitizer import Sanitizer
 
 
 sanitizer_config = {
-    'tags': {'a', 'br', 'p', 'strong', 'em', 'ul', 'ol', 'li', 'b', 'i', 'u', 'span', 'div', 'img'},
+    'tags': {'a', 'br', 'p', 'strong', 'em', 'ul', 'ol', 'li', 'b', 'i', 'u', 'span', 'div', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'br'},
     'attributes': {
         'a': ['href', 'title'],
         'img': ['src', 'alt'], 
@@ -185,10 +185,12 @@ def render_markdown_content(
     
     """
     try:
+        markdown_str = markdown.markdown(markdown_str)
+
 
         if scrub_unsafe:
-            markdown_str = escape_unsafe_html(markdown_str)
-        markdown_str = markdown.markdown(markdown_str)
+            markdown_str = sanitizer.sanitize(markdown_str)
+
 
         return markdown_str
 
