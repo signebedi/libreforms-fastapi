@@ -2732,9 +2732,16 @@ async def api_admin_create_user(
     api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=user_request.email)
     new_user.api_key = api_key
 
-    password = percentage_alphanumeric_generate_password(config.PASSWORD_REGEX, 16, .65)
+    if not user_request.password:
+        password = percentage_alphanumeric_generate_password(config.PASSWORD_REGEX, 16, .65)
+        hashed_password = generate_password_hash(password)
 
-    hashed_password = generate_password_hash(password)
+    # If the admin passes a password, then we use that instead of auto-generating one, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/251.
+    else:
+        password = user_request.password.get_secret_value()
+        hashed_password = generate_password_hash(password)
+
     new_user.password = hashed_password
 
     # Here we add user key pair information, namely, the path to the user private key, and the
@@ -2788,7 +2795,7 @@ async def api_admin_create_user(
 
     return JSONResponse(
         status_code=200,
-        content={"status": "success", "message": f"New user \"{new_username}\" created with the temporary password {password}"},
+        content={"status": "success", "message": f"New user '{new_username}' created with the temporary password {password}"},
     )
 
 # This is a glorified "update groups" route..

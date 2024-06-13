@@ -48,6 +48,16 @@ def get_user_model(
         username: str = Field(...)
         groups: List = Field(...)
         email: EmailStr = Field(...)
+    
+        # Added an optional password field without a regex, which is used to constrain 
+        # regular users. The idea is that admins might want to set users to use a temp
+        # password that is easy to use and remember. It's better to give the choice to
+        # admins, although it is better of course to use strong passwords and to give
+        # users an idea of the password strength requirements that they need to which
+        # they will eventually be expected to conform. Anyways, with a default of None,
+        # will the `pattern` keyword work as expected? For more discussion, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/251
+        password: None | SecretStr = Field(default=None)
 
         # @validator('username')
         # def username_pattern(cls, value):
