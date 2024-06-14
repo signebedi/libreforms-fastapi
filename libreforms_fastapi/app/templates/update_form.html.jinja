@@ -64,15 +64,16 @@ $(document).ready(function() {
             if (Array.isArray(value)) {
                 // For checkboxes or multi-selects
                 value.forEach(val => {
-                    $(`[name="${key}"]`).filter(`[value="${val}"]`).prop('checked', true);
+                    const escapedValue = val.replace(/\./g, '\\.');
+                    $(`[name="${key}"]`).filter(`[value="${escapedValue}"]`).prop('checked', true);
                 });
             } else if (typeof value === 'object' && value !== null) {
-                // I'm leaving this hear but I don't think we are going to have too many of these
+                // Handle objects (though you mentioned these are rare)
             } else {
                 // Handle strings and numbers
                 if(field.is(':radio')) {
-                    // If the field is a radio button, find the one that matches the value and check it
-                    field.filter(`[value="${value}"]`).prop('checked', true);
+                    const escapedValue = value.replace(/\./g, '\\.');
+                    field.filter(`[value="${escapedValue}"]`).prop('checked', true);
                 } else {
                     // For all other field types, just set the value
                     field.val(value);

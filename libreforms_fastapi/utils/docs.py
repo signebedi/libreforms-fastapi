@@ -190,7 +190,7 @@ def render_markdown_content(
 
         if scrub_unsafe:
             markdown_str = sanitizer.sanitize(markdown_str)
-            # Restore ampersands, see 
+            # Restore ampersands, see https://github.com/matthiask/html-sanitizer/issues/46
             markdown_str = markdown_str.replace('&amp;', '&') 
 
 
