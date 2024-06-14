@@ -57,6 +57,9 @@ $(document).ready(function() {
     // Populate form fields with fetched data
     function populateFormData(response) {
         const data = response.data;
+
+        console.log(data);
+
         for (const key in data) {
             const value = data[key];
             const field = $(`[name="${key}"]`);
@@ -64,16 +67,15 @@ $(document).ready(function() {
             if (Array.isArray(value)) {
                 // For checkboxes or multi-selects
                 value.forEach(val => {
-                    const escapedValue = val.replace(/\./g, '\\.');
-                    $(`[name="${key}"]`).filter(`[value="${escapedValue}"]`).prop('checked', true);
+                    $(`[name="${key}"]`).filter(`[value="${val}"]`).prop('checked', true);
                 });
             } else if (typeof value === 'object' && value !== null) {
-                // Handle objects (though you mentioned these are rare)
+                // I'm leaving this hear but I don't think we are going to have too many of these
             } else {
                 // Handle strings and numbers
                 if(field.is(':radio')) {
-                    const escapedValue = value.replace(/\./g, '\\.');
-                    field.filter(`[value="${escapedValue}"]`).prop('checked', true);
+                    // If the field is a radio button, find the one that matches the value and check it
+                    field.filter(`[value="${value}"]`).prop('checked', true);
                 } else {
                     // For all other field types, just set the value
                     field.val(value);
