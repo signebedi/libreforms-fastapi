@@ -200,7 +200,16 @@ def get_config(env):
         ENABLE_PROXY_PASS:bool = os.getenv('ENABLE_PROXY_PASS', 'False') == 'True'
 
         COLLECT_USAGE_STATISTICS:bool = os.getenv('COLLECT_USAGE_STATISTICS', 'True') == 'True'
+
+        # This config will prevent users from self registering. It's a bit misleadingly named,
+        # unfortunately. The crux is that we want admins to be able able to prevent abuse of 
+        # unsecured endpoints - of which there are two: create user, and forgot password.
         DISABLE_NEW_USERS:bool = os.getenv('DISABLE_NEW_USERS', 'False') == 'True'
+
+        # See discussion for DISABLE_NEW_USERS above. This allows admins to turn off the
+        # "forgot_password routes"
+        DISABLE_FORGOT_PASSWORD:bool = os.getenv('DISABLE_FORGOT_PASSWORD', 'False') == 'True'
+
 
         # Set help page information
         HELP_PAGE_ENABLED:bool = os.getenv('HELP_PAGE_ENABLED', 'False') == 'True'

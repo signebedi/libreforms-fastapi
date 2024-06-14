@@ -454,6 +454,15 @@ with get_config_context() as config:
         # Override the default request validation error handler with your custom handler
         app.add_exception_handler(RequestValidationError, validation_exception_handler)
 
+    # These are bool parameters used at runtime to determine to report an API route in
+    # the docs. This is unfortunately fixed, so changes to these parameters will require
+    # an app restart.
+    schema_params = {
+        "DISABLE_NEW_USERS": config.DISABLE_NEW_USERS,
+        "DISABLE_FORGOT_PASSWORD": config.DISABLE_FORGOT_PASSWORD,
+        "HELP_PAGE_ENABLED": config.HELP_PAGE_ENABLED,
+        "DOCS_ENABLED": config.DOCS_ENABLED,
+    }
 
     # Here we build our relational database model using a sqlalchemy factory, 
     # see https://github.com/signebedi/libreforms-fastapi/issues/136.
@@ -1973,7 +1982,7 @@ async def api_validate_signatures(
 
 
 # Create user
-@app.post("/api/auth/create", include_in_schema=config.DISABLE_NEW_USERS==False)
+@app.post("/api/auth/create", include_in_schema=schema_params["DISABLE_NEW_USERS"]==False)
 async def api_auth_create(
     user_request: CreateUserRequest, 
     background_tasks: BackgroundTasks, 
@@ -2107,7 +2116,7 @@ async def api_auth_create(
 
 
 # Change password
-@app.post("/api/auth/change_password", include_in_schema=True)
+@app.post("/api/auth/change_password")
 async def api_auth_change_password(
     user_request: PasswordChangeUserModel, 
     background_tasks: BackgroundTasks, 
@@ -2359,7 +2368,7 @@ async def api_auth_get(
 
 
 
-@app.get("/api/auth/forgot_password", include_in_schema=True)
+@app.get("/api/auth/forgot_password", include_in_schema=schema_params["DISABLE_FORGOT_PASSWORD"]==False)
 async def api_auth_forgot_password(
     email: EmailStr,
     background_tasks: BackgroundTasks, 
@@ -2374,7 +2383,7 @@ async def api_auth_forgot_password(
     must pass an email parameter to link the request to a given account.
     """
 
-    if not config.SMTP_ENABLED:
+    if not config.SMTP_ENABLED or config.DISABLE_FORGOT_PASSWORD:
         raise HTTPException(status_code=404, detail="Your system administrator has not enabled this feature")
 
     # if not email:
@@ -2433,7 +2442,7 @@ async def api_auth_forgot_password(
 
 
 
-@app.post("/api/auth/forgot_password/{otp}", include_in_schema=True)
+@app.post("/api/auth/forgot_password/{otp}", include_in_schema=schema_params["DISABLE_FORGOT_PASSWORD"]==False)
 async def api_auth_forgot_password_confirm(
     user_request: ForgotPasswordUserModel, 
     otp: str,
@@ -2448,6 +2457,9 @@ async def api_auth_forgot_password_confirm(
     with provided details, writing optional user statistics to log. Sends email confirmation 
     when SMTP is enabled and configured.
     """
+
+    if not config.SMTP_ENABLED or config.DISABLE_FORGOT_PASSWORD:
+        raise HTTPException(status_code=404, detail="Your system administrator has not enabled this feature")
 
     # Start by verifying the one time password.
     try:
@@ -2776,7 +2788,7 @@ async def api_auth_refresh(
 
 
 # This is a help route to submit a help request to the sysadmin
-@app.post("/api/auth/help", dependencies=[Depends(api_key_auth)], response_class=JSONResponse, include_in_schema=config.HELP_PAGE_ENABLED)
+@app.post("/api/auth/help", dependencies=[Depends(api_key_auth)], response_class=JSONResponse, include_in_schema=schema_params["HELP_PAGE_ENABLED"])
 async def api_auth_help(
     request: Request, 
     background_tasks: BackgroundTasks,
@@ -4136,7 +4148,7 @@ def get_string_differences(str1, str2):
     "/api/admin/edit_docs", 
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
-    include_in_schema=config.DOCS_ENABLED==True
+    include_in_schema=schema_params["DOCS_ENABLED"],
 )
 async def api_admin_edit_docs(
     request: Request, 
@@ -4194,7 +4206,6 @@ async def api_admin_edit_docs(
     "/api/admin/get_form_config", 
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
-    include_in_schema=True
 )
 async def api_admin_get_form_config(
     request: Request, 
@@ -4242,7 +4253,6 @@ async def api_admin_get_form_config(
     "/api/admin/write_form_config", 
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
-    include_in_schema=True
 )
 async def api_admin_write_form_config(
     request: Request, 
@@ -4302,7 +4312,6 @@ async def api_admin_write_form_config(
     "/api/admin/update_site_config", 
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
-    include_in_schema=True
 )
 async def api_admin_update_site_config(
     request: Request, 
