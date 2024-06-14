@@ -415,8 +415,8 @@ class ManageTinyDB(ManageDocumentDB):
                 if isinstance(value, str):
                     cleaned_value = sanitizer.sanitize(value)
 
-                    # Restore ampersands, see https://github.com/matthiask/html-sanitizer/issues/46
-                    cleaned_value = cleaned_value.replace('&amp;', '&') 
+                    # Restore special chars, see https://github.com/matthiask/html-sanitizer/issues/46
+                    cleaned_value = cleaned_value.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">") 
 
                     convert_data_to_dict[key] = cleaned_value
 
@@ -427,8 +427,8 @@ class ManageTinyDB(ManageDocumentDB):
 
                             cleaned_value = sanitizer.sanitize(element)
 
-                            # Restore ampersands, see https://github.com/matthiask/html-sanitizer/issues/46
-                            cleaned_value = cleaned_value.replace('&amp;', '&') 
+                            # Restore special chars, see https://github.com/matthiask/html-sanitizer/issues/46
+                            cleaned_value = cleaned_value.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">") 
 
                             _temp_list.append(cleaned_value)
 
@@ -559,8 +559,8 @@ class ManageTinyDB(ManageDocumentDB):
 
                     cleaned_value = sanitizer.sanitize(value)
 
-                    # Restore ampersands, see https://github.com/matthiask/html-sanitizer/issues/46
-                    cleaned_value = cleaned_value.replace('&amp;', '&') 
+                    # Restore special chars, see https://github.com/matthiask/html-sanitizer/issues/46
+                    cleaned_value = cleaned_value.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">") 
 
                     dropping_unchanged_data[key] = cleaned_value
 
@@ -571,8 +571,8 @@ class ManageTinyDB(ManageDocumentDB):
 
                             cleaned_value = sanitizer.sanitize(element)
 
-                            # Restore ampersands, see https://github.com/matthiask/html-sanitizer/issues/46
-                            cleaned_value = cleaned_value.replace('&amp;', '&') 
+                            # Restore special chars, see https://github.com/matthiask/html-sanitizer/issues/46
+                            cleaned_value = cleaned_value.replace("&amp;", "&").replace("&lt;", "<").replace("&gt;", ">") 
 
                             _temp_list.append(cleaned_value)
 
