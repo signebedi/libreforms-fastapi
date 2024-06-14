@@ -274,6 +274,16 @@ with get_config_context() as config:
         password_change=True,
     )
 
+    # This model is used to reset passwords when forgotten, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/56.
+    ForgotPasswordUserModel = get_user_model(
+        username_regex=config.USERNAME_REGEX,
+        username_helper_text=config.USERNAME_HELPER_TEXT,
+        password_regex=config.PASSWORD_REGEX,
+        password_helper_text=config.PASSWORD_HELPER_TEXT,
+        forgot_password=True,
+    )
+
 
     class LibreFormsUser(BaseUser):
         def __init__(
@@ -2107,7 +2117,6 @@ async def api_auth_change_password(
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
-
     """
     Changes an existing user's password with provided details, writing optional user statistics to log. 
     Sends email confirmation when SMTP is enabled and configured.
@@ -2155,7 +2164,7 @@ async def api_auth_change_password(
     if config.LIMIT_PASSWORD_REUSE:
 
         # We set the threshold date. If the PASSWORD_REUSE_PERIOD is set to 0, check all passwords dated since the unix epoch.
-        threshold_datetime = datetime.now(config.TIMEZONE) - config.PASSWORD_REUSE_PERIOD if config.PASSWORD_REUSE_PERIOD > 0 else datetime(1970, 1, 1, tzinfo=config.TIMEZONE)
+        threshold_datetime = datetime.now(config.TIMEZONE) - config.PASSWORD_REUSE_PERIOD if config.PASSWORD_REUSE_PERIOD.days > 0 else datetime(1970, 1, 1, tzinfo=config.TIMEZONE)
 
 
         # print("\n\n\n",threshold_datetime)
@@ -2233,7 +2242,7 @@ async def api_auth_change_password(
 
     return {
         "status": "success", 
-        "message": f"Successfully changed paswword for user {user.username}"
+        "message": f"Successfully changed password for user {user.username}"
     }
 
 
@@ -2349,13 +2358,216 @@ async def api_auth_get(
     # async def api_auth_rotate_key():
 
 
-# Request Password Reset - Forgot Password
-    # @app.patch("/api/auth/forgot_password")
-    # async def api_auth_forgot_password(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
 
-# Confirm password reset
-    # @app.patch("/api/auth/forgot_password/{single_use_token}")
-    # async def api_auth_forgot_password_confirm(user_request: CreateUserRequest, session: SessionLocal = Depends(get_db)):
+@app.get("/api/auth/forgot_password", include_in_schema=True)
+async def api_auth_forgot_password(
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Generates a one-time password and emails to user to permit them to change their password, 
+    writing optional user statistics to log. Requires SMTP to be enabled and configured.
+    """
+
+    if not config.SMTP_ENABLED:
+        raise HTTPException(status_code=404, detail="Your system administrator has not enabled this feature")
+
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="User does not exist")
+
+    if not user.active:
+        raise HTTPException(status_code=400, detail="User account is inactive")
+
+    # Validate that user has not exceeded the max failed login attempts,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/78
+    if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
+        raise HTTPException(status_code=400, detail="User account is inactive")
+
+    # Generate the user's one time password
+    otp = signatures.write_key(scope=['forgot_password'], expiration=3, active=True, email=user.email)
+
+    # Email notification
+    if config.SMTP_ENABLED:
+
+        subject=f"{config.SITE_NAME} User Password Reset Instructions"
+
+        content=f"This email serves to notify you that the user {user.username} has just requested to reset their password at {config.DOMAIN}. To do so, you may use the one-time password {otp}. This one-time password will expire in three hours. If you have access to the user interface, you may reset your password at the following link: {config.DOMAIN}/ui/auth/forgot_password/{otp}. If you believe this was a mistake, please contact your system adminstrator."
+
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject=subject, 
+            content=content, 
+            to_address=user.email,
+        )
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=user.api_key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"user":user.username},
+        )
+
+    return {
+        "status": "success", 
+        "message": f"Check your email for a password reset link for user {user.username}"
+    }
+
+
+
+@app.post("/api/auth/forgot_password/{otp}", include_in_schema=True)
+async def api_auth_forgot_password_confirm(
+    user_request: ForgotPasswordUserModel, 
+    otp: str,
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY)
+):
+    """
+    After validating a user's valid one-time password, changes an existing user's password 
+    with provided details, writing optional user statistics to log. Sends email confirmation 
+    when SMTP is enabled and configured.
+    """
+
+    # Start by verifying the one time password.
+    try:
+        verify = signatures.verify_key(otp, scope=['forgot_password'])
+
+    except RateLimitExceeded:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded"
+        )
+
+    except KeyDoesNotExist:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid OTP"
+        )
+
+    except ScopeMismatch:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid OTP"
+        )
+
+    except KeyExpired:
+        raise HTTPException(
+            status_code=401,
+            detail="OTP expired"
+        )
+
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="User does not exist")
+
+    if not user.active:
+        raise HTTPException(status_code=400, detail="User account is inactive")
+
+    # Validate that user has not exceeded the max failed login attempts,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/78
+    if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
+        raise HTTPException(status_code=400, detail="User account is inactive")
+
+    # Hash the password
+    hashed_password = generate_password_hash(user_request.new_password.get_secret_value())
+
+    # If password reuse is limited by admins, check here, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/230.
+    if config.LIMIT_PASSWORD_REUSE:
+
+        # We set the threshold date. If the PASSWORD_REUSE_PERIOD is set to 0, check all passwords dated since the unix epoch.
+        threshold_datetime = datetime.now(config.TIMEZONE) - config.PASSWORD_REUSE_PERIOD if config.PASSWORD_REUSE_PERIOD.days > 0 else datetime(1970, 1, 1, tzinfo=config.TIMEZONE)
+
+        # Filter the data set
+        recent_password_reuses = session.query(PasswordReuse).filter(
+            PasswordReuse.user_id == user.id,
+            PasswordReuse.timestamp > threshold_datetime
+        ).all()
+
+        # If we find a hit, raise an error
+        for reuse in recent_password_reuses:
+            if check_password_hash(reuse.hashed_password, user_request.new_password.get_secret_value()):
+                raise HTTPException(status_code=400, detail=f"You have tried to change your password to a value that you have used within the last {config.PASSWORD_REUSE_PERIOD.days} days. Please try a different password.")
+
+
+    # If the password IS correct, clear the user's failed password attempts, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/78.
+    user.failed_login_attempts = 0
+    current_time = datetime.now(config.TIMEZONE)
+    user.last_login = current_time
+
+    # Set the user's new password
+    user.last_password_change = current_time
+    user.password=hashed_password
+
+    session.add(user)
+
+    # Monitor password use, seee https://github.com/signebedi/libreforms-fastapi/issues/230
+    new_password = PasswordReuse(
+        user_id=user.id,
+        hashed_password=hashed_password,
+        timestamp=datetime.now(config.TIMEZONE) 
+    )
+    session.add(new_password)
+
+    session.commit()
+
+    # Expire the OTP
+    _ = signatures.expire_key(otp)
+
+    # Email notification
+    if config.SMTP_ENABLED:
+
+        subject=f"{config.SITE_NAME} User Password Reset"
+
+        content=f"This email serves to notify you that the user {user.username} has just reset their password at {config.DOMAIN}. If you believe this was a mistake, please contact your system adminstrator."
+
+        background_tasks.add_task(
+            mailer.send_mail, 
+            subject=subject, 
+            content=content, 
+            to_address=user.email,
+        )
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=user.api_key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"user":user.username},
+        )
+
+    return {
+        "status": "success", 
+        "message": f"Successfully reset password for user {user.username}"
+    }
+
+
 
 
 # Login, see https://github.com/signebedi/libreforms-fastapi/issues/19

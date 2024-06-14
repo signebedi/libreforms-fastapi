@@ -127,9 +127,7 @@ $(document).ready(function() {
                     // Re-enable the submit button
                     $('#createButton').prop('disabled', false);
 
-                    // Handle errors, e.g., show an error message
                     console.error('Form creation failed', xhr.responseText);
-                    // Implement flashMessage or another way to show errors to the user
                     flashMessage(xhr.responseText, 'warning');
                 }
             });
