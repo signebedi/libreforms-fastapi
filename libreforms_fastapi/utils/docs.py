@@ -122,7 +122,7 @@ def get_docs(
             if scrub_unsafe:
                 content = escape_unsafe_html(content)
             if render_markdown:
-                content = markdown.markdown(content)
+                content = markdown.markdown(content, extensions=['toc'])
             return content
     except FileNotFoundError:
         # Create the parent directories and the file if it doesn't exist
@@ -185,7 +185,7 @@ def render_markdown_content(
     
     """
     try:
-        markdown_str = markdown.markdown(markdown_str)
+        markdown_str = markdown.markdown(markdown_str, extensions=['toc'])
 
 
         if scrub_unsafe:
