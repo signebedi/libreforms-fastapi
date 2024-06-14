@@ -1976,6 +1976,74 @@ async def api_validate_signatures(
     }
 
 
+# Not implemented. Unsecure.
+# @app.get("/api/validate/signing_key")
+# async def api_validate_signing_key(
+#     key:str,
+#     scope:str,
+#     background_tasks: BackgroundTasks,
+#     request: Request, 
+#     config = Depends(get_config_depends),
+#     session: SessionLocal = Depends(get_db),
+# ):
+
+#     """
+#     Validates a signing key, confirming authenticity and integrity. 
+#     Logs the validation attempt. Requires key and scope params.
+#     """
+
+
+#     try:
+#         # Ugh, too many steps. We should simplify this to get key details and 
+#         # verify in one step, if we can.
+#         key_details = signatures.get_key(key)
+#         verify = signatures.verify_key(key, scope=[scope])
+
+#     except RateLimitExceeded:
+#         raise HTTPException(
+#             status_code=429,
+#             detail="Rate limit exceeded"
+#         )
+
+#     except KeyDoesNotExist:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Invalid Key"
+#         )
+
+#     except ScopeMismatch:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Invalid Key"
+#         )
+
+#     except KeyExpired:
+#         raise HTTPException(
+#             status_code=401,
+#             detail="Key expired"
+#         )
+
+#     # Write this query to the TransactionLog
+#     if config.COLLECT_USAGE_STATISTICS:
+
+#         endpoint = request.url.path
+#         remote_addr = request.client.host
+
+#         background_tasks.add_task(
+#             write_api_call_to_transaction_log, 
+#             api_key=key, 
+#             endpoint=endpoint, 
+#             remote_addr=remote_addr, 
+#             query_params={'email': key_details['email'], 'scope': scope},
+#         )
+
+
+#     return {
+#         "valid": verify, 
+#     }
+
+
+
 ##########################
 ### API Routes - Auth
 ##########################
@@ -2368,7 +2436,7 @@ async def api_auth_get(
 
 
 
-@app.get("/api/auth/forgot_password", include_in_schema=schema_params["DISABLE_FORGOT_PASSWORD"]==False)
+@app.post("/api/auth/forgot_password", include_in_schema=schema_params["DISABLE_FORGOT_PASSWORD"]==False)
 async def api_auth_forgot_password(
     email: EmailStr,
     background_tasks: BackgroundTasks, 
@@ -4861,12 +4929,53 @@ async def ui_auth_create(request: Request, config = Depends(get_config_depends),
     )
 
 
-# Forgot password
-    # @app.get("/ui/auth/forgot_password", include_in_schema=False)
-    # async def ui_auth_forgot_password():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
 
+# Forgot Password
+@app.get("/ui/auth/forgot_password", response_class=HTMLResponse, include_in_schema=False)
+@requires(['unauthenticated'], status_code=404)
+async def ui_auth_forgot_password(request: Request, config = Depends(get_config_depends),):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not config.SMTP_ENABLED or config.DISABLE_FORGOT_PASSWORD:
+        raise HTTPException(status_code=404)
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="forgot_password.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
+
+# Forgot Password Confirmation
+@app.get("/ui/auth/forgot_password/{otp}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['unauthenticated'], status_code=404)
+async def ui_auth_forgot_password_confirm(otp: str, request: Request, config = Depends(get_config_depends),):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not config.SMTP_ENABLED or config.DISABLE_FORGOT_PASSWORD:
+        raise HTTPException(status_code=404)
+
+    try:
+        # Start by verifying the one time password.
+        verify = signatures.verify_key(otp, scope=['forgot_password'])
+    except: 
+        # Should we redirect or simply return an error response if the OTP validation fails?
+        raise HTTPException(status_code=404)
+        # return RedirectResponse(request.url_for("ui_auth_login"), status_code=303)
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="forgot_password_confirm.html.jinja", 
+        context={
+            'otp': otp,
+            **build_ui_context(),
+        }
+    )
 
 # Verify email
     # @app.get("/ui/auth/verify_email", include_in_schema=False)
