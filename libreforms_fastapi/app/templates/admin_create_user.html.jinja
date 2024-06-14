@@ -60,7 +60,13 @@
         {% endfor %}
     </fieldset>
 
-
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label for="password" class="form-check-label">Password</label>
+        <span id="passwordHelpInline" class="form-text">
+            | Leave blank to have a password generated automatically.
+        </span>
+        <input type="password" class="form-control" id="password" name="password" placeholder="Optional">
+    </fieldset>
 
     <fieldset style="padding-top: 10px;" class="form-check">
         <button type="submit" class="btn btn-primary" id="createButton">Create</button>
@@ -92,11 +98,14 @@
                 groups.push(this.value);
             });
 
+            var password = $('#password').val().trim();
+
             // Prepare form data
             var formData = {
                 username: $('#username').val().trim(),
                 email: $('#email').val().trim(),
-                groups: groups
+                groups: groups,
+                password: password.length > 0 ? password : undefined
             };
 
             // AJAX POST request to the API endpoint
