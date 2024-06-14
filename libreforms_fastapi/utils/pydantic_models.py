@@ -37,6 +37,7 @@ def get_user_model(
     password_helper_text: str,
     admin: bool=False,
     password_change: bool=False,
+    forgot_password: bool=False,
 ):
 
 
@@ -103,6 +104,35 @@ def get_user_model(
 
     if password_change:
         return PasswordChangeUserModel
+
+
+    class ForgotPasswordUserModel(BaseModel):
+        """
+        This is the model used to update a user's password when they've forgotten it. It 
+        requires a new_password and verify_new_password field.
+        """
+        new_password: SecretStr = Field(...)
+        verify_new_password: SecretStr = Field(...)
+
+        @validator('verify_new_password', always=True)
+        def passwords_match(cls, v, values, **kwargs):
+            if 'new_password' in values and v.get_secret_value() != values['new_password'].get_secret_value():
+                raise ValueError('Passwords do not match')
+            return v
+
+
+        @validator('new_password', 'verify_new_password', pre=True, each_item=False)
+        def password_pattern(cls, value):
+            # Since value is now of type SecretStr, we need to get its actual value
+            password = value.get_secret_value() if isinstance(value, SecretStr) else value
+            pattern = re.compile(password_regex)
+            if not pattern.match(password):
+                raise ValueError(password_helper_text)
+            return value
+
+    if forgot_password:
+        return ForgotPasswordUserModel
+
 
 
     class UserModel(BaseModel):
