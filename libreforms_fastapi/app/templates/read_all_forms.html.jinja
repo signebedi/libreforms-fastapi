@@ -95,7 +95,7 @@ $(document).ready(function () {
         spinner.style.display = 'none'; // Hide the spinner
         readAllTable.style.display = ''; // Show the table
 
-        $('#readAllTable').DataTable(
+        $('#readAllTable').DataTable({
             // This is a fix to properly sort prettified datetimes
             columnDefs: [
                 { 
@@ -105,8 +105,8 @@ $(document).ready(function () {
                         return type === 'sort' ? date : data; 
                     }
                 }
-            ]            
-        );
+            ]
+        });
 
     }).catch(error => {
         console.error("Error fetching data:", error);
