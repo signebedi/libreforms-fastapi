@@ -10,7 +10,7 @@
 
     <form id="dataForm" method="POST">
 
-        <fieldset style="padding-top: 10px;" class="form-check">
+        <fieldset class="form-check">
             <h4>{{form_name | replace("_", " ") | title}}</h4>
         </fieldset>
 
@@ -19,7 +19,7 @@
             {{ field | safe }}
         {% endfor %}
 
-        <fieldset style="padding-top: 10px;" class="form-check">
+        <fieldset style="padding-top: 20px; padding-bottom: 15px;" class="form-check">
             <button type="submit" class="btn btn-primary" id="createButton">Submit</button>
         </fieldset>
 
@@ -40,6 +40,8 @@ $(document).ready(function() {
     $('#dataForm').submit(function(event) {
         event.preventDefault(); // Prevent the form from submitting via the browser
 
+        // Disable the submit button
+        $('#createButton').prop('disabled', true);
 
         // Flag to track if the form is valid
         let formIsValid = true;
@@ -65,6 +67,9 @@ $(document).ready(function() {
 
         // Prevent form submission if validation fails
         if (!formIsValid) {
+
+            // Re-enable the submit button
+            $('#createButton').prop('disabled', false);
             event.preventDefault();
             
         } else {
@@ -118,6 +123,10 @@ $(document).ready(function() {
 
                 },
                 error: function(xhr) {
+
+                    // Re-enable the submit button
+                    $('#createButton').prop('disabled', false);
+
                     // Handle errors, e.g., show an error message
                     console.error('Form creation failed', xhr.responseText);
                     // Implement flashMessage or another way to show errors to the user

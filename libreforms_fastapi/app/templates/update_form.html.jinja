@@ -10,7 +10,7 @@
 
     <form id="dataForm" method="POST">
 
-        <fieldset style="padding-top: 10px;" class="form-check">
+        <fieldset class="form-check">
             <h4>Update Form: {{form_name | replace("_", " ") | title}}</h4>
         </fieldset>
 
@@ -19,7 +19,7 @@
             {{ field | safe }}
         {% endfor %}
 
-        <fieldset style="padding-top: 10px;" class="form-check">
+        <fieldset style="padding-top: 20px; padding-bottom: 15px;" class="form-check">
             <button type="submit" class="btn btn-primary" id="updateButton">Update</button>
         </fieldset>
 
@@ -95,7 +95,7 @@ $(document).ready(function() {
             return $.trim($(this).val()).length > 0;
         }).length > 0;
 
-        $createButton.prop('disabled', !isFormFilled);
+        $('#updateButton').prop('disabled', !isFormFilled);
     }
 
     // Check form inputs to toggle the create button
@@ -104,6 +104,9 @@ $(document).ready(function() {
     // Form submission event
     $('#dataForm').submit(function(event) {
         event.preventDefault(); // Prevent the form from submitting via the browser
+
+        // Disable the submit button
+        $('#updateButton').prop('disabled', true);
 
 
         // Flag to track if the form is valid
@@ -130,6 +133,10 @@ $(document).ready(function() {
 
         // Prevent form submission if validation fails
         if (!formIsValid) {
+
+            // Re-enable the submit button
+            $('#updateButton').prop('disabled', false);
+
             event.preventDefault();
             
         } else {
@@ -174,13 +181,15 @@ $(document).ready(function() {
 
                 },
                 error: function(xhr) {
+
+                    // Re-enable the submit button
+                    $('#updateButton').prop('disabled', false);
+
                     // Handle errors, e.g., show an error message
                     console.error('Form creation failed', xhr.responseText);
                     // Implement flashMessage or another way to show errors to the user
                     flashMessage(xhr.responseText, 'warning');
                     
-                    // Optionally re-enable the Create button here
-                    $createButton.prop('disabled', false);
                 }
             });
         }
