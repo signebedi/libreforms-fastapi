@@ -6,7 +6,7 @@ separate source to help preserve the generalizability of this logic.
 
 import os, shutil
 from pathlib import Path
-from markupsafe import Markup, escape
+from markupsafe import Markup
 from typing import (
     List,
 )

@@ -413,12 +413,25 @@ class ManageTinyDB(ManageDocumentDB):
             for key,value in convert_data_to_dict.items():
 
                 if isinstance(value, str):
-                    convert_data_to_dict[key] = sanitizer.sanitize(value)
+                    cleaned_value = sanitizer.sanitize(value)
+
+                    # Restore ampersands, see https://github.com/matthiask/html-sanitizer/issues/46
+                    cleaned_value = cleaned_value.replace('&amp;', '&') 
+
+                    convert_data_to_dict[key] = cleaned_value
+
                 elif isinstance(value, list):
                     _temp_list = []
                     for element in value:
                         if isinstance(element, str):
-                            _temp_list.append(sanitizer.sanitize(element))
+
+                            cleaned_value = sanitizer.sanitize(element)
+
+                            # Restore ampersands, see https://github.com/matthiask/html-sanitizer/issues/46
+                            cleaned_value = cleaned_value.replace('&amp;', '&') 
+
+                            _temp_list.append(cleaned_value)
+
                         else:
                             _temp_list.append(element)
                     convert_data_to_dict[key] = _temp_list
@@ -543,12 +556,27 @@ class ManageTinyDB(ManageDocumentDB):
             for key,value in dropping_unchanged_data.items():
 
                 if isinstance(value, str):
-                    dropping_unchanged_data[key] = sanitizer.sanitize(value)
+
+                    cleaned_value = sanitizer.sanitize(value)
+
+                    # Restore ampersands, see https://github.com/matthiask/html-sanitizer/issues/46
+                    cleaned_value = cleaned_value.replace('&amp;', '&') 
+
+                    dropping_unchanged_data[key] = cleaned_value
+
                 elif isinstance(value, list):
                     _temp_list = []
                     for element in value:
                         if isinstance(element, str):
-                            _temp_list.append(sanitizer.sanitize(element))
+
+                            cleaned_value = sanitizer.sanitize(element)
+
+                            # Restore ampersands, see https://github.com/matthiask/html-sanitizer/issues/46
+                            cleaned_value = cleaned_value.replace('&amp;', '&') 
+
+                            _temp_list.append(cleaned_value)
+
+
                         else:
                             _temp_list.append(element)
                     dropping_unchanged_data[key] = _temp_list

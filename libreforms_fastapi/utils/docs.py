@@ -5,15 +5,15 @@ from html_sanitizer import Sanitizer
 
 
 sanitizer_config = {
-    'tags': {'a', 'br', 'p', 'strong', 'em', 'ul', 'ol', 'li', 'b', 'i', 'u', 'span', 'div', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'br'},
+    'tags': {'a', 'br', 'p', 'strong', 'em', 'ul', 'ol', 'li', 'b', 'i', 'u', 'span', 'div', 'img', 'h1', 'h2', 'h3', 'h4', 'h5'},
     'attributes': {
         'a': ['href', 'title'],
         'img': ['src', 'alt'], 
         'div': ['style'],  # Might mkae sense to sanitize style content separately
     },
-    'empty': {'br'},
+    'empty': {'br', 'h1', 'h2', 'h3', 'h4', 'h5'},
     'separate': {'a', 'p', 'ul', 'ol', 'li', 'br', 'img'}, 
-    'protocols': {'a': ['http', 'https', 'mailto'], 'img': ['http', 'https']}  
+    'protocols': {'a': ['http', 'https', 'mailto'], 'img': ['http', 'https']},
 }
 
 
@@ -190,6 +190,8 @@ def render_markdown_content(
 
         if scrub_unsafe:
             markdown_str = sanitizer.sanitize(markdown_str)
+            # Restore ampersands, see 
+            markdown_str = markdown_str.replace('&amp;', '&') 
 
 
         return markdown_str
