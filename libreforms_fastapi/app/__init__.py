@@ -10,7 +10,7 @@ from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
 
-from pydantic import ValidationError
+from pydantic import ValidationError, EmailStr
 from fastapi import (
     FastAPI,
     Body,
@@ -2361,22 +2361,27 @@ async def api_auth_get(
 
 @app.get("/api/auth/forgot_password", include_in_schema=True)
 async def api_auth_forgot_password(
+    email: EmailStr,
     background_tasks: BackgroundTasks, 
     request: Request, 
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     session: SessionLocal = Depends(get_db),
-    key: str = Depends(X_API_KEY)
 ):
     """
     Generates a one-time password and emails to user to permit them to change their password, 
-    writing optional user statistics to log. Requires SMTP to be enabled and configured.
+    writing optional user statistics to log. Requires SMTP to be enabled and configured. User
+    must pass an email parameter to link the request to a given account.
     """
 
     if not config.SMTP_ENABLED:
         raise HTTPException(status_code=404, detail="Your system administrator has not enabled this feature")
 
-    user = session.query(User).filter_by(api_key=key).first()
+    # if not email:
+    #     raise HTTPException(status_code=422, detail="Please provide an email")
+
+
+    user = session.query(User).filter_by(email=email).first()
 
     if not user:
         raise HTTPException(status_code=400, detail="User does not exist")
@@ -2437,7 +2442,6 @@ async def api_auth_forgot_password_confirm(
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     session: SessionLocal = Depends(get_db),
-    key: str = Depends(X_API_KEY)
 ):
     """
     After validating a user's valid one-time password, changes an existing user's password 
@@ -2447,6 +2451,9 @@ async def api_auth_forgot_password_confirm(
 
     # Start by verifying the one time password.
     try:
+        # Ugh, too many steps. We should simplify this to get key details and 
+        # verify in one step, if we can.
+        otp_key_details = signatures.get_key(otp)
         verify = signatures.verify_key(otp, scope=['forgot_password'])
 
     except RateLimitExceeded:
@@ -2473,7 +2480,7 @@ async def api_auth_forgot_password_confirm(
             detail="OTP expired"
         )
 
-    user = session.query(User).filter_by(api_key=key).first()
+    user = session.query(User).filter_by(email=otp_key_details['email']).first()
 
     if not user:
         raise HTTPException(status_code=400, detail="User does not exist")
