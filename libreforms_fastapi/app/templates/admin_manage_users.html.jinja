@@ -79,9 +79,7 @@ $(document).ready(function() {
             table += `<td title="View user actions" class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">${user.username}</a>
                 <div class="dropdown-menu">
-                    <div class="dropdown-header">View User Data</div>
                     <a class="dropdown-item" href="/ui/auth/profile/${user.id}">View Profile</a>
-                    <div class="dropdown-header">Modify User</div>
                     <a class="dropdown-item" href="/ui/admin/update_user/${user.id}">Edit Groups</a>
                     <a class="dropdown-item" onclick="toggleUser(${user.id}, 'password');" href="#">Reset Password</a>
                     <a class="dropdown-item" onclick="toggleUser(${user.id}, 'active');" href="#">${user.active == true ? 'Disable' : 'Enable'} User</a>
@@ -125,7 +123,17 @@ $(document).ready(function() {
                 $('#manageUsers').html(usersTable);
 
                 $('#usersTable').DataTable({
-                    autoWidth: false
+                    autoWidth: false,
+                    // This is a fix to properly sort prettified datetimes
+                    columnDefs: [
+                        { 
+                            targets: [5, 6], 
+                            render: function(data, type, row) {
+                                var date = $(data).attr('title'); /
+                                return type === 'sort' ? date : data; 
+                            }
+                        }
+                    ]
                 });
             },
 

@@ -164,7 +164,17 @@ function restoreForm(formName, documentId) {
                     $('#manageDocuments').html(documentsTable);
 
                     $('#documentsTable').DataTable({
-                        autoWidth: false
+                        autoWidth: false,
+                        // This is a fix to properly sort prettified datetimes
+                        columnDefs: [
+                            { 
+                                targets: [3, 5], 
+                                render: function(data, type, row) {
+                                    var date = $(data).attr('title'); 
+                                    return type === 'sort' ? date : data; 
+                                }
+                            }
+                        ]
                     });
                 },
 

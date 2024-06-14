@@ -2423,7 +2423,7 @@ async def api_auth_forgot_password(
 
     return {
         "status": "success", 
-        "message": f"Check your email for a password reset link for user {user.username}"
+        "message": f"Check your email for a password reset link"
     }
 
 
