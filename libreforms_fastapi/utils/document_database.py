@@ -536,11 +536,8 @@ class ManageTinyDB(ManageDocumentDB):
 
 
         # # If the field exists in the original document but not in the updated data, 
-        # we cna use the following logic to consider it for removal
-        # fields_to_remove = [key for key in document['data'] if key not in updated_data_dict]
-
-        # # Remove the fields from document['data']
-        # for key in fields_to_remove:
+        # we cna use the following logic to remove it
+        # for key in [key for key in document['data'] if key not in updated_data_dict]:
         #     document['data'].pop(key)
 
 

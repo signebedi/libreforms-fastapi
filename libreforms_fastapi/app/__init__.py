@@ -4348,7 +4348,7 @@ async def api_admin_write_form_config(
         write_form_config_yaml(
             config_path=config.FORM_CONFIG_PATH, 
             form_config_str=_form_config.content, 
-            validate=True,
+            # validate=True,
             timezone=config.TIMEZONE,
         )
     except Exception as e:

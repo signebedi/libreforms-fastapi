@@ -193,7 +193,7 @@ example_form:
   section_header:
     is_header: true
     field_label: This is a section header!
-    description: This is a section header
+    description: This is a section header description. It's meant to say enough, but maybe not too much. Eventually, you might consider providing an <a href="#">external link</a>
   number_input:
     input_type: number
     output_type: !int
@@ -390,52 +390,82 @@ def get_form_config_yaml(config_path=None):
     return form_config
 
 
-def write_form_config_yaml(config_path, form_config_str, validate=True, timezone=ZoneInfo("America/New_York")):
+def clean_extra_spaces(data, exclude_fields=['description', 'field_label']):
+    if isinstance(data, str):
+        print("str", data)
+
+        # Replace multiple spaces with a single space
+        return re.sub(r'\s+', ' ', data).strip()
+    elif isinstance(data, list):
+        print("list", data)
+
+        return [clean_extra_spaces(item, exclude_fields) for item in data]
+    elif isinstance(data, dict):
+        print("dict", data)
+        return {
+            key: clean_extra_spaces(value, exclude_fields) 
+            if key not in exclude_fields else value
+            for key, value in data.items()
+        }
+    return data
+
+
+def write_form_config_yaml(
+    config_path, 
+    form_config_str, 
+    # validate=True, 
+    timezone=ZoneInfo("America/New_York")
+):
     """
     Here we write the string representation of the yaml form config.
     """
 
     # Validate the YAML string
-    if validate:
-        try:
-            # Attempt to load the YAML string to check its validity
-            parsed_config = yaml.load(form_config_str, Loader=yaml.FullLoader)
+    # if validate:
+    try:
+        # Attempt to load the YAML string to check its validity
+        parsed_config = yaml.load(form_config_str, Loader=yaml.FullLoader)
 
-            # I'm putting a placeholder here because we may with to add additional
-            # validators down the road.
+        # I'm putting a placeholder here because we may with to add additional
+        # validators down the road.
 
-        except yaml.YAMLError as e:
-            raise Exception(f"Failed to validate YAML format: {e}")
+    except yaml.YAMLError as e:
+        raise Exception(f"Failed to validate YAML format: {e}")
 
+
+    # Clean extra spaces from the parsed YAML dictionary
+    cleaned_config = clean_extra_spaces(parsed_config)
+
+    # Convert the cleaned config back to a YAML string
+    cleaned_form_config_str = yaml.dump(cleaned_config, sort_keys=False)
+
+    # Ensure the base directory exists
     basedir = os.path.dirname(config_path)
     if not os.path.exists(basedir):
         os.makedirs(basedir)
 
+    # Create a backup of the current config
     config_backup_directory = Path(os.getcwd()) / 'instance' / 'form_config_backups'
     config_backup_directory.mkdir(parents=True, exist_ok=True)
 
     datetime_format = datetime.now(timezone).strftime("%Y%m%d%H%M%S")
-
-    # Separate filename from its directory
     config_file_name = Path(config_path).name
-
-    # Construct the backup filename
     backup_file_name = f"{config_file_name}.{datetime_format}"
-
-    # Construct the full backup file path
     backup_file_path = config_backup_directory / backup_file_name
 
-    # print("\n\n\n\n", config_backup_directory, "\n", backup_file_path)
-    shutil.copy(config_path, backup_file_path)
+    # Copy the existing config file to the backup location
+    if os.path.exists(config_path):
+        shutil.copy(config_path, backup_file_path)
 
-
+    # Write the cleaned YAML string to the config file
     try:
         with open(config_path, 'w') as file:
-            file.write(form_config_str)
+            file.write(cleaned_form_config_str)
     except Exception as e:
         raise Exception(f"Failed to write the form config to {config_path}: {e}")
 
     return True
+
 
 def get_form_backups(config_path=None):
 
