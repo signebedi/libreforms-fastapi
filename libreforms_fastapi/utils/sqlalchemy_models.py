@@ -140,6 +140,7 @@ def get_sqlalchemy_models(
             foreign_keys='UserRelationship.user_id',
             back_populates='user'
         )
+
         received_relationships = relationship(
             'UserRelationship',
             foreign_keys='UserRelationship.related_user_id',
@@ -441,9 +442,16 @@ def get_sqlalchemy_models(
             return role_dict
 
 
-    # Create a custom Signing class from sqlalchemy_signing
-    Signing = create_signing_class(Base, tz_aware_datetime)
+    # Create a custom Signing class from sqlalchemy_signing and add a user field
+    Signing = create_signing_class(Base, datetime_override=tz_aware_datetime, email_foreign_key_mapping="user.email")
+    Signing.user = relationship('User', back_populates='signing_keys', foreign_keys=[Signing.email])
 
+    # Add the relationship to the User class
+    User.signing_keys = relationship(
+        'Signing',
+        foreign_keys=[Signing.email],
+        back_populates='user'
+    )
 
     # Initialize the signing table
     signatures = Signatures(sqlalchemy_database_uri, byte_len=32, 
