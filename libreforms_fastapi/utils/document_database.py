@@ -523,27 +523,26 @@ class ManageTinyDB(ManageDocumentDB):
 
         # Here we remove data that has not been changed
         dropping_unchanged_data = {}
-        for field in updated_data_dict.keys():
+        for key, value in updated_data_dict.items():
 
-            # print(field)
+            # If the key is in the original document and its value is new
+            if key in document['data']:
+                if value != document['data'][key] and value is not None:
+                    dropping_unchanged_data[key] = value
+            else:
+                # If the key is not in the document (new field) and the value is not None
+                if value is not None:
+                    dropping_unchanged_data[key] = value
 
-            if all([
-                field in document['data'].keys(),
-                updated_data_dict[field] != document['data'][field],
-                updated_data_dict[field] is not None
-            ]):
 
-                # print(f"\n\n\n{field} in document data but has different value")
+        # # If the field exists in the original document but not in the updated data, 
+        # we cna use the following logic to consider it for removal
+        # fields_to_remove = [key for key in document['data'] if key not in updated_data_dict]
 
-                dropping_unchanged_data[field] = updated_data_dict[field]
-            elif all([
-                field not in document['data'].keys(),
-                updated_data_dict[field] is not None
-            ]):
+        # # Remove the fields from document['data']
+        # for key in fields_to_remove:
+        #     document['data'].pop(key)
 
-                # print(f"\n\n\n{field} not in document data")
-
-                dropping_unchanged_data[field] = updated_data_dict[field]
 
         # If there are no unchanged fields, then raise an exception, 
         # see https://github.com/signebedi/libreforms-fastapi/issues/74
