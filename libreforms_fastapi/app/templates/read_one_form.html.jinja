@@ -72,7 +72,7 @@ var apiKey = "{{ request.user.api_key }}";
 var formName = "{{ form_name }}";
 var documentId = "{{ document_id }}";
 var currentUser = "{{ request.user.username }}";
-var userPermissions = {{ request.user.permissions[form_name] | tojson }};
+var userPermissions = {{ request.user.permissions[form_name] | default({}) | tojson }};
 
 function signForm() {
     $.ajax({
