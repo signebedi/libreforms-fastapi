@@ -25,9 +25,9 @@
     </fieldset>
 
 
-    {% if not config['DISABLE_NEW_USERS'] %}
+    {% if not config['DISABLE_NEW_USERS'] or not config{'DISABLE_FORGOT_PASSWORD'}%}
     <fieldset style="padding-top: 10px;" class="form-check">
-        <p style="padding-top: 10px;">Don't have an account? Create one <a href="{{url_for('ui_auth_create')}}">here</a>. Forgotten your password? Reset it <a href="{{url_for('ui_auth_forgot_password')}}">here</a>.</p>
+        <p style="padding-top: 10px;">{% if not config['DISABLE_NEW_USERS'] %}Don't have an account? Create one <a href="{{url_for('ui_auth_create')}}">here</a>. {% endif %}{% if not config['DISABLE_FORGOT_PASSWORD'] %}Forgotten your password? Reset it <a href="{{url_for('ui_auth_forgot_password')}}">here</a>.{% endif %}</p>
     </fieldset>
     {% endif %}
 

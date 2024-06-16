@@ -1060,6 +1060,7 @@ async def api_form_read_all(
     simple_response: bool = False,
     exclude_journal: bool = False,
     stringify_output: bool = False,
+    sort_by_last_edited: bool = False,
 ):
     """
     Retrieves all documents of a specified form type, identified by the form name in the URL.
@@ -1069,6 +1070,7 @@ async def api_form_read_all(
     just the data as a response. You can pass exclude_journal=true to exclude the document
     journal, which can sometimes complicate data handling because of its nested nature. You
     can pass stringify_output=true if you would like output types coerced into string format.
+    You can pass sort_by_last_edited=True if you want to sort by most recent changes.
     """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
@@ -1099,6 +1101,7 @@ async def api_form_read_all(
         collapse_data=flatten,
         exclude_journal=exclude_journal,
         stringify_output=stringify_output,
+        sort_by_last_edited=sort_by_last_edited,
     )
 
     # Write this query to the TransactionLog

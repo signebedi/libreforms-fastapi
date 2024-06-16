@@ -932,6 +932,7 @@ class ManageTinyDB(ManageDocumentDB):
         collapse_data:bool=False,
         exclude_journal:bool=False,
         stringify_output:bool=False,
+        sort_by_last_edited: bool = False,
     ):
 
         """Retrieves all entries from the specified form's database."""
@@ -953,6 +954,13 @@ class ManageTinyDB(ManageDocumentDB):
 
         if exclude_deleted:
             documents = [x for x in documents if x['metadata'][self.is_deleted_field] == False]
+
+
+
+        # Conditionally sort documents by `last_modified` date, see 
+        # https://github.com/signebedi/libreforms-fastapi/issues/265.
+        if sort_by_last_edited:
+            documents.sort(key=lambda doc: doc['metadata']['last_modified'], reverse=True)
 
         # If we've opted to stringify each field...
         if stringify_output:
@@ -1023,7 +1031,6 @@ class ManageTinyDB(ManageDocumentDB):
 
             # print(_documents)
             documents = _documents
-
 
 
         return documents

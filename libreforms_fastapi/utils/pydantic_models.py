@@ -392,16 +392,16 @@ def get_form_config_yaml(config_path=None):
 
 def clean_extra_spaces(data, exclude_fields=['description', 'field_label']):
     if isinstance(data, str):
-        print("str", data)
+        # print("str", data)
 
         # Replace multiple spaces with a single space
         return re.sub(r'\s+', ' ', data).strip()
     elif isinstance(data, list):
-        print("list", data)
+        # print("list", data)
 
         return [clean_extra_spaces(item, exclude_fields) for item in data]
     elif isinstance(data, dict):
-        print("dict", data)
+        # print("dict", data)
         return {
             key: clean_extra_spaces(value, exclude_fields) 
             if key not in exclude_fields else value
