@@ -4825,6 +4825,7 @@ async def ui_home(request: Request, config = Depends(get_config_depends),):
         request=request, 
         name="home.html.jinja", 
         context={
+            "form_names": list(get_form_names(config_path=config.FORM_CONFIG_PATH)),
             **build_ui_context(),
         }
     )

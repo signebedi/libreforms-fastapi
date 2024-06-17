@@ -956,7 +956,6 @@ class ManageTinyDB(ManageDocumentDB):
             documents = [x for x in documents if x['metadata'][self.is_deleted_field] == False]
 
 
-
         # Conditionally sort documents by `last_modified` date, see 
         # https://github.com/signebedi/libreforms-fastapi/issues/265.
         if sort_by_last_edited:

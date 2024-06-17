@@ -147,6 +147,10 @@ def get_config(env):
         # https://github.com/signebedi/libreforms-fastapi/issues/188.
         DISABLE_FOOTER:bool = os.getenv('DISABLE_FOOTER', 'False') == 'True'
 
+        # Here we allow admins to enable the "Recent Activity" table on the homepage,
+        # see https://github.com/signebedi/libreforms-fastapi/issues/227
+        RECENT_ACTIVITY_ENABLED:bool = os.getenv('RECENT_ACTIVITY_ENABLED', 'False') == 'True'
+
         # Here we specify a path to our JSON form config representation, see 
         # https://github.com/signebedi/libreforms-fastapi/issues/37.
         FORM_CONFIG_PATH:str = os.getenv('FORM_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", "form_config.yml")))
