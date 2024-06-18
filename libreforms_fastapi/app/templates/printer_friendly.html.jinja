@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config.SITE_NAME }} — Print Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        h2 {
+            text-align: left;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+
+
+        @media print {
+            .pagebreak { page-break-before: always; } /* page-break-after works, as well, see https://stackoverflow.com/a/1664058/13301284 */
+        }
+    </style>
+</head>
+<body>
+
+    <h2 id="form-title"></h2>
+
+    <h4>Form Data</h4>
+    <table id="form-data-table">
+        <thead>
+            <tr>
+                <th>Attribute</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Form data will be inserted here -->
+        </tbody>
+    </table>
+
+    <div class="pagebreak"> </div>
+
+    <h4>Form Metadata</h4>
+    <table id="metadata-table">
+        <thead>
+            <tr>
+                <th>Attribute</th>
+                <th>Value</th>
+            </tr>
+        </thead>
+        <tbody>
+            <!-- Metadata will be inserted here -->
+        </tbody>
+    </table>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const apiKey = "{{ request.user.api_key }}";
+            const formName = "{{ form_name }}";
+            const documentId = "{{ document_id }}";
+
+            const formFieldMask = {{ form_field_mask | tojson }};
+            const metadataFieldMask = {{ metadata_field_mask | tojson }};
+
+            function fetchFormData() {
+                fetch(`/api/form/read_one/${formName}/${documentId}`, {
+                    headers: {
+                        'X-API-KEY': apiKey,
+                    }
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    document.getElementById('form-title').textContent = formName.replace("_", " ").toUpperCase();
+
+                    const formDataTable = document.getElementById('form-data-table').getElementsByTagName('tbody')[0];
+                    const metadataTable = document.getElementById('metadata-table').getElementsByTagName('tbody')[0];
+
+                    for (const [key, value] of Object.entries(data.data)) {
+                        const row = formDataTable.insertRow();
+                        const cellKey = row.insertCell(0);
+                        const cellValue = row.insertCell(1);
+                        cellKey.textContent = formFieldMask[key] || key;
+                        cellValue.textContent = value;
+                    }
+
+                    for (const [key, value] of Object.entries(data.metadata)) {
+
+                        // Skip the journal and signature fields for now
+                        if (key === 'journal' || key === 'signatures') {
+                            continue; 
+                        }
+
+                        const row = metadataTable.insertRow();
+                        const cellKey = row.insertCell(0);
+                        const cellValue = row.insertCell(1);
+                        cellKey.textContent = metadataFieldMask[key] || key;
+                        cellValue.textContent = value;
+                    }
+                })
+                .catch(error => console.error('Error fetching form data:', error));
+            }
+
+            fetchFormData();
+        });
+    </script>
+</body>
+</html>

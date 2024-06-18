@@ -3002,8 +3002,7 @@ async def api_admin_get_users(
     )
 
 
-# Add new user
-    # > paired with add new user admin UI route
+# Add new user as an admin
 @app.post(
     "/api/admin/create_user", 
     dependencies=[Depends(api_key_auth)], 
@@ -3032,7 +3031,6 @@ async def api_admin_create_user(
     # https://github.com/signebedi/libreforms-fastapi/issues/239
     new_username = user_request.username.lower()
     # See https://github.com/signebedi/libreforms-fastapi/issues/267
-
     new_email = user_request.email.lower()
 
     existing_user = session.query(User).filter(User.username.ilike(new_username)).first()
@@ -4722,6 +4720,42 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request, con
             **build_ui_context(),
         }
     )
+
+
+@app.get("/ui/form/read_one/{form_name}/{document_id}/printer_friendly", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], redirect="ui_auth_login")
+async def ui_form_printer_friedly(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db),):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404)
+
+    if document_id not in doc_db._get_existing_document_ids(form_name):
+        raise HTTPException(status_code=404)
+
+    # Here we create a mask of metadata field names for the UI
+    metadata_field_mask = {x: x.replace("_", " ").title() for x in doc_db.metadata_fields if x not in [doc_db.journal_field]}
+
+    # # Here we load the form config in order to mask data field names correctly
+    form_config = load_form_config(config.FORM_CONFIG_PATH)
+    this_form = form_config[form_name]
+    form_field_mask = {x: y.get("field_label", x.replace("_", " ").title()) for x, y in this_form.items()}
+
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="printer_friendly.html.jinja", 
+        context={
+            "form_name": form_name,
+            "document_id": document_id,
+            "metadata_field_mask": metadata_field_mask,
+            "form_field_mask": form_field_mask,
+            **build_ui_context(),
+        }
+    )
+
 
 
 # Read all forms
