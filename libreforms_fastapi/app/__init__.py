@@ -1062,6 +1062,7 @@ async def api_form_read_all(
     stringify_output: bool = False,
     sort_by_last_edited: bool = False,
     set_length: bool | int = False,
+    newest_first:bool = False,
 ):
     """
     Retrieves all documents of a specified form type, identified by the form name in the URL.
@@ -1105,6 +1106,7 @@ async def api_form_read_all(
         exclude_journal=exclude_journal,
         stringify_output=stringify_output,
         sort_by_last_edited=sort_by_last_edited,
+        newest_first=newest_first,
     )
 
     # Here we limit the length of the response based on the set_length parameter, see
