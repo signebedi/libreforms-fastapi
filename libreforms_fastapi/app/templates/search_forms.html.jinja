@@ -63,9 +63,17 @@ $(document).ready(function () {
                                 <td><a href="/ui/form/read_one/${form['metadata']['form_name']}/${form['metadata']['document_id']}">${form['metadata']['document_id']}</a></td>
                                 <td>${form['metadata']['form_name'].replace(/_/g, ' ')}</td>
                                 <td>${GFG(JSON.stringify(form['data']), 60)}</td>
-                                <td>${form['metadata']['last_editor']}</td>
+                                <td>
+                                    <a target="_blank" href="/ui/auth/p/${form['metadata']['last_editor']}" class="badge bg-primary text-decoration-none" aria-label="Link to ${form['metadata']['last_editor']}">
+                                        ${form['metadata']['last_editor']}
+                                    </a>
+                                </td>
                                 <td>${form['metadata']['last_modified']}</td>
-                                <td>${form['metadata']['created_by']}</td>
+                                <td>
+                                    <a target="_blank" href="/ui/auth/p/${form['metadata']['created_by']}" class="badge bg-primary text-decoration-none" aria-label="Link to ${form['metadata']['created_by']}">
+                                        ${form['metadata']['created_by']}
+                                    </a>
+                                </td>
                                 <td>${form['metadata']['created_at']}</td>
                             </tr>`;
 

@@ -176,7 +176,7 @@ $(document).ready(function() {
     // This var will allow us to render certain data types in a human-readable format.
     var formFieldMask = {{ form_field_mask | tojson }};
 
-    function renderTable(data, tableName, fieldMappings = null, dateFields = []) {
+    function renderTable(data, tableName, fieldMappings = null, dateFields = [], userFields = []) {
         var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
         table += '<th>Attribute</th><th>Value</th>';
         table += '</tr></thead><tbody>';
@@ -196,6 +196,12 @@ $(document).ready(function() {
                 // console.log(attributeName);
                 if (dateFields.includes(attributeName)) {
                     table += `<td id="${key}-value-field"><span title="${value}">${prettifyTimeDiff(value)}</td>`; 
+                } else if (userFields.includes(attributeName)) { 
+                    table += `<td id="${key}-value-field">
+                        <a target="_blank" href="/ui/auth/p/${value}" class="badge bg-primary text-decoration-none" aria-label="Link to ${value}">
+                            ${value}
+                        </a>
+                    </td>`;
                 } else {
                     table += `<td id="${key}-value-field">${value}</td>`; 
                 }
@@ -251,7 +257,7 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
                 var dataTable = renderTable(response.data, "dataTable", fieldMappings=formFieldMask);
-                var metadataTable = renderTable(response.metadata, "metadataTable", fieldMappings=metadataFieldMask, dateFields = ['Created At', 'Last Modified']);
+                var metadataTable = renderTable(response.metadata, "metadataTable", fieldMappings=metadataFieldMask, dateFields = ['Created At', 'Last Modified'], userFields = ['Created By', 'Last Editor']);
                 $('#documentContent').html(dataTable);
                 $('#documentMetadata').html(metadataTable);
 

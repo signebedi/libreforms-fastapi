@@ -90,9 +90,17 @@ $(document).ready(function () {
             let row = `<tr>
                             <td><a href="/ui/form/read_one/${form['metadata']['form_name']}/${form['metadata']['document_id']}">${form['metadata']['document_id']}</a></td>
                             <td>${form['metadata']['form_name'].replace(/_/g, ' ')}</td>
-                            <td>${form['metadata']['last_editor']}</td>
+                            <td>
+                                <a target="_blank" href="/ui/auth/p/${form['metadata']['last_editor']}" class="badge bg-primary text-decoration-none" aria-label="Link to ${form['metadata']['last_editor']}">
+                                    ${form['metadata']['last_editor']}
+                                </a>
+                            </td>
                             <td><span title="${form['metadata']['last_modified']}">${prettifyTimeDiff(form['metadata']['last_modified'])}</span></td>
-                            <td>${form['metadata']['created_by']}</td>
+                            <td>
+                                <a target="_blank" href="/ui/auth/p/${form['metadata']['created_by']}" class="badge bg-primary text-decoration-none" aria-label="Link to ${form['metadata']['created_by']}">
+                                    ${form['metadata']['created_by']}
+                                </a>
+                            </td>
                             <td><span title="${form['metadata']['created_at']}">${prettifyTimeDiff(form['metadata']['created_at'])}</span></td>
                         </tr>`;
             $("#readAllTable tbody").append(row);
@@ -106,6 +114,8 @@ $(document).ready(function () {
 
         $('#readAllTable').DataTable({
             ordering: false,
+            // Set column widths below 
+            columns: [{ width: '20%' }, { width: '30%' }, { width: '10%' }, { width: '15%' }, { width: '10%' }, { width: '15%' }],
             pageLength: 5,
             lengthChange: false,
             info: false,

@@ -137,13 +137,24 @@ function restoreForm(formName, documentId) {
                             </div>
                         </td>
                         <td>${document['metadata']['form_name'].replace(/_/g, ' ')}</td>
-                        <td>${document['metadata']['last_editor']}</td>
+                        <td>
+                            <a target="_blank" href="/ui/auth/p/${document['metadata']['last_editor']}" class="badge bg-primary text-decoration-none" aria-label="Link to ${document['metadata']['last_editor']}">
+                                ${document['metadata']['last_editor']}
+                            </a>
+                        </td>
                         <td><span title="${document['metadata']['last_modified']}">${prettifyTimeDiff(document['metadata']['last_modified'])}</span></td>
-                        <td>${document['metadata']['created_by']}</td>
+                        <td>
+                            <a target="_blank" href="/ui/auth/p/${document['metadata']['created_by']}" class="badge bg-primary text-decoration-none" aria-label="Link to ${document['metadata']['created_by']}">
+                                ${document['metadata']['created_by']}
+                            </a>
+                        </td>
                         <td><span title="${document['metadata']['created_at']}">${prettifyTimeDiff(document['metadata']['created_at'])}</span></td>
                     </tr>`;
             }
             });
+
+
+
 
             table += '</tbody></table>';
             return table;
