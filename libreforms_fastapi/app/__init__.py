@@ -498,8 +498,9 @@ with get_config_context() as config:
         all_users = session.query(User).all()
 
         for user in all_users:
-            # Coerce username to lowercase
+            # Coerce username and email to lowercase
             user.username = user.username.lower()
+            user.email = user.email.lower()
 
         # Commit the changes to the database
         session.commit()
@@ -2092,7 +2093,7 @@ async def api_auth_create(
     # In the future, consider coercing to lowercase, see
     # https://github.com/signebedi/libreforms-fastapi/issues/239
     new_username = user_request.username.lower()
-    # new_username = user_request.username
+    new_email = user_request.email.lower()
 
     # Check if user or email already exists
     # See https://stackoverflow.com/a/9270432/13301284 for HTTP Response
@@ -2103,10 +2104,10 @@ async def api_auth_create(
 
         raise HTTPException(status_code=409, detail="Registration failed. The provided information cannot be used.")
 
-    existing_email = session.query(User).filter(User.email.ilike(user_request.email)).first()
+    existing_email = session.query(User).filter(User.email.ilike(new_email)).first()
     if existing_email:
         # Consider adding IP tracking to failed attempt
-        logger.warning(f'Attempt to register email {user_request.email} but email is already registered')
+        logger.warning(f'Attempt to register email {new_email} but email is already registered')
 
         if config.SMTP_ENABLED:
 
@@ -2117,7 +2118,7 @@ async def api_auth_create(
                 mailer.send_mail, 
                 subject=_subject, 
                 content=_content, 
-                to_address=user_request.email,
+                to_address=new_email,
             )
 
         raise HTTPException(status_code=409, detail="Registration failed. The provided information cannot be used.")
@@ -2125,7 +2126,7 @@ async def api_auth_create(
     hashed_password = generate_password_hash(user_request.password.get_secret_value())
 
     new_user = User(
-        email=user_request.email, 
+        email=new_email, 
         username=new_username, 
         password=hashed_password,
         active=config.REQUIRE_EMAIL_VERIFICATION == False,
@@ -2134,7 +2135,7 @@ async def api_auth_create(
 
     # Create the users API key with a 365 day expiry
     expiration = 8760
-    api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=user_request.email)
+    api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=new_email)
     new_user.api_key = api_key
 
     # Here we add user key pair information, namely, the path to the user private key, and the
@@ -2177,7 +2178,7 @@ async def api_auth_create(
             mailer.send_mail, 
             subject=subject, 
             content=content, 
-            to_address=user_request.email,
+            to_address=new_email,
         )
 
 
@@ -3030,25 +3031,27 @@ async def api_admin_create_user(
     # In the future, consider coercing to lowercase, see
     # https://github.com/signebedi/libreforms-fastapi/issues/239
     new_username = user_request.username.lower()
-    # new_username = user_request.username
+    # See https://github.com/signebedi/libreforms-fastapi/issues/267
+
+    new_email = user_request.email.lower()
 
     existing_user = session.query(User).filter(User.username.ilike(new_username)).first()
     if existing_user:
         raise HTTPException(status_code=409, detail="Registration failed. Username already exists.")
 
-    existing_email = session.query(User).filter(User.email.ilike(user_request.email)).first()
+    existing_email = session.query(User).filter(User.email.ilike(new_email)).first()
     if existing_email:
         raise HTTPException(status_code=409, detail="Registration failed. Email already in use.")
 
     new_user = User(
-        email=user_request.email, 
+        email=new_email, 
         username=new_username, 
         active=True,
     ) 
 
     # Create the users API key with a 365 day expiry
     expiration = 8760
-    api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=user_request.email)
+    api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=new_email)
     new_user.api_key = api_key
 
     if not user_request.password:
@@ -3098,7 +3101,7 @@ async def api_admin_create_user(
             mailer.send_mail, 
             subject=subject, 
             content=content, 
-            to_address=user_request.email,
+            to_address=new_email,
         )
 
 
