@@ -198,7 +198,7 @@ $(document).ready(function() {
                     table += `<td id="${key}-value-field"><span title="${value}">${prettifyTimeDiff(value)}</td>`; 
                 } else if (userFields.includes(attributeName)) { 
                     table += `<td id="${key}-value-field">
-                        <a target="_blank" href="/ui/auth/p/${value}" class="badge bg-primary text-decoration-none" aria-label="Link to ${value}">
+                        <a target="_blank" href="/ui/auth/p/${value}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${value}">
                             ${value}
                         </a>
                     </td>`;

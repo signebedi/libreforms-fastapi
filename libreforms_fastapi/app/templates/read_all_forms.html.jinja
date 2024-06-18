@@ -83,13 +83,13 @@ $(document).ready(function () {
                             <td>${form['metadata']['form_name'].replace(/_/g, ' ')}</td>
                             <td>${GFG(JSON.stringify(form['data']), 60)}</td>
                             <td>
-                                <a target="_blank" href="/ui/auth/p/${form['metadata']['last_editor']}" class="badge bg-primary text-decoration-none" aria-label="Link to ${form['metadata']['last_editor']}">
+                                <a target="_blank" href="/ui/auth/p/${form['metadata']['last_editor']}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${form['metadata']['last_editor']}">
                                     ${form['metadata']['last_editor']}
                                 </a>
                             </td>
                             <td><span title="${form['metadata']['last_modified']}">${prettifyTimeDiff(form['metadata']['last_modified'])}</span></td>
                             <td>
-                                <a target="_blank" href="/ui/auth/p/${form['metadata']['created_by']}" class="badge bg-primary text-decoration-none" aria-label="Link to ${form['metadata']['created_by']}">
+                                <a target="_blank" href="/ui/auth/p/${form['metadata']['created_by']}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${form['metadata']['created_by']}">
                                     ${form['metadata']['created_by']}
                                 </a>
                             </td>
