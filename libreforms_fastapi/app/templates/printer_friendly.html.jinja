@@ -86,7 +86,7 @@
                     return response.json();
                 })
                 .then(data => {
-                    document.getElementById('form-title').textContent = {{ form_name.replace('_', ' ') }};
+                    document.getElementById('form-title').textContent = "{{ form_name.replace('_', ' ') }}";
 
                     const formDataTable = document.getElementById('form-data-table').getElementsByTagName('tbody')[0];
                     const metadataTable = document.getElementById('metadata-table').getElementsByTagName('tbody')[0];
