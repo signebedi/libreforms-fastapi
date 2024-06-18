@@ -41,6 +41,7 @@
             <a class="dropdown-item" id="signLink" onclick="signForm();" href="#">Sign Form</a>
             <a class="dropdown-item" id="signLink" onclick="exportForm('json');" href="#">Export as JSON</a>
             {# <a class="dropdown-item disabled" id="historyLink" href="#">View Form History</a> #}
+            <a class="dropdown-item" id="duplicateLink" href="{{ url_for('ui_form_printer_friedly', form_name=form_name, document_id=document_id) }}">Print Form</a>
             <a class="dropdown-item" id="duplicateLink" href="/ui/form/duplicate/{{ form_name }}/{{ document_id }}">Duplicate Form</a>
             <a class="dropdown-item" id="deleteLink" onclick="deleteForm();" href="#">Delete Form</a>
             {# <a class="dropdown-item disabled" id="downloadLink" href="#">Download Form</a> #}
