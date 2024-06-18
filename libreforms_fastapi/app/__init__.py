@@ -1061,6 +1061,7 @@ async def api_form_read_all(
     exclude_journal: bool = False,
     stringify_output: bool = False,
     sort_by_last_edited: bool = False,
+    set_length: bool | int = False,
 ):
     """
     Retrieves all documents of a specified form type, identified by the form name in the URL.
@@ -1070,7 +1071,9 @@ async def api_form_read_all(
     just the data as a response. You can pass exclude_journal=true to exclude the document
     journal, which can sometimes complicate data handling because of its nested nature. You
     can pass stringify_output=true if you would like output types coerced into string format.
-    You can pass sort_by_last_edited=True if you want to sort by most recent changes.
+    You can pass sort_by_last_edited=True if you want to sort by most recent changes. You can
+    pass set_length=some_int if you would like to limit the response to a certain number of
+    documents.
     """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
@@ -1103,6 +1106,15 @@ async def api_form_read_all(
         stringify_output=stringify_output,
         sort_by_last_edited=sort_by_last_edited,
     )
+
+    # Here we limit the length of the response based on the set_length parameter, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/266. While TinyDB does
+    # not seem to provide any efficiency benefits from limiting queryies (the all() 
+    # method seems to be the preferred approach for getting more than one document),
+    # other document databases may provide such efficiency benefits, and it may make
+    # sense to build this into the doc_db.get_all_documents params. 
+    if isinstance(set_length, int):
+        documents = documents[:set_length]
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
