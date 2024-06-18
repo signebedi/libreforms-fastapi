@@ -5100,6 +5100,28 @@ def ui_auth_profile_other(
 
 
 
+# Adding a bypass route to the user profile using usernames, see
+# https://github.com/signebedi/libreforms-fastapi/issues/268
+@app.get("/ui/auth/p/{username}", response_class=RedirectResponse, include_in_schema=False)
+@requires(['authenticated'], redirect="ui_auth_login")
+def ui_auth_profile_bypass( 
+    username: str, 
+    request: Request, 
+    config = Depends(get_config_depends),
+):
+
+    # If other profile views are disabled or the requesting user is not an admin
+    if not config.OTHER_PROFILES_ENABLED and not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    user = session.query(User).filter(User.username.ilike(username)).first()
+
+    if not user:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return RedirectResponse(request.url_for("ui_auth_profile_other", id=user.id), status_code=303)
+
+
 ##########################
 ### UI Routes - Admin
 ##########################
