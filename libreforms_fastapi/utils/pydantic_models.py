@@ -181,7 +181,7 @@ example_form:
   text_input:
     input_type: text
     output_type: !str
-    field_name: text_input
+    field_label: Text Input
     default: Default Text
     validators:
       min_length: 1
@@ -197,7 +197,7 @@ example_form:
   number_input:
     input_type: number
     output_type: !int
-    field_name: number_input
+    field_label: Number Input
     default: 42
     validators:
       ge: 0
@@ -208,7 +208,7 @@ example_form:
   email_input:
     input_type: email
     output_type: !str
-    field_name: email_input
+    field_label: Email Input
     default: user@example.com
     required: false
     options: null
@@ -216,7 +216,7 @@ example_form:
   date_input:
     input_type: date
     output_type: !date
-    field_name: date_input
+    field_label: Date Input
     default: 2024-01-01
     required: false
     options: null
@@ -224,7 +224,7 @@ example_form:
   checkbox_input:
     input_type: checkbox
     output_type: !list
-    field_name: checkbox_input
+    field_label: Checkbox Input
     options: 
       - Option1
       - Option2
@@ -237,7 +237,7 @@ example_form:
   radio_input:
     input_type: radio
     output_type: !str
-    field_name: radio_input
+    field_label: Radio Input
     options: 
       - Option1
       - Option2
@@ -247,7 +247,7 @@ example_form:
   select_input:
     input_type: select
     output_type: !str
-    field_name: select_input
+    field_label: Select Input
     options:
       - Option1
       - Option2
@@ -258,7 +258,7 @@ example_form:
   textarea_input:
     input_type: textarea
     output_type: !str
-    field_name: textarea_input
+    field_label: Textarea Input
     default: Default textarea content.
     validators:
       min_length: 0
@@ -270,7 +270,7 @@ example_form:
   file_input:
     input_type: file
     output_type: !bytes
-    field_name: file_input
+    field_label: File Input
     required: false
     default: null
     description: This is a file field
@@ -696,7 +696,7 @@ def get_form_html(
         elif field_info['input_type'] == 'textarea':
             field_html += f'''
                 <fieldset class="form-check" style="  padding-top: 20px;">
-                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}{' data-required="true"' if required else ''}</label>
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label"{' data-required="true"' if required else ''}>{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>
                     <textarea class="form-control" id="{field_name}" name="{field_name}" {field_params} rows="4" style="resize: vertical; max-height: 300px;"{' required' if required else ''}>{default or ''}</textarea>
                     <div class="valid-feedback"></div>
