@@ -365,7 +365,7 @@ class ManageTinyDB(ManageDocumentDB):
 
     def _get_db_path(self, form_name:str):
         """Constructs a file path for the given form's database."""
-        return os.path.join(self.db_path, f"{form_name}.json")
+        return os.path.join(self.db_path, f"{self.env}_{form_name}.json")
 
     def _check_form_exists(self, form_name:str):
         """Checks if the form exists in the configuration."""
@@ -915,7 +915,7 @@ class ManageTinyDB(ManageDocumentDB):
         os.makedirs(file_path, exist_ok=True)
 
         # Concat the file path to the unique file name
-        path_to_file = os.path.join(file_path, f'{form_name}-export-{datetime_format}.xlsx')
+        path_to_file = os.path.join(file_path, f'{form_name}-{self.env}-export-{datetime_format}.xlsx')
 
         # Write to excel
         df.to_excel(path_to_file, index=False)
@@ -1086,7 +1086,7 @@ class ManageTinyDB(ManageDocumentDB):
             os.makedirs(file_path, exist_ok=True)
 
             # Concat the file path to the unique file name
-            path_to_file = os.path.join(file_path, f'{form_name}-{document_id}-export-{datetime_format}.json')
+            path_to_file = os.path.join(file_path, f'{form_name}-{document_id}-{self.env}-export-{datetime_format}.json')
 
             # Write to file
             with open(path_to_file, "w") as f:
@@ -1124,7 +1124,7 @@ class ManageTinyDB(ManageDocumentDB):
         os.makedirs(backup_dir, exist_ok=True) 
 
         timestamp = datetime.now(self.timezone).strftime("%Y%m%d%H%M%S")
-        backup_filename = f"{timestamp}_{form_name}.json"
+        backup_filename = f"{timestamp}_{self.env}_{form_name}.json"
         backup_path = os.path.join(backup_dir, backup_filename)
 
         source_path = self._get_db_path(form_name)
