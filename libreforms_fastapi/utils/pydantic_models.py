@@ -20,8 +20,10 @@ from pydantic.functional_validators import field_validator, model_validator
 
 # We externalize the custom yaml constructors to create an easier entrypoint 
 # to manage both default custom constructors, as well as end-user logic, see
-# https://github.com/signebedi/libreforms-fastapi/issues/150
-from libreforms_fastapi.utils.custom_yaml import get_yaml_constructors
+# https://github.com/signebedi/libreforms-fastapi/issues/150.
+from libreforms_fastapi.utils.custom_yaml import (
+    CustomFullLoader,
+)
 
 class ImproperUsernameFormat(Exception):
     """Raised when the username does not meet the regular expression defined in the app config"""
@@ -281,68 +283,6 @@ example_form:
     description: This is a file field
 """
 
-# Register the type constructors
-for key, value in get_yaml_constructors().items():
-    yaml.add_constructor(key, value)
-
-def load_form_config(config_path=None):
-    """
-    This is a quick abstraction to load the YAML form config with 
-    while parsing for the output_type.
-    """
-    default_config = yaml.load(EXAMPLE_FORM_CONFIG_YAML, Loader=yaml.FullLoader)
-
-    if not config_path:
-        return default_config
-
-    elif not os.path.exists(config_path):
-
-        basedir = os.path.dirname(config_path)
-        if not os.path.exists(basedir):
-            os.makedirs(basedir)
-
-        with open(config_path, 'w') as file:
-            file.write(EXAMPLE_FORM_CONFIG_YAML)
-
-        return default_config
-
-    elif os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as file:
-                form_config = yaml.load(file, Loader=yaml.FullLoader)
-
-        except yaml.YAMLError as e:
-            # raise Exception(f"Error parsing YAML file: {e}")
-            return default_config
-        except IOError as e:
-            # raise Exception(f"Error reading file: {e}")
-            return default_config
-        except Exception as e:
-            raise Exception(f"An unexpected error occurred: {e}")
-
-
-    if not isinstance(form_config, dict):
-        # raise Exception(f"The form config at {config_path} is not properly formatted")
-        return default_config
-
-    return form_config
-
-def get_form_config_yaml(config_path=None):
-    """
-    Here we return the string representation of the yaml form config.
-    """
-
-    if not config_path or not os.path.exists(config_path):
-        return EXAMPLE_FORM_CONFIG_YAML
-
-    elif os.path.exists(config_path):
-        try:
-            with open(config_path, 'r') as file:
-                form_config = file.read()
-        except Exception as e:
-            raise Exception(f"Failed to read the form config file at {config_path}: {e}")
-
-    return form_config
 
 
 def clean_extra_spaces(data, exclude_fields=['description', 'field_label']):
@@ -363,6 +303,71 @@ def clean_extra_spaces(data, exclude_fields=['description', 'field_label']):
             for key, value in data.items()
         }
     return data
+    
+def load_form_config(config_path=None):
+    """
+    This is a quick abstraction to load the YAML form config with 
+    while parsing for the output_type.
+    """
+
+
+    default_config = yaml.load(EXAMPLE_FORM_CONFIG_YAML, Loader=CustomFullLoader)
+
+    if not config_path:
+        return default_config
+
+    elif not os.path.exists(config_path):
+
+        basedir = os.path.dirname(config_path)
+        if not os.path.exists(basedir):
+            os.makedirs(basedir)
+
+        with open(config_path, 'w') as file:
+            file.write(EXAMPLE_FORM_CONFIG_YAML)
+
+        return default_config
+
+    elif os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as file:
+                form_config = yaml.load(file, Loader=CustomFullLoader)
+
+        except yaml.YAMLError as e:
+            # raise Exception(f"Error parsing YAML file: {e}")
+            return default_config
+        except IOError as e:
+            # raise Exception(f"Error reading file: {e}")
+            return default_config
+        except Exception as e:
+            raise Exception(f"An unexpected error occurred: {e}")
+
+    if not isinstance(form_config, dict):
+        # raise Exception(f"The form config at {config_path} is not properly formatted")
+        return default_config
+
+    # return form_config
+
+    # Clean extra spaces from the parsed YAML dictionary
+    cleaned_config = clean_extra_spaces(form_config)
+
+    return cleaned_config
+
+def get_form_config_yaml(config_path=None):
+    """
+    Here we return the string representation of the yaml form config.
+    """
+
+    if not config_path or not os.path.exists(config_path):
+        return EXAMPLE_FORM_CONFIG_YAML
+
+    elif os.path.exists(config_path):
+        try:
+            with open(config_path, 'r') as file:
+                form_config = file.read()
+        except Exception as e:
+            raise Exception(f"Failed to read the form config file at {config_path}: {e}")
+
+    return form_config
 
 
 def write_form_config_yaml(
@@ -379,7 +384,7 @@ def write_form_config_yaml(
     # if validate:
     try:
         # Attempt to load the YAML string to check its validity
-        parsed_config = yaml.load(form_config_str, Loader=yaml.FullLoader)
+        parsed_config = yaml.load(form_config_str, Loader=CustomFullLoader)
 
         # I'm putting a placeholder here because we may with to add additional
         # validators down the road.
@@ -389,10 +394,10 @@ def write_form_config_yaml(
 
 
     # Clean extra spaces from the parsed YAML dictionary
-    cleaned_config = clean_extra_spaces(parsed_config)
+    # cleaned_config = clean_extra_spaces(parsed_config)
 
     # Convert the cleaned config back to a YAML string
-    cleaned_form_config_str = yaml.dump(cleaned_config, sort_keys=False)
+    # cleaned_form_config_str = yaml.dump(cleaned_config, sort_keys=False, Dumper=yaml.BaseDumper, default_flow_style=False)
 
     # Ensure the base directory exists
     basedir = os.path.dirname(config_path)
@@ -415,7 +420,8 @@ def write_form_config_yaml(
     # Write the cleaned YAML string to the config file
     try:
         with open(config_path, 'w') as file:
-            file.write(cleaned_form_config_str)
+            # file.write(cleaned_form_config_str)
+            file.write(form_config_str)
     except Exception as e:
         raise Exception(f"Failed to write the form config to {config_path}: {e}")
 
@@ -720,7 +726,7 @@ class FormConfigUpdateRequest(BaseModel):
             # Remove leading and trailing double and single quotes
             v = v.strip('"\'')
 
-            data = yaml.load(v, Loader=yaml.FullLoader)
+            data = yaml.load(v, Loader=CustomFullLoader)
             if data is None:
                 raise ValueError("No content found; possibly empty YAML.")
             return v
