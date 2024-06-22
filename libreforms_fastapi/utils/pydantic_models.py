@@ -22,7 +22,7 @@ from pydantic.functional_validators import field_validator, model_validator
 # to manage both default custom constructors, as well as end-user logic, see
 # https://github.com/signebedi/libreforms-fastapi/issues/150.
 from libreforms_fastapi.utils.custom_yaml import (
-    CustomFullLoader,
+    get_custom_loader,
 )
 
 class ImproperUsernameFormat(Exception):
@@ -311,7 +311,7 @@ def load_form_config(config_path=None):
     """
 
 
-    default_config = yaml.load(EXAMPLE_FORM_CONFIG_YAML, Loader=CustomFullLoader)
+    default_config = yaml.load(EXAMPLE_FORM_CONFIG_YAML, Loader=get_custom_loader())
 
     if not config_path:
         return default_config
@@ -330,7 +330,7 @@ def load_form_config(config_path=None):
     elif os.path.exists(config_path):
         try:
             with open(config_path, 'r') as file:
-                form_config = yaml.load(file, Loader=CustomFullLoader)
+                form_config = yaml.load(file, Loader=get_custom_loader())
 
         except yaml.YAMLError as e:
             # raise Exception(f"Error parsing YAML file: {e}")
@@ -384,7 +384,7 @@ def write_form_config_yaml(
     # if validate:
     try:
         # Attempt to load the YAML string to check its validity
-        parsed_config = yaml.load(form_config_str, Loader=CustomFullLoader)
+        parsed_config = yaml.load(form_config_str, Loader=get_custom_loader())
 
         # I'm putting a placeholder here because we may with to add additional
         # validators down the road.
@@ -726,7 +726,7 @@ class FormConfigUpdateRequest(BaseModel):
             # Remove leading and trailing double and single quotes
             v = v.strip('"\'')
 
-            data = yaml.load(v, Loader=CustomFullLoader)
+            data = yaml.load(v, Loader=get_custom_loader())
             if data is None:
                 raise ValueError("No content found; possibly empty YAML.")
             return v
