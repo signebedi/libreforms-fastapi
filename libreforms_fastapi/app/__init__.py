@@ -209,6 +209,29 @@ def get_mailer():
 
     return mailer
 
+
+def get_doc_db():
+
+    # with get_config_context() as config:
+
+    config = get_config_depends()
+
+    # Initialize the document database
+    doc_db = get_document_database(
+        form_names_callable=get_form_names,
+        form_config_path=config.FORM_CONFIG_PATH,
+        timezone=config.TIMEZONE, 
+        env=config.ENVIRONMENT, 
+        use_logger=False, # https://github.com/signebedi/libreforms-fastapi/issues/226
+        # logger=document_database_logger,
+        use_mongodb=config.MONGODB_ENABLED, 
+        mongodb_uri=config.MONGODB_URI,
+        use_excel=config.EXCEL_EXPORT_ENABLED,
+    )
+
+    return doc_db
+
+
 # This is a remarkably ugly way to approach this, but necessary for the time being 
 # to complete the requirements in https://github.com/signebedi/libreforms-fastapi/issues/5.
 # In the long-run, we will encapsulate the majority of the components instantiated within the
@@ -588,28 +611,6 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
             detail="API key expired"
         )
 
-def get_doc_db():
-
-    # with get_config_context() as config:
-
-    config = get_config_depends()
-
-    # Initialize the document database
-    doc_db = get_document_database(
-        form_names_callable=get_form_names,
-        form_config_path=config.FORM_CONFIG_PATH,
-        timezone=config.TIMEZONE, 
-        env=config.ENVIRONMENT, 
-        use_logger=False, # https://github.com/signebedi/libreforms-fastapi/issues/226
-        # logger=document_database_logger,
-        use_mongodb=config.MONGODB_ENABLED, 
-        mongodb_uri=config.MONGODB_URI,
-        use_excel=config.EXCEL_EXPORT_ENABLED,
-    )
-
-    return doc_db
-
-
 def get_db():
     db = SessionLocal()
     try:
@@ -750,8 +751,14 @@ async def api_form_create(
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # Yield the pydantic form model
-    FormModel = get_form_model(form_name=form_name, config_path=config.FORM_CONFIG_PATH)
-
+    FormModel = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
 
     # Here we validate and coerce data into its proper type
     # print("\n\n\n", body)
@@ -1250,8 +1257,16 @@ async def api_form_update(
     # including unchanged fields. The benefit is simplicity all over the 
     # application, because we can just pull the data, update fields as appropriate,
     # and pass the full payload to the document database to parse and clean up.
-    FormModel = get_form_model(form_name=form_name, config_path=config.FORM_CONFIG_PATH, update=True)
-
+    FormModel = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH, 
+        update=True,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
+    
     # # Here we validate and coerce data into its proper type
     form_data = FormModel.model_validate(body)
     json_data = form_data.model_dump_json()
@@ -4664,7 +4679,7 @@ def build_ui_context():
 # Create form
 @app.get("/ui/form/create/{form_name}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], redirect="ui_auth_login")
-async def ui_form_create(form_name:str, request: Request, config = Depends(get_config_depends)):
+async def ui_form_create(form_name:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db), session: SessionLocal = Depends(get_db)):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4672,7 +4687,14 @@ async def ui_form_create(form_name:str, request: Request, config = Depends(get_c
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # generate_html_form
-    form_html = get_form_html(form_name=form_name, config_path=config.FORM_CONFIG_PATH)
+    form_html = get_form_html(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
 
     return templates.TemplateResponse(
         request=request, 
@@ -4777,7 +4799,7 @@ async def ui_form_read_all(request: Request, config = Depends(get_config_depends
 # Update form
 @app.get("/ui/form/update/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], redirect="ui_auth_login")
-async def ui_form_update(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends)):
+async def ui_form_update(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db), session: SessionLocal = Depends(get_db)):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4785,7 +4807,15 @@ async def ui_form_update(form_name:str, document_id:str, request: Request, confi
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # generate_html_form
-    form_html = get_form_html(form_name=form_name, config_path=config.FORM_CONFIG_PATH, update=True)
+    form_html = get_form_html(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        update=True,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
 
     return templates.TemplateResponse(
         request=request, 
@@ -4801,7 +4831,7 @@ async def ui_form_update(form_name:str, document_id:str, request: Request, confi
 
 @app.get("/ui/form/duplicate/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], redirect="ui_auth_login")
-async def ui_form_duplicate(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends)):
+async def ui_form_duplicate(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db), session: SessionLocal = Depends(get_db)):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -4809,7 +4839,15 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request, co
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
     # generate_html_form
-    form_html = get_form_html(form_name=form_name, config_path=config.FORM_CONFIG_PATH, update=True)
+    form_html = get_form_html(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        update=True,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
 
     return templates.TemplateResponse(
         request=request, 

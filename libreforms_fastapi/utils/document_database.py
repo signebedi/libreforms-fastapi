@@ -352,6 +352,11 @@ class ManageTinyDB(ManageDocumentDB):
             # self.databases[form_name] = TinyDB(self._get_db_path(form_name))
             self.databases[form_name] = CustomTinyDB(self._get_db_path(form_name), cls=CustomEncoder)
 
+    def _get_form_names(self) -> list:
+        """Returns a list of form names."""
+        return self.form_names_callable(config_path=self.form_config_path)
+
+
     def _test_connection(self) -> bool:
 
         try:

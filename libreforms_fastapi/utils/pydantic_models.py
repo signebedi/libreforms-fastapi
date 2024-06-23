@@ -304,14 +304,31 @@ def clean_extra_spaces(data, exclude_fields=['description', 'field_label']):
         }
     return data
     
-def load_form_config(config_path=None):
+def load_form_config(
+    config_path: None | str = None,
+    initialize_full_loader: bool = False,
+    doc_db = None,
+    session = None,
+    User = None,
+    Group = None,
+):
     """
-    This is a quick abstraction to load the YAML form config with 
-    while parsing for the output_type.
+    This is a quick abstraction to load the YAML form config with while
+    parsing for custom constructors using the CustomFullLoader class.
     """
 
 
-    default_config = yaml.load(EXAMPLE_FORM_CONFIG_YAML, Loader=get_custom_loader())
+    # Load the yaml CustomFullLoader class
+    CustomFullLoader = get_custom_loader(
+        initialize_full_loader=initialize_full_loader,
+        doc_db=doc_db,
+        session=session,
+        User=User,
+        Group=Group,
+    )
+
+    # Load the default config as a fall back if no user-provided config exists
+    default_config = yaml.load(EXAMPLE_FORM_CONFIG_YAML, Loader=CustomFullLoader)
 
     if not config_path:
         return default_config
@@ -330,7 +347,7 @@ def load_form_config(config_path=None):
     elif os.path.exists(config_path):
         try:
             with open(config_path, 'r') as file:
-                form_config = yaml.load(file, Loader=get_custom_loader())
+                form_config = yaml.load(file, Loader=CustomFullLoader)
 
         except yaml.YAMLError as e:
             # raise Exception(f"Error parsing YAML file: {e}")
@@ -380,11 +397,14 @@ def write_form_config_yaml(
     Here we write the string representation of the yaml form config.
     """
 
+    # Load the yaml CustomFullLoader class
+    CustomFullLoader = get_custom_loader() 
+
     # Validate the YAML string
     # if validate:
     try:
         # Attempt to load the YAML string to check its validity
-        parsed_config = yaml.load(form_config_str, Loader=get_custom_loader())
+        parsed_config = yaml.load(form_config_str, Loader=CustomFullLoader)
 
         # I'm putting a placeholder here because we may with to add additional
         # validators down the road.
@@ -498,7 +518,16 @@ def get_form_names(config_path=None):
     return form_config.keys()
 
 
-def get_form_model(form_name, config_path=None, update=False):
+def get_form_model(
+    form_name: str, 
+    config_path: None | str = None, 
+    update: bool = False,
+    initialize_full_loader: bool = True,
+    doc_db = None,
+    session = None,
+    User = None,
+    Group = None,
+):
     """
     Generates a Pydantic model based on the form configuration.
 
@@ -510,7 +539,14 @@ def get_form_model(form_name, config_path=None, update=False):
     Returns:
         A dynamically created Pydantic model class.
     """
-    form_config = load_form_config(config_path=config_path)
+    form_config = load_form_config(
+        config_path=config_path, 
+        initialize_full_loader=initialize_full_loader,
+        doc_db=doc_db,
+        session=session,
+        User=User,
+        Group=Group, 
+    )
 
     if form_name not in form_config:
         raise Exception(f"Form '{form_name}' not found in config")
@@ -562,7 +598,12 @@ def get_form_html(
     form_name: str, 
     config_path: str | None = None, 
     current_document: dict | None = None,
-    update=False,
+    update:bool = False,
+    initialize_full_loader: bool = True,
+    doc_db = None,
+    session = None,
+    User = None,
+    Group = None,
 ) -> List[str]:
     """
     Generates a list of Bootstrap 5 styled HTML form fields based on the input config and form name,
@@ -574,7 +615,14 @@ def get_form_html(
 
     Returns: List[str] of HTML elements for the front-end
     """
-    form_config = load_form_config(config_path=config_path)
+    form_config = load_form_config(
+        config_path=config_path, 
+        initialize_full_loader=initialize_full_loader, 
+        doc_db=doc_db,
+        session=session,
+        User=User,
+        Group=Group, 
+    )
 
     if form_name not in form_config:
         raise Exception(f"Form '{form_name}' not found in config")
@@ -721,12 +769,16 @@ class FormConfigUpdateRequest(BaseModel):
 
     @validator('content')
     def validate_yaml(cls, v):
+
         try:
+
+            # Load the yaml CustomFullLoader class
+            CustomFullLoader = get_custom_loader()
             
             # Remove leading and trailing double and single quotes
             v = v.strip('"\'')
 
-            data = yaml.load(v, Loader=get_custom_loader())
+            data = yaml.load(v, Loader=CustomFullLoader)
             if data is None:
                 raise ValueError("No content found; possibly empty YAML.")
             return v
