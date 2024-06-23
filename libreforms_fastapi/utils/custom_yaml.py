@@ -4,7 +4,6 @@ from datetime import datetime, date, time, timedelta
 
 
 def get_custom_loader(
-    # config_file: str,
     initialize_full_loader: bool = False,
     doc_db = None,
     session = None,
@@ -30,30 +29,57 @@ def get_custom_loader(
             else:
 
                 # Register the type constructors
-                for key, value in get_basic_yaml_constructors().items():
+                for key, value in get_yaml_type_constructors().items():
                     self.add_constructor(key, value)
 
                 # If we want the full loader initialized, then we will expect that doc_db,
                 # session, User, and Group are not None, then add these as data constructors,
                 # see https://github.com/signebedi/libreforms-fastapi/issues/150.
 
+                _all_users = [x.to_dict(just_the_basics=True)['username'] for x in session.query(User).all()]
+                _all_groups = [x.to_dict()['name'] for x in session.query(Group).all()]
+
                 def data_constructor_all_usernames(loader, node):
                     if self.initialize_full_loader and User is not None and session is not None:
-                        return [""]+[x.to_dict(just_the_basics=True)['username'] for x in session.query(User).all()]
+                        return [""]+_all_users
                     else:
                         return [""]
 
                 self.add_constructor('!all_usernames', data_constructor_all_usernames)
 
+
+                # Here we add a selection of users by group
+                def data_constructor_dynamic_users_by_group(group_name):
+
+                    def dynamic_method(loader, data):
+                        if User is not None and Group is not None and session is not None:
+
+                            users_in_group = session.query(User).join(User.groups).filter(Group.name == group_name).all()
+
+                            return [""]+[x.to_dict()['username'] for x in users_in_group]
+
+                        else:
+                            return [""]
+
+                    return dynamic_method
+
+                if User is not None and Group is not None:
+                    for group_name in _all_groups:
+                        self.add_constructor(
+                            f'!all_usernames_by_group_{group_name}', 
+                            data_constructor_dynamic_users_by_group(group_name)
+                        )
+
+
                 def data_constructor_all_group_names(loader, node):
-                    if self.initialize_full_loader and Group is not None and session is not None:
-                        return [""]+[x.to_dict()['name'] for x in session.query(Group).all()]
+                    if Group is not None and session is not None:
+                        return [""]+_all_groups
                     else:
                         return [""]
 
                 self.add_constructor('!all_groups', data_constructor_all_group_names)              
 
-                def data_constructor_dynamic_forms(form_name, initialize_full_loader, doc_db):
+                def data_constructor_dynamic_forms(form_name):
 
                     def dynamic_method(loader, data):
                         if self.initialize_full_loader and doc_db is not None:
@@ -63,25 +89,17 @@ def get_custom_loader(
 
                     return dynamic_method
                 
-                # This little block of code is going to give us a world of difficulty 
-                # when we don't pass doc_db but want to validate the yaml ... how do we
-                # access the form names other than doc_db._get_form_names()so we can
-                # remove `if doc_db is not None:`?
                 if doc_db is not None:
                     for form_name in doc_db._get_form_names():
                         self.add_constructor(
                             f'!all_forms_{form_name}', 
-                            data_constructor_dynamic_forms(
-                                form_name, 
-                                self.initialize_full_loader, 
-                                doc_db=doc_db
-                            )
+                            data_constructor_dynamic_forms(form_name)
                         )
 
     return CustomFullLoader
 
 
-def get_basic_yaml_constructors(**kwargs):
+def get_yaml_type_constructors(**kwargs):
     """
     This factory is used to build a dictionary of built-in and custom constructors that
     will be used in serialize the internal, dictionary representation of the form config.
