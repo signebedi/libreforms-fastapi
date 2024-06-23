@@ -132,13 +132,13 @@ another_form:
         field_label: Section Header
         description: This is an example of a section header. You can put as much text here as you need to guide users in the submission of the form in the UI.
 
-    another_checkbox_input:
-        input_type: checkbox
-        output_type: !list
+    select_input:
+        input_type: select
+        output_type: !str
         field_label: Select a user
         options: !all_usernames_by_group_default
         required: true
-        description: A checkbox input field, illustrating how to use data retrieval tags.
+        description: A select input field, illustrating how to use data retrieval tags.
 ```
 
 ##### Field Parameters

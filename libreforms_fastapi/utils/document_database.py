@@ -196,6 +196,10 @@ class ManageDocumentDB(ABC):
         # self.approved_by_field = "approved_by"
         # self.approval_signature_field = "approval_signature"
         self.journal_field = "journal"
+        self.user_fields = "user_fields"
+        # [self.created_by_field, self.last_editor_field, field_name, field_name]
+        self.form_fields = "form_fields"
+        # [(field_name, form_name, [display_field, display_field])]
 
         return [
             self.form_name_field, 
