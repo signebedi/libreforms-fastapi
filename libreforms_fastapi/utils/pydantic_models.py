@@ -398,7 +398,7 @@ def write_form_config_yaml(
     """
 
     # Load the yaml CustomFullLoader class
-    CustomFullLoader = get_custom_loader() 
+    CustomFullLoader = get_custom_loader()
 
     # Validate the YAML string
     # if validate:
