@@ -196,9 +196,9 @@ class ManageDocumentDB(ABC):
         # self.approved_by_field = "approved_by"
         # self.approval_signature_field = "approval_signature"
         self.journal_field = "journal"
-        self.user_fields = "user_fields"
+        self.linked_to_user_field = "linked_user_fields"
         # [self.created_by_field, self.last_editor_field, field_name, field_name]
-        self.form_fields = "form_fields"
+        self.linked_to_form_field = "linked_form_fields"
         # [(field_name, form_name, [display_field, display_field])]
 
         return [
@@ -216,6 +216,8 @@ class ManageDocumentDB(ABC):
             # self.approved_by_field, 
             # self.approval_signature_field, 
             self.journal_field, 
+            self.linked_to_user_field,
+            self.linked_to_form_field,
         ]
     @abstractmethod
     def _initialize_database_collections(self):
@@ -462,6 +464,8 @@ class ManageTinyDB(ManageDocumentDB):
                 self.created_by_field: metadata.get(self.created_by_field, None),
                 self.signature_field: metadata.get(self.signature_field, {}),
                 self.last_editor_field: metadata.get(self.last_editor_field, None),
+                self.linked_to_user_field: metadata.get(self.linked_to_user_field, []),
+                self.linked_to_form_field: metadata.get(self.linked_to_form_field, {}),
                 # self.approved_field: metadata.get(self.approved_field, None),
                 # self.approved_by_field: metadata.get(self.approved_by_field, None),
                 # self.approval_signature_field: metadata.get(self.approval_signature_field, None),

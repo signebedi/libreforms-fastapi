@@ -767,7 +767,11 @@ async def api_form_create(
     except ValidationError as e:
         raise HTTPException(status_code=422, detail=f"There was an error with one of your fields: {e}")
 
-    
+    # Here we pull metadata on how to handle fields that link to
+    # users and other forms.
+    user_fields, form_fields = form_data.get_additional_metadata()
+
+
     json_data = form_data.model_dump_json()
     # print("\n\n\n", json_data)
     data_dict = form_data.model_dump()
@@ -791,6 +795,8 @@ async def api_form_create(
         doc_db.document_id_field: document_id,
         doc_db.created_by_field: user.username,
         doc_db.last_editor_field: user.username,
+        doc_db.linked_to_user_field: user_fields, 
+        doc_db.linked_to_form_field: form_fields,
     }
 
     # Add the remote addr host if enabled
@@ -1267,11 +1273,11 @@ async def api_form_update(
         doc_db=doc_db,
     )
     
-    # # Here we validate and coerce data into its proper type
+    # Here we validate and coerce data into its proper type
     form_data = FormModel.model_validate(body)
     json_data = form_data.model_dump_json()
     data_dict = form_data.model_dump()
-
+    
     # print("\n\n\n", json_data)
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -4722,7 +4728,10 @@ async def ui_form_read_one(form_name:str, document_id:str, request: Request, con
         raise HTTPException(status_code=404)
 
     # Here we create a mask of metadata field names for the UI
-    metadata_field_mask = {x: x.replace("_", " ").title() for x in doc_db.metadata_fields if x not in [doc_db.journal_field]}
+    metadata_field_mask = {
+        x: x.replace("_", " ").title() for x in doc_db.metadata_fields 
+        if x not in [doc_db.journal_field, doc_db.linked_to_user_field, doc_db.linked_to_form_field]
+    }
 
     # # Here we load the form config in order to mask data field names correctly
     form_config = load_form_config(config.FORM_CONFIG_PATH)

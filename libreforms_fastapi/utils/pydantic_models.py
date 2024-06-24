@@ -554,6 +554,10 @@ def get_form_model(
     fields = form_config[form_name]
     field_definitions = {}
 
+    # Initialize empty data structures
+    user_fields = [] # https://github.com/signebedi/libreforms-fastapi/issues/281
+    form_fields = {} # https://github.com/signebedi/libreforms-fastapi/issues/280
+
     class Config:
         arbitrary_types_allowed = True
 
@@ -563,6 +567,17 @@ def get_form_model(
         # https://github.com/signebedi/libreforms-fastapi/issues/204.
         if field_info.get("is_header", False):
             continue
+
+        # If this field links to a user account, then append that field to the 
+        # user_fields list, see https://github.com/signebedi/libreforms-fastapi/issues/281
+        if field_info.get("links_to_user", False):
+            user_fields.append(field_name)
+
+        # If this field links to another form, then add that to the form_fields
+        # data structure, see https://github.com/signebedi/libreforms-fastapi/issues/280
+        _links_to_form = field_info.get("links_to_form", False)
+        if isinstance(_links_to_form, str):
+            form_fields[field_name] = _links_to_form
 
         python_type = field_info["output_type"]
         default_value = None if update else field_info.get("default", ...)
@@ -591,6 +606,19 @@ def get_form_model(
 
     # Create dynamic model
     dynamic_model = create_model(form_name, __config__=Config, **field_definitions)
+
+    
+    def get_additional_metadata(self):
+        """
+        Return additional metadata for the form based on the form config. Added based on
+        the discussion in https://github.com/signebedi/libreforms-fastapi/issues/280
+        and https://github.com/signebedi/libreforms-fastapi/issues/281.
+        """
+
+        return user_fields, form_fields
+
+    # Attach the method to the dynamic model
+    dynamic_model.get_additional_metadata = get_additional_metadata
 
     return dynamic_model
 
