@@ -193,7 +193,7 @@ $(document).ready(function() {
                 value = formatValue(value);
 
 
-                console.log(linkedFormFields);
+                //console.log(linkedFormFields);
                 if (dateFields.includes(attributeName)) {
                     table += `<td id="${key}-value-field"><span title="${value}">${prettifyTimeDiff(value)}</td>`; 
                 } else if (userFields.includes(attributeName)) { 
@@ -263,19 +263,28 @@ $(document).ready(function() {
             dataType: 'json',
             success: function(response) {
 
-                // Get list of fields linked to users
+                // Get list of fields linked to users - set field to empty list if undefined
+                if (response.metadata.linked_user_fields === undefined) {
+                    response.metadata.linked_user_fields = [];
+                }
+
                 var formSpecificUserFields = [];
                 response.metadata.linked_user_fields.forEach(function(value) {
                     formSpecificUserFields.push(formFieldMask[value]);
                 });
 
-                // Doing the same for linked forms
+                // Doing the same for linked forms - set field to empty object if undefined
+                if (response.metadata.linked_form_fields === undefined) {
+                    response.metadata.linked_form_fields = {};
+                }
+
+
                 var formSpecificLinkedForms = {};
                 Object.keys(response.metadata.linked_form_fields).forEach(function(key, value) {
                     var value = response.metadata.linked_form_fields[key];
                     formSpecificLinkedForms[formFieldMask[key]] = value;
                 });
-                console.log(formSpecificLinkedForms);
+                // console.log(formSpecificLinkedForms);
 
                 var dataTable = renderTable(response.data, "dataTable", fieldMappings=formFieldMask, dateFields=[], userFields=formSpecificUserFields, linkedFormFields=formSpecificLinkedForms);
                 var metadataTable = renderTable(response.metadata, "metadataTable", fieldMappings=metadataFieldMask, dateFields = ['Created At', 'Last Modified'], userFields = ['Created By', 'Last Editor']);
