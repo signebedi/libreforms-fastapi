@@ -180,4 +180,4 @@ These also include data retrieval tags that dynamically yield data for form fiel
 - !all_usernames: List of all usernames.
 - !all_usernames_by_group_<group_name>: List of usernames for a specific group (replace <group_name> with the actual group name).
 - !all_groups: List of all group names.
-- !all_forms_<form_name>: List of form IDs for a specific form type (replace <form_name> with the actual form name).
+- !all_submissions_<form_name>: List of form IDs for a specific form type (replace <form_name> with the actual form name).

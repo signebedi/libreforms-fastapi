@@ -92,7 +92,7 @@ def get_custom_loader(
                 if doc_db is not None:
                     for form_name in doc_db._get_form_names():
                         self.add_constructor(
-                            f'!all_forms_{form_name}', 
+                            f'!all_submissions_{form_name}', 
                             data_constructor_dynamic_forms(form_name)
                         )
 
