@@ -3389,11 +3389,11 @@ async def api_admin_get_groups(
 
 # Get all form submissions
 @app.get(
-    "/api/admin/get_documents", 
+    "/api/admin/get_submissions", 
     dependencies=[Depends(api_key_auth)], 
     response_class=JSONResponse, 
 )
-async def api_admin_get_documents(
+async def api_admin_get_submissions(
     request: Request, 
     background_tasks: BackgroundTasks,
     config = Depends(get_config_depends),
@@ -3437,7 +3437,7 @@ async def api_admin_get_documents(
 
     return JSONResponse(
         status_code=200,
-        content={"status": "success", "documents": documents},
+        content={"status": "success", "submissions": documents},
     )
 
 
@@ -5687,9 +5687,9 @@ async def ui_admin_manage_user_relationships(request: Request, config = Depends(
     )
 
 
-@app.get("/ui/admin/manage_documents", response_class=HTMLResponse, include_in_schema=False)
+@app.get("/ui/admin/manage_submissions", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], redirect="ui_home")
-async def ui_admin_manage_documents(request: Request, config = Depends(get_config_depends),):
+async def ui_admin_manage_submissions(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
@@ -5699,7 +5699,7 @@ async def ui_admin_manage_documents(request: Request, config = Depends(get_confi
 
     return templates.TemplateResponse(
         request=request, 
-        name="admin_manage_documents.html.jinja", 
+        name="admin_manage_submissions.html.jinja", 
         context={
             **build_ui_context(),
         }
