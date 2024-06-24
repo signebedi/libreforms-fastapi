@@ -176,7 +176,7 @@ $(document).ready(function() {
     // This var will allow us to render certain data types in a human-readable format.
     var formFieldMask = {{ form_field_mask | tojson }};
 
-    function renderTable(data, tableName, fieldMappings = null, dateFields = [], userFields = []) {
+    function renderTable(data, tableName, fieldMappings = null, dateFields = [], userFields = [], linkedFormFields = {}) {
         var table = `<table class="table table-hover table-striped table-light" id="${tableName}"><thead><tr>`;
         table += '<th>Attribute</th><th>Value</th>';
         table += '</tr></thead><tbody>';
@@ -193,12 +193,18 @@ $(document).ready(function() {
                 value = formatValue(value);
 
 
-                // console.log(attributeName);
+                console.log(linkedFormFields);
                 if (dateFields.includes(attributeName)) {
                     table += `<td id="${key}-value-field"><span title="${value}">${prettifyTimeDiff(value)}</td>`; 
                 } else if (userFields.includes(attributeName)) { 
                     table += `<td id="${key}-value-field">
                         <a target="_blank" href="/ui/auth/p/${value}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${value}">
+                            ${value}
+                        </a>
+                    </td>`;
+                } else if (attributeName in linkedFormFields) {
+                    table += `<td id="${key}-value-field">
+                        <a target="_blank" href="/ui/form/read_one/${linkedFormFields[attributeName]}/${value}" class="badge bg-primary text-decoration-none" aria-label="Link to ${linkedFormFields[attributeName]} with Document ID ${value}">
                             ${value}
                         </a>
                     </td>`;
@@ -256,7 +262,22 @@ $(document).ready(function() {
             },
             dataType: 'json',
             success: function(response) {
-                var dataTable = renderTable(response.data, "dataTable", fieldMappings=formFieldMask);
+
+                // Get list of fields linked to users
+                var formSpecificUserFields = [];
+                response.metadata.linked_user_fields.forEach(function(value) {
+                    formSpecificUserFields.push(formFieldMask[value]);
+                });
+
+                // Doing the same for linked forms
+                var formSpecificLinkedForms = {};
+                Object.keys(response.metadata.linked_form_fields).forEach(function(key, value) {
+                    var value = response.metadata.linked_form_fields[key];
+                    formSpecificLinkedForms[formFieldMask[key]] = value;
+                });
+                console.log(formSpecificLinkedForms);
+
+                var dataTable = renderTable(response.data, "dataTable", fieldMappings=formFieldMask, dateFields=[], userFields=formSpecificUserFields, linkedFormFields=formSpecificLinkedForms);
                 var metadataTable = renderTable(response.metadata, "metadataTable", fieldMappings=metadataFieldMask, dateFields = ['Created At', 'Last Modified'], userFields = ['Created By', 'Last Editor']);
                 $('#documentContent').html(dataTable);
                 $('#documentMetadata').html(metadataTable);
