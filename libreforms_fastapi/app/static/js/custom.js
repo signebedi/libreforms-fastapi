@@ -117,8 +117,10 @@ function prettifyTimeDiff(dateTimeStr) {
   console.log(now);
 
   // Calculate the difference in seconds
-  const timeDiff = (now - date) / 1000; // convert milliseconds to seconds
+  const timeDiff = Math.abs((now - date) / 1000); // convert milliseconds to seconds
   console.log(timeDiff);
+
+
 
   if (timeDiff < 3600) {
       if (timeDiff / 30 < 1) {
