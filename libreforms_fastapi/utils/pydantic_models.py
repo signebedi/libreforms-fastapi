@@ -661,6 +661,17 @@ def get_form_html(
     for list_index, (field_name, field_info) in enumerate(list(form_config[form_name].items())):
     
 
+        # Added from https://github.com/signebedi/libreforms-fastapi/issues/280
+        links_to_form: str | None = field_info.get("links_to_form", False)
+
+        if isinstance(links_to_form, str) and links_to_form not in form_config:
+            raise ValueError(f"You are attempting to link the the {field_name} field of the {form_name} form to the {links_to_form} form, which does not exist.")
+
+        # Added from https://github.com/signebedi/libreforms-fastapi/issues/279
+        form_display_fields: list = field_info.get("form_display_fields", ['__metadata__document_id'])
+
+        if not all(item in form_config[form_name].keys() or item.startswith("__metadata__") for item in form_display_fields):
+            raise ValueError(f"You have selected form_display_fields fields for the {field_name} field of the {form_name} form that are not in the form model. If you are trying to set metadata fields, be sure to prepend the field name with `__metadata__`.")
 
         required: bool = field_info.get("required", False)
 
@@ -760,15 +771,33 @@ def get_form_html(
 
         elif field_info['input_type'] == 'select':
             field_html += f'''
-                <fieldset class="form-check" style="  padding-top: 20px;">
+                <fieldset class="form-check" style=" padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
-                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>'''
+            if isinstance(links_to_form, str):
+                field_html += f'''
+                    <select class="form-control data-lookup" onChange="getLookup('{links_to_form}', '{field_name}', this);" id="{field_name}" name="{field_name}" data-link="{links_to_form}"{' required' if required else ''}>'''
+            else:
+                field_html += f'''
                     <select class="form-control" id="{field_name}" name="{field_name}"{' required' if required else ''}>'''
-            for option in field_info['options']:
-                selected = "selected" if default and (option == default or option in default) else ""
-                field_html += f'<option value="{option}" {selected}>{option}</option>'
+                # Below, we only render options if links_to_form has not been set. When links_to_form is set, then we render
+                # options in the front end with a value=document_id and visible_field_name=form_display_fields, see
+                # https://github.com/signebedi/libreforms-fastapi/issues/279 and https://github.com/signebedi/libreforms-fastapi/issues/280
+                for option in field_info['options']:
+                    selected = "selected" if default and (option == default or option in default) else ""
+                    field_html += f'<option value="{option}" {selected}>{option}</option>'
             field_html += '''
-                    </select>
+                    </select>'''
+            if isinstance(links_to_form, str):
+                field_html += f'''
+        			<div><div id="content_{field_name}" style="width: 100%; height: 300px; overflow-y: auto; max-height: 700px; resize: vertical; margin-top: 10px; border: 2px solid var(--bs-secondary);"></div></div>
+                    <script>
+                    window.onload = function() {{
+                        generateLookup('{links_to_form}', '{field_name}', {form_display_fields});
+                        // getLookup('{links_to_form}', '{field_name}', document.getElementById('{field_name}'));
+                    }}
+                    </script>'''
+            field_html += '''
                 </fieldset>'''
 
         # Skipping file input for now becase it usually doesn't have a default value and handling 

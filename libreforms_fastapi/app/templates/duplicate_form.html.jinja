@@ -16,7 +16,7 @@
         {% endfor %}
 
         <fieldset style="padding-top: 10px;" class="form-check">
-            <button type="submit" class="btn btn-primary" id="updateButton">Update</button>
+            <button type="submit" class="btn btn-primary" id="createButton">Create</button>
         </fieldset>
 
     </form>
@@ -27,10 +27,126 @@
 {% block scripts %}
 <script>
 
+var apiKey = "{{ request.user.api_key }}"; 
+function getLookup(formName, fieldName, el) {
+
+    // Access the selected option
+    var selectedOption = el.options[el.selectedIndex];
+
+    // Get the 'data-hidden' attribute from the selected option
+    var documentData = selectedOption.getAttribute('data-hidden');
+    var documentId = selectedOption.value;
+    console.log(documentData);
+    
+    const contentField = document.getElementById(`content_${fieldName}`);
+
+    // Clear previous contents
+    contentField.innerHTML = '';
+
+    if (documentData) {
+        let dataObj;
+        try {
+            dataObj = JSON.parse(documentData); 
+        } catch (error) {
+            console.error("Parsing error:", error);
+            return; // Stop execution if JSON is invalid.
+        }
+
+        const listGroup = document.createElement("div");
+        listGroup.className = 'list-group';
+
+        Object.keys(dataObj).forEach(function(key) {
+            const listItem = document.createElement("a");
+            listItem.className = 'list-group-item list-group-item-action';
+            listItem.innerHTML = `<strong>${key}:</strong> ${dataObj[key]}`;
+            listGroup.appendChild(listItem);
+        });
+
+        contentField.appendChild(listGroup);
+
+        let oldLink = document.getElementById('lookup-link-'+fieldName);
+        if (oldLink) {
+            oldLink.parentNode.removeChild(oldLink);
+        }
+
+        // Create an anchor element with the appropriate href
+        let link = document.createElement('a');
+        link.href = "/ui/form/read_one/" + formName + "/" + documentId;
+        link.innerHTML = "Open Full Record for this Form";
+        link.className = "btn btn-primary d-flex justify-content-center my-3";
+        link.title = "Click here to view more details about this form.";
+        link.target = "_blank";
+        link.setAttribute("aria-label", "View full details for this form");
+        link.id = 'lookup-link-'+fieldName; // Add this line to set the id
+
+        contentField.parentNode.insertBefore(link, contentField);
+
+
+    }
+}
+
+
+function generateLookup(formName, fieldName, displayFields) {
+
+    function fetchData(formName) {
+        return new Promise((resolve, reject) => {
+            $.ajax({
+                url: `/api/form/read_all/${formName}?flatten=true&exclude_journal=true&stringify_output=true&sort_by_last_edited=true&newest_first=true`,
+                type: "GET",
+                dataType: 'json',
+                beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
+                success: function(formData) {
+                    resolve(formData.documents);
+                },
+                error: function(xhr, status, error) {
+                    reject(error);
+                }
+            });
+        });
+    }
+
+    // Fetch data for the single form
+    fetchData(formName).then(documents => {
+
+        // First add an empty option at the top of the list
+        $('#' + fieldName).append($('<option>', {
+            value: "",
+            'data-hidden': "",
+            text: ""
+        }));
+
+
+        var trimmedData = [];
+        // Process documents
+        documents.forEach(form => {
+            // Initialize an empty string for each form
+            let concatenatedFields = '';
+
+            displayFields.forEach(field => {
+                if (form[field] !== undefined) {
+                    concatenatedFields += form[field] + ', ';
+                }
+            });
+
+            // Trim the trailing commas and spaces, and add the concatenated string to the trimmedData array
+            concatenatedFields = concatenatedFields.replace(/,\s*$/, '');
+            trimmedData.push(concatenatedFields);
+
+            // Append each concatenated string as an option to the select element
+            $('#' + fieldName).append($('<option>', {
+                value: form['__metadata__document_id'],
+                'data-hidden': JSON.stringify(form),
+                text: concatenatedFields
+            }));
+        });
+    }).catch(error => {
+        console.error("Error fetching data: ", error);
+    });
+}
+
 
 $(document).ready(function() {
 
-    var apiKey = "{{ request.user.api_key }}";
     var formName = "{{ form_name }}";
     var documentId = "{{ document_id }}";
 
@@ -80,27 +196,26 @@ $(document).ready(function() {
     // Call fetchDocumentData on page load
     fetchDocumentData();
 
+    // var elements = document.querySelectorAll('.data-lookup');
+
+    // Iterate over each element and call getLookup with appropriate parameters
+    // elements.forEach(function(element) {
+    //     var dataLink = element.getAttribute('data-link');
+    //     var id = element.id;
+    //     getLookup(dataLink, id, element);
+    // });
+
+
 
     // Initialize Bootstrap tooltips
     $('[data-bs-toggle="tooltip"]').tooltip();
-
-
-    // Enable the Create button only if there's some data
-    function toggleCreateButton() {
-        var isFormFilled = $('#dataForm').find('input, textarea, select').filter(function() {
-            return $.trim($(this).val()).length > 0;
-        }).length > 0;
-
-        $createButton.prop('disabled', !isFormFilled);
-    }
-
-    // Check form inputs to toggle the create button
-    $('#dataForm').on('keyup change paste', 'input, textarea, select', toggleCreateButton);
 
     // Form submission event
     $('#dataForm').submit(function(event) {
         event.preventDefault(); // Prevent the form from submitting via the browser
 
+        // Disable the submit button
+        $('#createButton').prop('disabled', true);
 
         // Flag to track if the form is valid
         let formIsValid = true;
@@ -126,6 +241,9 @@ $(document).ready(function() {
 
         // Prevent form submission if validation fails
         if (!formIsValid) {
+
+            // Re-enable the submit button
+            $('#createButton').prop('disabled', false);
             event.preventDefault();
             
         } else {
@@ -146,9 +264,15 @@ $(document).ready(function() {
                 }
             });
 
-            // Assuming the user's API key is added in the form as a hidden field or accessible in some other way
-            var apiKey = "{{ request.user.api_key }}"; 
+            $('#dataForm').find('input:radio').each(function() {
+                if ($(this).is(':checked')) {
+                    formData[this.name] = $(this).val();
+                }
+            });
+
             var formName = "{{ form_name }}";
+
+            // console.log(formData);
 
             $.ajax({
                 url: `/api/form/create/${formName}`,
@@ -161,22 +285,19 @@ $(document).ready(function() {
                 dataType: 'json',
                 success: function(response) {
                     // Redirect to the read_one page with the form_name and document_id from the response
-                    setFlashMessage("Successfully updated form submission", AlertCategories.SUCCESS);
+                    setFlashMessage("Successfully created form submission", AlertCategories.SUCCESS);
                     
-                    // We purposefully delay for a second before relocating to the new document
-                    setTimeout(function() {
-                        window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
-                    }, 1000);
+
+                    window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
 
                 },
                 error: function(xhr) {
-                    // Handle errors, e.g., show an error message
+
+                    // Re-enable the submit button
+                    $('#createButton').prop('disabled', false);
+
                     console.error('Form creation failed', xhr.responseText);
-                    // Implement flashMessage or another way to show errors to the user
                     flashMessage(xhr.responseText, 'warning');
-                    
-                    // Optionally re-enable the Create button here
-                    $createButton.prop('disabled', false);
                 }
             });
         }
