@@ -1076,7 +1076,7 @@ async def api_form_read_all(
     stringify_output: bool = False,
     sort_by_last_edited: bool = False,
     set_length: int = 0,
-    newest_first:bool = False,
+    newest_first: bool = False,
     return_when_empty: bool = False,
 ):
     """
