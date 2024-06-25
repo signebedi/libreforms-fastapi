@@ -189,7 +189,8 @@ def change_ownership(path, user, group):
 @click.option('--environment-path', default=os.path.join(os.getcwd(), 'venv','bin'), help='Path for the environment')
 @click.option('--uvicorn-config', default=os.path.join(os.getcwd(), 'libreforms_fastapi', 'utils', 'uvicorn_config.json'), help='Uvicorn configuration file')
 @click.option('--start-on-success', is_flag=True, help='Start and enable service on success')
-def cli_init_uvicorn(user, group, environment, working_directory, environment_path, uvicorn_config, start_on_success):
+@click.option('--app-port', default=8000, type=int, help='Set the port to bind the systemd daemon to')
+def cli_init_uvicorn(user, group, environment, working_directory, environment_path, uvicorn_config, start_on_success, app_port):
 
     if not os.path.exists(working_directory):
         raise Exception(f"The following working directory does not exit: {working_directory}. Are you sure you are in the correct directory?")
@@ -211,7 +212,7 @@ WorkingDirectory={working_directory}
 Environment='ENVIRONMENT={environment}'
 Environment='PATH={environment_path}'
 #ExecStart={environment_path}/uvicorn --config {uvicorn_config} 'libreforms_fastapi.app:app'
-ExecStart={environment_path}/uvicorn --host 0.0.0.0 --port 8000 --workers 3 'libreforms_fastapi.app:app'
+ExecStart={environment_path}/uvicorn --host 0.0.0.0 --port {app_port} --workers 3 'libreforms_fastapi.app:app'
 
 [Install]
 WantedBy=multi-user.target
