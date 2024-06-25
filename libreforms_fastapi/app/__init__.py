@@ -3422,7 +3422,9 @@ async def api_admin_get_submissions(
     documents = []
 
     for form_name in get_form_names(config_path=config.FORM_CONFIG_PATH):
-        documents = documents + doc_db.get_all_documents(form_name=form_name, exclude_deleted=False)
+        _new_docs = doc_db.get_all_documents(form_name=form_name, exclude_deleted=False)
+        if _new_docs:
+            documents = documents
 
     # print("\n\n\n", documents)
 
