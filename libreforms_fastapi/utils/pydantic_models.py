@@ -700,10 +700,13 @@ def get_form_html(
         if current_document and field_name in current_document['data']:
             default = current_document['data'][field_name] 
         else:
-            default = field_info.get("default")
+            default = field_info.get("default","")
 
         if update:
             default = ""
+
+        # if not default: # "" has a False-like truth value
+        placeholder = field_info.get("placeholder","")
 
         field_html = ""
 
@@ -736,7 +739,28 @@ def get_form_html(
                 <fieldset class="form-check" style="  padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>
-                    <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params} value="{default or ''}"{' required' if required else ''}>
+                    <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params}'''
+
+            if placeholder and not default:
+                field_html += f'''
+                    placeholder="{placeholder or ''}"'''
+            else:
+                field_html += f'''
+                    value="{default or ''}"'''
+            field_html += f'''
+                    {' required' if required else ''}>
+                    <div class="valid-feedback"></div>
+                    <div class="invalid-feedback"></div>
+                </fieldset>'''
+
+        elif field_info['input_type'] == "date":
+            field_html += f'''
+                <fieldset class="form-check" style="  padding-top: 20px;">
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>
+                    <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params} 
+                    value="{default or ''}"
+                    {' required' if required else ''}>
                     <div class="valid-feedback"></div>
                     <div class="invalid-feedback"></div>
                 </fieldset>'''
@@ -783,6 +807,9 @@ def get_form_html(
                 # Below, we only render options if links_to_form has not been set. When links_to_form is set, then we render
                 # options in the front end with a value=document_id and visible_field_name=form_display_fields, see
                 # https://github.com/signebedi/libreforms-fastapi/issues/279 and https://github.com/signebedi/libreforms-fastapi/issues/280
+                
+                if placeholder:
+                    field_html += f'<option value="" disabled>{placeholder}</option>'
                 for option in field_info['options']:
                     selected = "selected" if default and (option == default or option in default) else ""
                     field_html += f'<option value="{option}" {selected}>{option}</option>'
