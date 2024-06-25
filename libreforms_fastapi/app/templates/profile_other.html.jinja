@@ -47,8 +47,8 @@
                     { label: "Email", value: profileData.email },
                     { label: "Groups", value: profileData.groups.join(", ") },
                     { label: "Active", value: profileData.active ? 'Yes' : 'No' },
-                    { label: "Created Date", value: '<span title="' + profileData.created_date +'">' + prettifyTimeDiff(profileData.created_date) + '</span>' },
-                    { label: "Last Login", value: '<span title="' + profileData.last_login +'">' + prettifyTimeDiff(profileData.last_login) + '</span>' },
+                    { label: "Created Date", value: '<span title="' + profileData.created_date +'">' + prettifyTimeDiff(profileData.created_date, "{{config['TIMEZONE']|string}}") + '</span>' },
+                    { label: "Last Login", value: '<span title="' + profileData.last_login +'">' + prettifyTimeDiff(profileData.last_login, "{{config['TIMEZONE']|string}}") + '</span>' },
                     { label: "Relationships", value: renderUserRelationships(profileData.relationships) },
                     { label: "Received Relationships", value: renderUserRelationships(profileData.received_relationships) }
                 ];

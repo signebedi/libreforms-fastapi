@@ -120,9 +120,9 @@ function restoreForm(formName, documentId) {
                         </td>
                         <td style="opacity: 0.6;">${submission['metadata']['form_name'].replace(/_/g, ' ')}</td>
                         <td style="opacity: 0.6;">${submission['metadata']['last_editor']}</td>
-                        <td style="opacity: 0.6;"><span title="${submission['metadata']['last_modified']}">${prettifyTimeDiff(submission['metadata']['last_modified'])}</span></td>
+                        <td style="opacity: 0.6;"><span title="${submission['metadata']['last_modified']}">${prettifyTimeDiff(submission['metadata']['last_modified'], "{{config['TIMEZONE']|string}}")}</span></td>
                         <td style="opacity: 0.6;">${submission['metadata']['created_by']}</td>
-                        <td style="opacity: 0.6;"><span title="${submission['metadata']['created_at']}">${prettifyTimeDiff(submission['metadata']['created_at'])}</span></td>
+                        <td style="opacity: 0.6;"><span title="${submission['metadata']['created_at']}">${prettifyTimeDiff(submission['metadata']['created_at'], "{{config['TIMEZONE']|string}}")}</span></td>
                     </tr>`;
 
                 } else {
@@ -142,13 +142,13 @@ function restoreForm(formName, documentId) {
                                 ${submission['metadata']['last_editor']}
                             </a>
                         </td>
-                        <td><span title="${submission['metadata']['last_modified']}">${prettifyTimeDiff(submission['metadata']['last_modified'])}</span></td>
+                        <td><span title="${submission['metadata']['last_modified']}">${prettifyTimeDiff(submission['metadata']['last_modified'], "{{config['TIMEZONE']|string}}")}</span></td>
                         <td>
                             <a target="_blank" href="/ui/auth/p/${submission['metadata']['created_by']}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${submission['metadata']['created_by']}">
                                 ${submission['metadata']['created_by']}
                             </a>
                         </td>
-                        <td><span title="${submission['metadata']['created_at']}">${prettifyTimeDiff(submission['metadata']['created_at'])}</span></td>
+                        <td><span title="${submission['metadata']['created_at']}">${prettifyTimeDiff(submission['metadata']['created_at'], "{{config['TIMEZONE']|string}}")}</span></td>
                     </tr>`;
             }
             });
