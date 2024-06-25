@@ -105,16 +105,16 @@ function renderUserRelationships(users) {
 
 
 
-function prettifyTimeDiff(dateTimeStr, timeZone="America/New_York") {
+function prettifyTimeDiff(dateTimeStr, tz="America/New_York") {
   console.log(dateTimeStr);
 
   // Parse the date string into a Date object
   // const date = new Date(dateTimeStr);
-  const date = new Date(new Date(dateTimeStr).toLocaleString('en-US', { timeZone: timeZone }));
+  const date = new Date(new Date(dateTimeStr).toLocaleString('en-US', { timeZone: tz }));
   // console.log(date);
 
   // Get the current date and time
-  const now = new Date(new Date().toLocaleString('en-US', { timeZone: timeZone }));
+  const now = new Date(new Date().toLocaleString('en-US', { timeZone: tz }));
   // const now = new Date();
   // console.log(now);
 
