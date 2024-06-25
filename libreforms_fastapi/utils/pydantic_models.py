@@ -809,7 +809,7 @@ def get_form_html(
                 # https://github.com/signebedi/libreforms-fastapi/issues/279 and https://github.com/signebedi/libreforms-fastapi/issues/280
                 
                 if placeholder:
-                    field_html += f'<option value="" disabled>{placeholder}</option>'
+                    field_html += f'<option value="">{placeholder}</option>'
                 for option in field_info['options']:
                     selected = "selected" if default and (option == default or option in default) else ""
                     field_html += f'<option value="{option}" {selected}>{option}</option>'
