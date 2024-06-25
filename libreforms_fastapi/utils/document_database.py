@@ -945,8 +945,8 @@ class ManageTinyDB(ManageDocumentDB):
         collapse_data:bool=False,
         exclude_journal:bool=False,
         stringify_output:bool=False,
-        sort_by_last_edited: bool = False,
-        newest_first:bool = False,
+        sort_by_last_edited:bool=False,
+        newest_first:bool=False,
     ):
 
         """Retrieves all entries from the specified form's database."""
@@ -961,7 +961,7 @@ class ManageTinyDB(ManageDocumentDB):
         documents = self.databases[form_name].all()
 
         if not documents or len(documents) == 0:
-            return None
+            return []
 
         if isinstance(limit_users, str):
             documents = [x for x in documents if x['metadata'][self.created_by_field] == limit_users]
