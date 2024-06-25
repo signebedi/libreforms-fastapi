@@ -822,9 +822,11 @@ def get_form_html(
                 
                 if placeholder:
                     field_html += f'<option value="">{placeholder}</option>'
+
                 for option in field_info['options']:
                     selected = "selected" if default and (option == default or option in default) else ""
                     field_html += f'<option value="{option}" {selected}>{option}</option>'
+
             field_html += '''
                     </select>'''
             if isinstance(links_to_form, str):
