@@ -110,15 +110,16 @@ function prettifyTimeDiff(dateTimeStr) {
 
   // Parse the date string into a Date object
   const date = new Date(dateTimeStr);
-  console.log(date);
+  // console.log(date);
 
   // Get the current date and time
   const now = new Date();
-  console.log(now);
+  // console.log(now);
 
   // Calculate the difference in seconds
-  const timeDiff = Math.abs((now - date) / 1000); // convert milliseconds to seconds
-  console.log(timeDiff);
+  const timeDiff = (now - date) / 1000; // convert milliseconds to seconds
+  // const timeDiff = Math.abs((now - date) / 1000); // convert milliseconds to seconds
+  // console.log(timeDiff);
 
 
 
