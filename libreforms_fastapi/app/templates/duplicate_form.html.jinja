@@ -36,7 +36,7 @@ function getLookup(formName, fieldName, el) {
     // Get the 'data-hidden' attribute from the selected option
     var documentData = selectedOption.getAttribute('data-hidden');
     var documentId = selectedOption.value;
-    console.log(documentData);
+    // console.log(documentData);
     
     const contentField = document.getElementById(`content_${fieldName}`);
 
@@ -91,7 +91,7 @@ function generateLookup(formName, fieldName, displayFields) {
     function fetchData(formName) {
         return new Promise((resolve, reject) => {
             $.ajax({
-                url: `/api/form/read_all/${formName}?flatten=true&exclude_journal=true&stringify_output=true&sort_by_last_edited=true&newest_first=true`,
+                url: `/api/form/read_all/${formName}?flatten=true&exclude_journal=true&stringify_output=true&sort_by_last_edited=true&newest_first=true&return_when_empty=true`,
                 type: "GET",
                 dataType: 'json',
                 beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
@@ -112,7 +112,7 @@ function generateLookup(formName, fieldName, displayFields) {
         $('#' + fieldName).append($('<option>', {
             value: "",
             'data-hidden': "",
-            text: ""
+            text: "Select an option below"
         }));
 
 

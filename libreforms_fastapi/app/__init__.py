@@ -1077,6 +1077,7 @@ async def api_form_read_all(
     sort_by_last_edited: bool = False,
     set_length: int = 0,
     newest_first:bool = False,
+    return_when_empty: bool = False,
 ):
     """
     Retrieves all documents of a specified form type, identified by the form name in the URL.
@@ -1090,7 +1091,9 @@ async def api_form_read_all(
     pass set_length=some_int if you would like to limit the response to a certain number of
     documents. You can pass newest_first=True if you want the newest results at the top of
     the results. This applies to the created_at field, you can pair this option with the
-    sort_by_last_edited=True param to get the most recently modified forms at the top.
+    sort_by_last_edited=True param to get the most recently modified forms at the top. If
+    you want the endpoint to return empty lists instead of raising an error, then pass
+    return_when_empty=true.
     """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
@@ -1149,8 +1152,10 @@ async def api_form_read_all(
             query_params={},
         )
 
-    if not documents:
+    if not documents and not return_when_empty:
         raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+    elif not documents and return_when_empty:
+        documents = []
 
     if simple_response:
         return documents

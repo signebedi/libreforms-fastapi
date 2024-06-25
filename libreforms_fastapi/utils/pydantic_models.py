@@ -664,14 +664,14 @@ def get_form_html(
         # Added from https://github.com/signebedi/libreforms-fastapi/issues/280
         links_to_form: str | None = field_info.get("links_to_form", False)
 
-        if isinstance(links_to_form, str) and links_to_form not in form_config:
-            raise ValueError(f"You are attempting to link the the {field_name} field of the {form_name} form to the {links_to_form} form, which does not exist.")
-
         # Added from https://github.com/signebedi/libreforms-fastapi/issues/279
         form_display_fields: list = field_info.get("form_display_fields", ['__metadata__document_id'])
 
-        if not all(item in form_config[form_name].keys() or item.startswith("__metadata__") for item in form_display_fields):
-            raise ValueError(f"You have selected form_display_fields fields for the {field_name} field of the {form_name} form that are not in the form model. If you are trying to set metadata fields, be sure to prepend the field name with `__metadata__`.")
+        if isinstance(links_to_form, str) and links_to_form not in form_config:
+            raise ValueError(f"You are attempting to link the the {field_name} field of the {form_name} form to the {links_to_form} form, which does not exist.")
+
+            if not all(item in form_config[links_to_form].keys() or item.startswith("__metadata__") for item in form_display_fields):
+                raise ValueError(f"You have selected form_display_fields fields for the {field_name} field of the {links_to_form} form that are not in the form model. If you are trying to set metadata fields, be sure to prepend the field name with `__metadata__`. You have provided the following keys: {form_display_fields}.")
 
         required: bool = field_info.get("required", False)
 
@@ -770,7 +770,19 @@ def get_form_html(
                 <fieldset class="form-check" style="  padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label"{' data-required="true"' if required else ''}>{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>
-                    <textarea class="form-control" id="{field_name}" name="{field_name}" {field_params} rows="4" style="resize: vertical; max-height: 300px;"{' required' if required else ''}>{default or ''}</textarea>
+                    <textarea class="form-control" id="{field_name}" name="{field_name}" {field_params} rows="4"'''
+                    
+
+            if placeholder and not default:
+                field_html += f'''
+                    placeholder="{placeholder or ''}" style="resize: vertical; max-height: 300px;"{' required' if required else ''}></textarea>
+                    <div class="valid-feedback"></div>
+                    <div class="invalid-feedback"></div>
+                </fieldset>'''
+
+            else:
+                field_html += f'''
+                    style="resize: vertical; max-height: 300px;"{' required' if required else ''}>{default or ''}</textarea>
                     <div class="valid-feedback"></div>
                     <div class="invalid-feedback"></div>
                 </fieldset>'''
