@@ -20,7 +20,8 @@ from fastapi import (
     BackgroundTasks,
     Depends,
     Query,
-    Form,
+    File,
+    UploadFile,
 )
 from fastapi.responses import (
     HTMLResponse, 
@@ -118,6 +119,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     UserRelationshipModel,
     FormConfigUpdateRequest,
     SiteConfig,
+    FileUpload,
     get_user_model,
     get_form_model,
     get_form_names,
@@ -4261,44 +4263,55 @@ def get_string_differences(str1, str2):
 
 
 
-# Edit docs
+# Upload favicon
 @app.post(
-    "/api/admin/edit_docs", 
-    dependencies=[Depends(api_key_auth)], 
-    response_class=JSONResponse, 
-    include_in_schema=schema_params["DOCS_ENABLED"],
+    "/api/admin/upload_favicon",
+    dependencies=[Depends(api_key_auth)],
+    response_class=JSONResponse,
+    include_in_schema=False,
 )
-async def api_admin_edit_docs(
-    request: Request, 
+async def api_admin_upload_favicon(
+    request: Request,
     background_tasks: BackgroundTasks,
-    docs: DocsEditRequest,
+    favicon: UploadFile = File(...), 
     config = Depends(get_config_depends),
-    mailer = Depends(get_mailer), 
-    session: SessionLocal = Depends(get_db), 
+    session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY)
 ):
-    """
-    Allows site administrators to edit system documentation. This operation is logged for audit purposes.
-    """
 
-    if not config.DOCS_ENABLED:
-        raise HTTPException(status_code=404)
 
-    # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
-
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
 
-    old_docs_markdown = get_docs(docs_path=config.DOCS_PATH, render_markdown=False)
+    file_path = f"instance/{config.ENVIRONMENT}_favicon.ico"
 
-    background_tasks.add_task(
-        write_docs, 
-            docs_path=config.DOCS_PATH, 
-            content=docs.content, 
-            scrub_unsafe=True,
-    )
 
+    try:
+        contents = favicon.file.read()
+
+        with open(file_path, 'wb') as f:
+            f.write(contents)
+
+    except Exception:
+        raise HTTPException(status_code=422)
+
+    finally:
+        favicon.file.close()
+
+    # print("\n\n\n", chardet.detect(favicon.file.file))
+    # print("\n\n\n", favicon.file.content_type)
+
+    # if contents.content_type != 'image/x-icon':
+    #     raise HTTPException(status_code=400, detail="Invalid file type. Only ICO files are accepted.")
+
+
+    # file_path = f"static/instance/{config.ENVIRONMENT}_favicon.ico"
+    # with open(file_path, "wb") as file_object:
+    #     shutil.copyfileobj(favicon.file.file, file_object)
+
+
+    
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
 
@@ -4310,12 +4323,12 @@ async def api_admin_edit_docs(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params={"changes": get_string_differences(old_docs_markdown, docs.content)},
+            query_params={},
         )
 
     return JSONResponse(
         status_code=200,
-        content={"status": "success"},
+        content={"message": "Favicon uploaded successfully", "path": file_path}
     )
 
 
@@ -5779,3 +5792,37 @@ async def ui_admin_system_information(
 
 # Manage approval chains
 
+
+
+
+# Upload favicon
+@app.get("/ui/admin/upload_favicon", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], redirect="ui_home")
+async def ui_admin_upload_favicon(request: Request, config = Depends(get_config_depends),):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_upload_favicon.html.jinja", 
+        context={
+            **build_ui_context(),
+        }
+    )
+
+# @app.get("/favicon.ico", include_in_schema=False)
+# async def favicon():
+#     return RedirectResponse(url="/instance/favicon.ico")
+
+# Define the path to your instance directory
+
+# Serve the favicon from the instance directory
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon(request: Request, config = Depends(get_config_depends)):
+    favicon_path = os.path.join('instance', f'{config.ENVIRONMENT}_favicon.ico')
+    if not os.path.exists(favicon_path):
+        return RedirectResponse(request.url_for('static', path='favicon.ico'), status_code=303)
+    return FileResponse(favicon_path)
