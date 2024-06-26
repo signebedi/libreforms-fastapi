@@ -1,6 +1,12 @@
-import markdown, os
+import os
 from pathlib import Path
 from datetime import datetime
+
+import markdown
+from markdown.extensions.admonition import AdmonitionExtension
+from libreforms_fastapi.utils.admonitions import GfmAdmonitionExtension
+
+
 from html_sanitizer import Sanitizer
 
 sanitizer_config = {
@@ -8,7 +14,8 @@ sanitizer_config = {
     'attributes': {
         'a': ['href', 'title'],
         'img': ['src', 'alt'], 
-        'div': ['style'],  # Might mkae sense to sanitize style content separately
+        'div': ['style', 'class'],  # Might make sense to sanitize style content separately
+        'p': ['style', 'class'],  # Might make sense to sanitize style content separately
     },
     'empty': {'br', 'h1', 'h2', 'h3', 'h4', 'h5'},
     'separate': {'a', 'p', 'ul', 'ol', 'li', 'br', 'img'}, 
@@ -16,7 +23,7 @@ sanitizer_config = {
     'unescape_special_chars': True
 }
 
-sanitizer = Sanitizer()
+sanitizer = Sanitizer(sanitizer_config)
 
 
 class UnsafeHtmlContentError(Exception):
@@ -120,7 +127,8 @@ def get_docs(
             if scrub_unsafe:
                 content = escape_unsafe_html(content)
             if render_markdown:
-                content = markdown.markdown(content, extensions=['toc'])
+                extensions=['toc', AdmonitionExtension(), GfmAdmonitionExtension()]
+                content = markdown.markdown(content, extensions=extensions)
             return content
     except FileNotFoundError:
         # Create the parent directories and the file if it doesn't exist
@@ -183,8 +191,8 @@ def render_markdown_content(
     
     """
     try:
-        markdown_str = markdown.markdown(markdown_str, extensions=['toc'])
-
+        extensions=['toc', AdmonitionExtension(), GfmAdmonitionExtension()]
+        markdown_str = markdown.markdown(markdown_str, extensions=extensions)
 
         if scrub_unsafe:
             markdown_str = sanitizer.sanitize(markdown_str)

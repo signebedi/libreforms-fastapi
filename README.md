@@ -35,7 +35,7 @@ pip install libreforms_fastapi[data]
 If you plan to use Postgres or MariaDB, then there are additional extras tags for those, too. 
 
 ```bash
-pip install libreforms_fastapi[postres] # for Postgres
+pip install libreforms_fastapi[postgres] # for Postgres
 pip install libreforms_fastapi[mariadb] # for MariaDB
 ```
 
@@ -51,7 +51,7 @@ libreformsctl nginx production # Optional if you want a reverse proxy
 
 #### Troubleshooting Errors
 
-You may sometimes run into inexplicable runtime errors. These often result from permission issues on the filesystem. When in doubt, try running the following command as root.
+You may sometimes run into inexplicable runtime errors. These often result from permission issues on the filesystem. When in doubt, try running the following command as root on your project root directory (below, we've selected `/opt/libreforms_fastapi`).
 
 ```bash
 chown -R fastapi:fastapi /opt/libreforms_fastapi
