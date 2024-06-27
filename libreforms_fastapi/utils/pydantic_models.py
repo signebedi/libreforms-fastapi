@@ -16,10 +16,6 @@ from pydantic import (
     SecretStr,
 )
 
-from fastapi import (
-    UploadFile,
-)
-
 from pydantic.functional_validators import field_validator, model_validator
 
 # We externalize the custom yaml constructors to create an easier entrypoint 
@@ -920,5 +916,3 @@ class SiteConfig(BaseModel):
     """This model will be used for validating site config changes through the admin API"""
     content: dict = Field(...)
 
-class FileUpload(BaseModel):
-    file: UploadFile

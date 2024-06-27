@@ -1,4 +1,4 @@
-import os, shutil, json
+import os, shutil, json, operator
 from bson import ObjectId
 from fuzzywuzzy import fuzz
 from datetime import datetime
@@ -27,6 +27,18 @@ from libreforms_fastapi.utils.certificates import sign_record, verify_record_sig
 from libreforms_fastapi.utils.docs import sanitizer
 
 
+# Mapping of string operators to actual functions, used as query parameters
+# see https://github.com/signebedi/libreforms-fastapi/issues/288.
+OPERATORS = {
+    '==': operator.eq,
+    '!=': operator.ne,
+    '>': operator.gt,
+    '>=': operator.ge,
+    '<': operator.lt,
+    '<=': operator.le,
+    'in': lambda a, b: a in b,
+    'nin': lambda a, b: a not in b
+}
 
 class CollectionDoesNotExist(Exception):
     """Exception raised when attempting to access a collection that does not exist."""
@@ -947,6 +959,7 @@ class ManageTinyDB(ManageDocumentDB):
         stringify_output:bool=False,
         sort_by_last_edited:bool=False,
         newest_first:bool=False,
+        query_params=None,
     ):
 
         """Retrieves all entries from the specified form's database."""
@@ -963,12 +976,32 @@ class ManageTinyDB(ManageDocumentDB):
         if not documents or len(documents) == 0:
             return []
 
+        ### Start with filtering
         if isinstance(limit_users, str):
             documents = [x for x in documents if x['metadata'][self.created_by_field] == limit_users]
 
         if exclude_deleted:
             documents = [x for x in documents if x['metadata'][self.is_deleted_field] == False]
 
+
+        if query_params:
+            for field, condition in query_params.get('data', {}).items():
+                operator_func = OPERATORS.get(condition['operator'])
+                value = condition['value']
+                
+                if operator_func:
+                    documents = [x for x in documents if operator_func(x['data'].get(field), value)]
+
+        if query_params:
+            for field, condition in query_params.get('metadata', {}).items():
+                operator_func = OPERATORS.get(condition['operator'])
+                value = condition['value']
+                
+                if operator_func:
+                    documents = [x for x in documents if operator_func(x['metadata'].get(field), value)]
+
+
+        ### Now we move on to sorting and cleanup
 
         # Conditionally sort documents by `last_modified` date, see 
         # https://github.com/signebedi/libreforms-fastapi/issues/265.

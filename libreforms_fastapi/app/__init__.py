@@ -1,4 +1,5 @@
-import re, os, json, tempfile, logging, sys, asyncio, jwt, difflib, importlib, platform
+import re, os, json, tempfile, logging, sys
+import asyncio, jwt, difflib, importlib, platform
 from datetime import datetime, timedelta
 from contextlib import contextmanager
 from functools import lru_cache
@@ -119,7 +120,6 @@ from libreforms_fastapi.utils.pydantic_models import (
     UserRelationshipModel,
     FormConfigUpdateRequest,
     SiteConfig,
-    FileUpload,
     get_user_model,
     get_form_model,
     get_form_names,
@@ -1080,6 +1080,7 @@ async def api_form_read_all(
     set_length: int = 0,
     newest_first: bool = False,
     return_when_empty: bool = False,
+    query_params: Optional[str] = Query(None),
 ):
     """
     Retrieves all documents of a specified form type, identified by the form name in the URL.
@@ -1095,7 +1096,10 @@ async def api_form_read_all(
     the results. This applies to the created_at field, you can pair this option with the
     sort_by_last_edited=True param to get the most recently modified forms at the top. If
     you want the endpoint to return empty lists instead of raising an error, then pass
-    return_when_empty=true.
+    return_when_empty=true. You can pass query_params as a url-encoded dict to filter
+    data using the ==, !=, >, >=, <, <=, in, and nin operators. Example usage of this param: 
+    {"data":{"age": {"operator": ">=", "value": 21},"name": {"operator": "==","value": "John"}}}.
+    '{"data": {"Fiscal_Year": {"condition": ">", "value": 2024}}}'
     """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
@@ -1119,6 +1123,15 @@ async def api_form_read_all(
     except Exception as e:
         limit_query_to = user.username
 
+    print("\n\n\n",query_params)
+
+    # Decode the JSON string to a dictionary
+    if query_params:
+        try:
+            query_params = json.loads(query_params)
+        except json.JSONDecodeError:
+            raise HTTPException(status_code=400, detail="Invalid query_params format. Must be a JSON string.")
+
     documents = doc_db.get_all_documents(
         form_name=form_name, 
         limit_users=limit_query_to,
@@ -1128,6 +1141,7 @@ async def api_form_read_all(
         stringify_output=stringify_output,
         sort_by_last_edited=sort_by_last_edited,
         newest_first=newest_first,
+        query_params=query_params,
     )
 
     # Here we limit the length of the response based on the set_length parameter, see
