@@ -1099,7 +1099,6 @@ async def api_form_read_all(
     return_when_empty=true. You can pass query_params as a url-encoded dict to filter
     data using the ==, !=, >, >=, <, <=, in, and nin operators. Example usage of this param: 
     {"data":{"age": {"operator": ">=", "value": 21},"name": {"operator": "==","value": "John"}}}.
-    '{"data": {"Fiscal_Year": {"condition": ">", "value": 2024}}}'
     """
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
@@ -3255,6 +3254,10 @@ async def api_admin_modify_user(
             raise HTTPException(status_code=418, detail=f"You really shouldn't be performing these operations against yourself...")
         new_value = not getattr(user_to_change, field)
         setattr(user_to_change, field, new_value)
+
+        # When we toggle users back to active or make them admins, let's clear their failed logins
+        user_to_change.failed_login_attempts = 0
+        
     elif field == "password":
         new_value = percentage_alphanumeric_generate_password(config.PASSWORD_REGEX, 16, .65)
         hashed_password = generate_password_hash(new_value)
