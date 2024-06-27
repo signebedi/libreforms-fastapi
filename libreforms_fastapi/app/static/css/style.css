@@ -201,3 +201,7 @@ body {
 .admonition.caution .admonition-title {
     color: #ff5733;
 }
+
+.custom-tooltip {
+    font-size: 15px;
+}

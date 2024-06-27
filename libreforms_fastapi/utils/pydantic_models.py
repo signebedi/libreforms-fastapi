@@ -710,6 +710,13 @@ def get_form_html(
 
         field_html = ""
 
+        # Add tooltips
+        tooltip = field_info.get("tooltip","")
+        tooltip_text = f'''
+        <sup><svg xmlns="http://www.w3.org/2000/svg" style="" width="12" height="12" fill="currentColor" class="bi bi-info-circle" viewBox="0 0 16 16" data-bs-toggle="tooltip" data-bs-placement="right" title="{tooltip}">
+            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+            <path d="m8.93 6.588-2.29.287-.082.38.45.083c.294.07.352.176.288.469l-.738 3.468c-.194.897.105 1.319.808 1.319.545 0 1.178-.252 1.465-.598l.088-.416c-.2.176-.492.246-.686.246-.275 0-.375-.193-.304-.533zM9 4.5a1 1 0 1 1-2 0 1 1 0 0 1 2 0"/>
+        </svg><sup>''' if len(tooltip) > 0 else ""
 
         visible_field_name = field_info.get("field_label", field_name.replace("_", " ").capitalize())
         description_text = field_info.get("description", "")
@@ -723,14 +730,14 @@ def get_form_html(
 
                 field_html += f'''
                     <fieldset class="form-check" style="padding-top: {'0' if list_index == 0 else '10'}px;">
-                        <span id="{description_id}" class="form-text">{description_text}</span>
+                        <span id="{description_id}" class="form-text">{description_text} {tooltip_text}</span>
                     </fieldset>'''
 
             else:
                 field_html += f'''
                     <fieldset class="form-check" style=" padding-top: 20px;">
                         <h5 aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</h5>
-                        <span id="{description_id}" class="form-text">{description_text}</span>
+                        <span id="{description_id}" class="form-text">{description_text} {tooltip_text}</span>
                     </fieldset>'''
 
 
@@ -738,7 +745,7 @@ def get_form_html(
             field_html += f'''
                 <fieldset class="form-check" style="  padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
-                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params}'''
 
             if placeholder and not default:
@@ -757,7 +764,7 @@ def get_form_html(
             field_html += f'''
                 <fieldset class="form-check" style="  padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
-                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params} 
                     value="{default or ''}"
                     {' required' if required else ''}>
@@ -769,7 +776,7 @@ def get_form_html(
             field_html += f'''
                 <fieldset class="form-check" style="  padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label"{' data-required="true"' if required else ''}>{visible_field_name}</label>
-                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <textarea class="form-control" id="{field_name}" name="{field_name}" {field_params} rows="4"'''
                     
 
@@ -791,7 +798,7 @@ def get_form_html(
             field_html += f'''
                 <fieldset class="form-check{' required-checkbox-group' if required else ''}" style="  padding-top: 20px;"{' data-required="true"' if required else ''}>
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
-                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
             '''
             for option in field_info['options']:
                 checked = "checked" if default and (option == default or option in default) else ""
@@ -809,7 +816,7 @@ def get_form_html(
             field_html += f'''
                 <fieldset class="form-check" style=" padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
-                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text}</span>'''
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>'''
             if isinstance(links_to_form, str):
                 field_html += f'''
                     <select class="form-control data-lookup" onChange="getLookup('{links_to_form}', '{field_name}', this);" id="{field_name}" name="{field_name}" data-link="{links_to_form}"{' required' if required else ''}>'''
