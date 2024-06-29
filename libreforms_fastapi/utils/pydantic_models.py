@@ -632,6 +632,7 @@ def get_form_html(
     session = None,
     User = None,
     Group = None,
+    context: dict = {},
 ) -> List[str]:
     """
     Generates a list of Bootstrap 5 styled HTML form fields based on the input config and form name,
@@ -640,6 +641,8 @@ def get_form_html(
     Params:
         current_document (dict): optional document containing the form's existing data. If passed, it will override
             the default content of the form config.
+        
+        ... Need to add the other params ...
 
     Returns: List[str] of HTML elements for the front-end
     """
@@ -740,6 +743,29 @@ def get_form_html(
                         <span id="{description_id}" class="form-text">{description_text} {tooltip_text}</span>
                     </fieldset>'''
 
+        # This value will always be static and linked to a context variable like request.user or config.SITE_NAME
+        elif field_info['input_type'] == "immutable_context":
+
+            # Start by pulling the context field and splitting on the period. These support user.<some_attr> and 
+            # config.<some_attr>.
+            _context_field = field_info.get('context_field', '')
+            _expanded_context = _context_field.split('.')
+            
+            _value = context
+
+            for layer in _expanded_context:
+                if isinstance(_value, dict):
+                    _value = _value.get(layer, "")
+
+
+            field_html += f'''
+                <fieldset class="form-check" style="  padding-top: 20px;">
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
+                    <input type="text" readonly class="form-control" id="{field_name}" 
+                    name="{field_name}" {field_params} 
+                    value="{_value}">
+                </fieldset>'''
 
         elif field_info['input_type'] in ['text', 'number', 'email', 'date']:
             field_html += f'''

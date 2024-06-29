@@ -342,6 +342,17 @@ with get_config_context() as config:
             return f"LibreFormsUser(username={self.username}, id={self.id}, email={self.email}, groups={self.groups}, " \
                 "api_key={self.api_key}, site_admin={self.site_admin}, permissions={self.permissions}"
 
+        def to_dict(self): 
+            return {
+                'username':self.username,
+                'id':self.id,
+                'email':self.email,
+                'groups':self.groups,
+                'api_key':self.api_key,
+                'site_admin':self.site_admin,
+                'permissions':self.permissions,
+            }
+
 
     # Authentication Backend Class, see https://www.starlette.io/authentication,
     # https://github.com/tiangolo/fastapi/issues/3043#issuecomment-914316010, and
@@ -4730,6 +4741,11 @@ async def ui_form_create(form_name:str, request: Request, config = Depends(get_c
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
+    _context = {
+        'user': request.user.to_dict(),
+        'config': config.model_dump()
+    }
+
     # generate_html_form
     form_html = get_form_html(
         form_name=form_name, 
@@ -4738,6 +4754,7 @@ async def ui_form_create(form_name:str, request: Request, config = Depends(get_c
         User=User,
         Group=Group,
         doc_db=doc_db,
+        context=_context,
     )
 
     return templates.TemplateResponse(
@@ -4853,6 +4870,12 @@ async def ui_form_update(form_name:str, document_id:str, request: Request, confi
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
+
+    _context = {
+        'user': request.user.to_dict(),
+        'config': config.model_dump()
+    }
+
     # generate_html_form
     form_html = get_form_html(
         form_name=form_name, 
@@ -4862,6 +4885,7 @@ async def ui_form_update(form_name:str, document_id:str, request: Request, confi
         User=User,
         Group=Group,
         doc_db=doc_db,
+        context=_context,
     )
 
     return templates.TemplateResponse(
@@ -4885,6 +4909,11 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request, co
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
+    _context = {
+        'user': request.user.to_dict(),
+        'config': config.model_dump()
+    }
+
     # generate_html_form
     form_html = get_form_html(
         form_name=form_name, 
@@ -4894,6 +4923,7 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request, co
         User=User,
         Group=Group,
         doc_db=doc_db,
+        context=_context,
     )
 
     return templates.TemplateResponse(
