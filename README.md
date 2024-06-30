@@ -162,6 +162,15 @@ Headers are special fields in the YAML configuration used to group related field
 - field_label: The label or title of the header. It acts as a section title or heading in the form.
 - description: A brief description or subtitle for the header, providing additional context or information about the section.
 
+
+#### Complex Input Types
+
+In addition to the basic input types described above, the form configuration supports complex input types that provide additional functionality and control over form behavior. These are generally intended to address specific use cases common in form softwares.
+
+First, `hidden` fields are used to store data that should not be visible or editable by the user. They are often used to hold metadata or other values that need to be submitted with the form but should not be altered by the user. This field comes with the `secondary_input_type` parameter, which defaults to "hidden" and defines an alternative input type to use when the form is being updated. This allows hidden fields to be shown as editable fields during updates if necessary. 
+
+Additionally, `immutable_config` fields display data that should not be modified by the user but may be linked to context variables such as request.user or config.SITE_NAME. These fields can be set to be both mutable (eg. update some user value based on a later editor) or hidden under certain conditions. This field comes with various additional parameters. The `context_field` parameter specifies the context variable to link the field value to, supporting nested context fields like `user.username` or `config.SITE_NAME`. This parameter is required. The `is_hidden` parameter is a boolean that indicates whether the field should be hidden. It is optional and defaults to false. The `update_on_edit` parameter is a boolean indicating whether the field should become editable when the form is being updated. It defaults to false. Similarly, the `update_on_duplicate` parameter is a boolean that specifies whether the field should become editable when the form is being duplicated. This parameter defaults to true.
+
 ##### Using YAML Tags
 The custom loader supports specific YAML tags to define output types and dynamically retrieve data for select, radio, and checkbox fields in forms. These include output_type tags indicating the expected type of a field's output. 
 

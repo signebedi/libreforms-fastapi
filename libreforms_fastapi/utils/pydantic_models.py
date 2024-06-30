@@ -755,9 +755,8 @@ def get_form_html(
             # check for a secondary field type.
             secondary_input_type = field_info.get("secondary_input_type", "hidden")
 
-            # And set the input type to that value. Defaults back to hidden... but, you
-            # can do some powerful stuff if you want to be able to modify hidden fields
-            # on edits.
+            # And set the input type to that value. Defaults back to hidden... but, this can
+            # be powerful when you want to be able to modify hidden fields on edits.
             field_info['input_type'] = secondary_input_type
 
         
