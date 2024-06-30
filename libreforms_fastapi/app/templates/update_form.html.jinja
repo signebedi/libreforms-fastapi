@@ -181,9 +181,15 @@ $(document).ready(function() {
             const value = data[key];
             const field = $(`[name="${key}"]`);
 
-            if (field.attr('data-mutable') === 'true') {
+            // Check if the field has the data-mutable attribute and if it's set to "true"
+            const isMutable = field.attr('data-mutable') === 'true';
+
+            // Debugging: Log field information
+            console.log(`Field: ${key}, Data Mutable: ${isMutable}`);
+
+            if (isMutable) {
                 // Skip setting the value for fields marked as mutable
-                console.log("Data Mutable: ", key);
+                console.log("Skipping mutable field: ", key);
                 continue;
             }
 
