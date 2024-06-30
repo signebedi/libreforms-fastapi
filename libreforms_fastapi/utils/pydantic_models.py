@@ -747,6 +747,8 @@ def get_form_html(
         # This value will always be static and linked to a context variable like request.user or config.SITE_NAME
         elif field_info['input_type'] == "immutable_context":
 
+            is_hidden = field_info.get('is_hidden', False)
+
             if update:
                 make_mutable = field_info.get('update_on_edit', False)
             elif duplicate:
@@ -767,14 +769,21 @@ def get_form_html(
                 if isinstance(_value, dict):
                     _value = _value.get(layer, "")
 
-            field_html += f'''
-                <fieldset class="form-check" style="  padding-top: 20px;">
-                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
-                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
-                    <input type="text" readonly class="form-control" id="{field_name}" {mutable_attr}
+            if is_hidden:
+                field_html += f'''
+                    <input type="hidden" id="{field_name}" {mutable_attr}
                     name="{field_name}" {field_params} 
-                    value="{_value}">
-                </fieldset>'''
+                    value="{_value}">'''
+
+            else:
+                field_html += f'''
+                    <fieldset class="form-check" style="  padding-top: 20px;">
+                        <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
+                        <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
+                        <input type="text" readonly class="form-control" id="{field_name}" {mutable_attr}
+                        name="{field_name}" {field_params} 
+                        value="{_value}">
+                    </fieldset>'''
 
         elif field_info['input_type'] in ['text', 'number', 'email', 'date']:
             field_html += f'''
