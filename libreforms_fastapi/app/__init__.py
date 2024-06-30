@@ -4731,43 +4731,6 @@ def build_ui_context():
 
     return kwargs
 
-# Create form
-@app.get("/ui/form/create/{form_name}", response_class=HTMLResponse, include_in_schema=False)
-@requires(['authenticated'], redirect="ui_auth_login")
-async def ui_form_create(form_name:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db), session: SessionLocal = Depends(get_db)):
-    if not config.UI_ENABLED:
-        raise HTTPException(status_code=404, detail="This page does not exist")
-
-    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
-        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
-
-    _context = {
-        'user': request.user.to_dict(),
-        'config': config.model_dump()
-    }
-
-    # generate_html_form
-    form_html = get_form_html(
-        form_name=form_name, 
-        config_path=config.FORM_CONFIG_PATH,
-        session=session,
-        User=User,
-        Group=Group,
-        doc_db=doc_db,
-        context=_context,
-    )
-
-    return templates.TemplateResponse(
-        request=request, 
-        name="create_form.html.jinja", 
-        context={
-            "form_name": form_name,
-            "form_html": form_html,
-            **build_ui_context(),
-        }
-    )
-
-
 
 # Read one form
 @app.get("/ui/form/read_one/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
@@ -4860,6 +4823,44 @@ async def ui_form_read_all(request: Request, config = Depends(get_config_depends
         }
     )
 
+
+
+# Create form
+@app.get("/ui/form/create/{form_name}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], redirect="ui_auth_login")
+async def ui_form_create(form_name:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db), session: SessionLocal = Depends(get_db)):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    _context = {
+        'user': request.user.to_dict(),
+        'config': config.model_dump()
+    }
+
+    # generate_html_form
+    form_html = get_form_html(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+        context=_context,
+    )
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="create_form.html.jinja", 
+        context={
+            "form_name": form_name,
+            "form_html": form_html,
+            **build_ui_context(),
+        }
+    )
+
 # Update form
 @app.get("/ui/form/update/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], redirect="ui_auth_login")
@@ -4918,7 +4919,7 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request, co
     form_html = get_form_html(
         form_name=form_name, 
         config_path=config.FORM_CONFIG_PATH,
-        update=True,
+        duplicate=True,
         session=session,
         User=User,
         Group=Group,

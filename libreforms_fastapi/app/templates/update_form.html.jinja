@@ -175,11 +175,17 @@ $(document).ready(function() {
     function populateFormData(response) {
         const data = response.data;
 
-        console.log(data);
+        // console.log(data);
 
         for (const key in data) {
             const value = data[key];
             const field = $(`[name="${key}"]`);
+
+            if (field.attr('data-mutable') === 'true') {
+                // Skip setting the value for fields marked as mutable
+                console.log("Data Mutable: ", key);
+                continue;
+            }
 
             if (Array.isArray(value)) {
                 // For checkboxes or multi-selects

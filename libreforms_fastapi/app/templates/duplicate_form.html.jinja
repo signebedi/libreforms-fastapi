@@ -1,7 +1,7 @@
 {% extends "base.html.jinja" %}
 
 {% block title %}
-{{ config.SITE_NAME }} — Update Form
+{{ config.SITE_NAME }} — Duplicate Form
 {% endblock %}
 
 {% block content %}
@@ -169,9 +169,22 @@ $(document).ready(function() {
     // Populate form fields with fetched data
     function populateFormData(response) {
         const data = response.data;
+
         for (const key in data) {
             const value = data[key];
             const field = $(`[name="${key}"]`);
+
+            // Check if the field has the data-mutable attribute and if it's set to "true"
+            const isMutable = field.attr('data-mutable') === 'true';
+
+            // Debugging: Log field information
+            console.log(`Field: ${key}, Data Mutable: ${isMutable}`);
+
+            if (isMutable) {
+                // Skip setting the value for fields marked as mutable
+                console.log("Skipping mutable field: ", key);
+                continue;
+            }
 
             if (Array.isArray(value)) {
                 // For checkboxes or multi-selects

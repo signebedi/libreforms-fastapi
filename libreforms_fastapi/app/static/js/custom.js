@@ -106,7 +106,7 @@ function renderUserRelationships(users) {
 
 
 function prettifyTimeDiff(dateTimeStr, tz="America/New_York") {
-  console.log(dateTimeStr);
+  // console.log(dateTimeStr);
 
   // Parse the date string into a Date object
   // const date = new Date(dateTimeStr);

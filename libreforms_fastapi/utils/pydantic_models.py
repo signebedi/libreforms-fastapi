@@ -627,6 +627,7 @@ def get_form_html(
     config_path: str | None = None, 
     current_document: dict | None = None,
     update:bool = False,
+    duplicate:bool = False,
     initialize_full_loader: bool = True,
     doc_db = None,
     session = None,
@@ -705,7 +706,7 @@ def get_form_html(
         else:
             default = field_info.get("default","")
 
-        if update:
+        if update or duplicate:
             default = ""
 
         # if not default: # "" has a False-like truth value
@@ -746,8 +747,17 @@ def get_form_html(
         # This value will always be static and linked to a context variable like request.user or config.SITE_NAME
         elif field_info['input_type'] == "immutable_context":
 
-            # Start by pulling the context field and splitting on the period. These support user.<some_attr> and 
-            # config.<some_attr>.
+            if update:
+                make_mutable = field_info.get('update_on_edit', False)
+            elif duplicate:
+                make_mutable = field_info.get('update_on_duplicate', True)
+            else: 
+                make_mutable = False
+
+            mutable_attr = 'data-mutable="true"' if make_mutable else 'data-mutable="false"'
+
+            # Start by pulling the context field and splitting on the period. These support 
+            # user.<some_attr> and config.<some_attr>.
             _context_field = field_info.get('context_field', '')
             _expanded_context = _context_field.split('.')
             
@@ -757,12 +767,11 @@ def get_form_html(
                 if isinstance(_value, dict):
                     _value = _value.get(layer, "")
 
-
             field_html += f'''
                 <fieldset class="form-check" style="  padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
-                    <input type="text" readonly class="form-control" id="{field_name}" 
+                    <input type="text" readonly class="form-control" id="{field_name}" {mutable_attr}
                     name="{field_name}" {field_params} 
                     value="{_value}">
                 </fieldset>'''
