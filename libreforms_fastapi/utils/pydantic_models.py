@@ -744,6 +744,28 @@ def get_form_html(
                         <span id="{description_id}" class="form-text">{description_text} {tooltip_text}</span>
                     </fieldset>'''
 
+            # Do not try to parse any of the other logic for this element
+            continue
+
+        # See https://github.com/signebedi/libreforms-fastapi/issues/275. We make 
+        # this logically separate to the following conditional statement because, 
+        # if this is an edit, we want to be able to fall back to a secondary input type.
+        if field_info['input_type'] == "hidden" and update:
+            # If the field type is hidden but this is an update,
+            # check for a secondary field type.
+            secondary_input_type = field_info.get("secondary_input_type", "hidden")
+
+            # And set the input type to that value. Defaults back to hidden... but, you
+            # can do some powerful stuff if you want to be able to modify hidden fields
+            # on edits.
+            field_info['input_type'] = secondary_input_type
+
+        
+        if field_info['input_type'] == "hidden":
+
+            field_html += f'''
+                <input type="hidden" id="{field_name}" name="{field_name}" {field_params} value="{default or ''}">'''
+
         # This value will always be static and linked to a context variable like request.user or config.SITE_NAME
         elif field_info['input_type'] == "immutable_context":
 
@@ -771,9 +793,7 @@ def get_form_html(
 
             if is_hidden:
                 field_html += f'''
-                    <input type="hidden" id="{field_name}" {mutable_attr}
-                    name="{field_name}" {field_params} 
-                    value="{_value}">'''
+                    <input type="hidden" id="{field_name}" name="{field_name}" {field_params} value="{default or ''}">'''
 
             else:
                 field_html += f'''
@@ -784,6 +804,7 @@ def get_form_html(
                         name="{field_name}" {field_params} 
                         value="{_value}">
                     </fieldset>'''
+
 
         elif field_info['input_type'] in ['text', 'number', 'email', 'date']:
             field_html += f'''
