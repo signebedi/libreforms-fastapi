@@ -12,8 +12,6 @@
 {% block content %}
 <div class="container table-responsive">
 
-{{request.user.relationships}}
-
 {{ render_markdown_content(config['HOMEPAGE_MESSAGE']) | safe }}
 
 
