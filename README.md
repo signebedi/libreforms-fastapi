@@ -163,7 +163,7 @@ Headers are special fields in the YAML configuration used to group related field
 - description: A brief description or subtitle for the header, providing additional context or information about the section.
 
 
-#### Complex Input Types
+##### Complex Input Types
 
 In addition to the basic input types described above, the form configuration supports complex input types that provide additional functionality and control over form behavior. These are generally intended to address specific use cases common in form softwares.
 
