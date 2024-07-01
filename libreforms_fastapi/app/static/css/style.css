@@ -203,7 +203,8 @@ body {
 }
 
 /* Make the form labels pop a little more, excluding bool_switch fields */
-label.form-check-label:not(.bool-switch-label) {
+
+label.set-bold {
     font-weight: bold;
     /* font-size: 1.15em;  */
 }
