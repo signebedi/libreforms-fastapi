@@ -113,7 +113,7 @@ $(document).ready(function () {
 
 
         $('#readAllTable').DataTable({
-            ordering: false,
+            ordering: true,
             // Set column widths below 
             columns: [{ width: '20%' }, { width: '30%' }, { width: '10%' }, { width: '15%' }, { width: '10%' }, { width: '15%' }],
             pageLength: 5,
@@ -121,6 +121,7 @@ $(document).ready(function () {
             info: false,
             // paging: false,
             searching: false,
+            order: [[3, 'desc']],
             // This is a fix to properly sort prettified datetimes
             columnDefs: [
                 { 
