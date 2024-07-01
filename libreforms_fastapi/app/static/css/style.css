@@ -204,5 +204,6 @@ body {
 
 /* Make the form labels pop a little more */
 label.form-check-label {
-    font-size: 1.15em; 
+    font-weight: bold;
+    /* font-size: 1.15em;  */
 }
