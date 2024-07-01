@@ -202,3 +202,7 @@ body {
     color: #ff5733;
 }
 
+/* Make the form labels pop a little more */
+label.form-check-label {
+    font-size: 1.15em; 
+}
