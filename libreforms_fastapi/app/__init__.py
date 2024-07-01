@@ -320,6 +320,7 @@ with get_config_context() as config:
             api_key: str,
             site_admin:bool,
             permissions: dict,
+            relationships: list,
         ) -> None:
         
             self.username = username
@@ -329,6 +330,7 @@ with get_config_context() as config:
             self.api_key = api_key
             self.site_admin = site_admin
             self.permissions = permissions
+            self.relationships = relationships
 
         @property
         def is_authenticated(self) -> bool:
@@ -351,6 +353,7 @@ with get_config_context() as config:
                 'api_key':self.api_key,
                 'site_admin':self.site_admin,
                 'permissions':self.permissions,
+                'relationships':self.relationships,
             }
 
 
@@ -393,6 +396,8 @@ with get_config_context() as config:
                 with SessionLocal() as session:
                     user = session.query(User).filter_by(id=payload.get("id", None)).first()
                     _groups = [g.name for g in user.groups]
+                    _relationships = [x.to_dict() for x in user.relationships] + [x.to_dict() for x in user.received_relationships]
+
 
             except:
                 return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
@@ -400,6 +405,7 @@ with get_config_context() as config:
             # If the user validation check fails or they don't exist, set them as unauthenticated
             if any ([not user, not user.active, not user.username == payload['sub']]):
                 return AuthCredentials(["unauthenticated"]), UnauthenticatedUser()
+
 
             user_to_return = LibreFormsUser(
                 username=user.username,
@@ -409,6 +415,7 @@ with get_config_context() as config:
                 api_key=user.api_key,
                 site_admin=user.site_admin,
                 permissions=user.compile_permissions(),
+                relationships=_relationships,
             )
 
             # print("\n\n\n", user_to_return)
