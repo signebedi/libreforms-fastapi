@@ -154,6 +154,11 @@ $(document).ready(function() {
     // Initialize Bootstrap tooltips
     $('[data-bs-toggle="tooltip"]').tooltip();
 
+    // Set each label correctly
+    $('.bool-switch').each(function() {
+        $(this).trigger('change');
+    });
+
     // Form submission event
     $('#dataForm').submit(function(event) {
         event.preventDefault(); // Prevent the form from submitting via the browser
@@ -197,16 +202,23 @@ $(document).ready(function() {
             $('#dataForm').find('input:not(:checkbox), textarea, select').each(function() {
                 formData[this.name] = $(this).val();
             });
+
             
             // Process checkboxes: group them by name and gather checked values into arrays
             $('#dataForm').find('input:checkbox').each(function() {
-                if (!formData.hasOwnProperty(this.name)) {
-                    formData[this.name] = [];
-                }
-                if ($(this).is(':checked')) {
-                    formData[this.name].push($(this).val() || true); // Push 'true' if value is unspecified
+                if ($(this).hasClass('bool-switch-checkbox')) {
+                    // If element has the class 'bool-switch-checkbox', set formData[this.name] to its checked state
+                    formData[this.name] = $(this).is(':checked');
+                } else {
+                    if (!formData.hasOwnProperty(this.name)) {
+                        formData[this.name] = [];
+                    }
+                    if ($(this).is(':checked')) {
+                        formData[this.name].push($(this).val() || true); // Push 'true' if value is unspecified
+                    }
                 }
             });
+
 
             $('#dataForm').find('input:radio').each(function() {
                 if ($(this).is(':checked')) {
@@ -251,5 +263,12 @@ $(document).ready(function() {
         }
     });
 });
+
+
+function updateLabel(checkbox, enabledText, disabledText) {
+    var label = checkbox.nextElementSibling;
+    label.textContent = checkbox.checked ? enabledText : disabledText;
+}
+
 </script>
 {% endblock %}

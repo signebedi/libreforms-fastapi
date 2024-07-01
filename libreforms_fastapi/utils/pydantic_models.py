@@ -765,6 +765,23 @@ def get_form_html(
             field_html += f'''
                 <input type="hidden" id="{field_name}" name="{field_name}" {field_params} value="{default or ''}">'''
 
+        elif field_info['input_type'] == "bool_switch":
+
+            true_label = field_info.get('true_label', "true")
+            false_label = field_info.get('false_label', "false")
+
+            is_true = False if not default else True
+
+            field_html += f'''
+                <fieldset class="form-check" style="padding-top: 20px;">
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
+                    <div class="form-check form-switch bool-switch">
+                        <input class="form-check-input bool-switch-checkbox" type="checkbox" name="{field_name}" id="{field_name}" {field_params} onchange="updateLabel(this, '{true_label}', '{false_label}')" {'checked' if is_true else ''} />
+                        <label class="form-check-label" for="{field_name}">{true_label if is_true else false_label}</label>
+                    </div>
+                </fieldset>'''
+
         # This value will always be static and linked to a context variable like request.user or config.SITE_NAME
         elif field_info['input_type'] == "immutable_context":
 
@@ -796,7 +813,7 @@ def get_form_html(
 
             else:
                 field_html += f'''
-                    <fieldset class="form-check" style="  padding-top: 20px;">
+                    <fieldset class="form-check" style="padding-top: 20px;">
                         <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
                         <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                         <input type="text" readonly class="form-control" id="{field_name}" {mutable_attr}
@@ -807,7 +824,7 @@ def get_form_html(
 
         elif field_info['input_type'] in ['text', 'number', 'email', 'date']:
             field_html += f'''
-                <fieldset class="form-check" style="  padding-top: 20px;">
+                <fieldset class="form-check" style="padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params}'''

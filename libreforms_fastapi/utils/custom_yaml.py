@@ -135,6 +135,11 @@ def get_yaml_type_constructors(**kwargs):
     def type_constructor_bytes(loader, node):
         return bytes
 
+
+    def type_constructor_bool(loader, node):
+        return bool
+
+
     # We create a constructor mapping that we'll use later to 
     # register the constructors.
     constructor_mapping = {
@@ -147,6 +152,7 @@ def get_yaml_type_constructors(**kwargs):
         '!list': type_constructor_list,
         '!tuple': type_constructor_list,
         '!bytes': type_constructor_bytes,
+        '!bool': type_constructor_bool,
         **kwargs,
     }
 
