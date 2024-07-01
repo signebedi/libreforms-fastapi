@@ -778,7 +778,7 @@ def get_form_html(
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <div class="form-check form-switch bool-switch">
                         <input class="form-check-input bool-switch-checkbox" type="checkbox" name="{field_name}" id="{field_name}" {field_params} onchange="updateLabel(this, '{true_label}', '{false_label}')" {'checked' if is_true else ''} />
-                        <label class="form-check-label" for="{field_name}">{true_label if is_true else false_label}</label>
+                        <label class="form-check-label bool-switch-label" for="{field_name}">{true_label if is_true else false_label}</label>
                     </div>
                 </fieldset>'''
 
