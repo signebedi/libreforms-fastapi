@@ -4446,6 +4446,7 @@ async def api_admin_write_form_config(
         write_form_config_yaml(
             config_path=config.FORM_CONFIG_PATH, 
             form_config_str=_form_config.content, 
+            env=config.ENVIRONMENT,
             # validate=True,
             timezone=config.TIMEZONE,
         )
@@ -5293,7 +5294,7 @@ async def ui_admin_write_form_config(request: Request, config = Depends(get_conf
 
     form_config_str = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH).strip()
 
-    past_versions = get_form_backups()
+    past_versions = get_form_backups(config_path=config.FORM_CONFIG_PATH, env=config.ENVIRONMENT)
 
     # print(form_config_str)
 

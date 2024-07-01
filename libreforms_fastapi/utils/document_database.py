@@ -899,8 +899,8 @@ class ManageTinyDB(ManageDocumentDB):
     def get_all_documents_as_excel(
         self,
         form_name:str, 
-        file_path:str=os.path.join("instance", "export"),
-        limit_users:Union[bool, str]=False, 
+        file_path:bool|str=False,
+        limit_users:bool|str=False, 
         exclude_deleted:bool=True,
         escape_output:bool=False,
         exclude_journal:bool=True,
@@ -909,7 +909,10 @@ class ManageTinyDB(ManageDocumentDB):
 
         if not self.use_excel:
             return False
-        
+
+        if not file_path:
+            file_path=os.path.join("instance", f"{self.env}_export")
+
         # if not file_path.endswith(".xlsx"):
         #     raise ImproperExcelFilenameFormat(form_name, file_path)
 
@@ -1094,10 +1097,13 @@ class ManageTinyDB(ManageDocumentDB):
         exclude_deleted:bool=True,
         escape_output:bool=False,
         to_file:bool=False,
-        file_path:str=os.path.join("instance", "export"),
+        file_path:bool|str=False,
     ):
         """Retrieves a single entry that matches the search query."""
         self._check_form_exists(form_name)
+
+        if not file_path:
+            file_path=os.path.join("instance", f"{self.env}_export")
 
         document = self.databases[form_name].get(doc_id=document_id)
 
