@@ -128,6 +128,8 @@ $(document).ready(function() {
 
                 $('#usersTable').DataTable({
                     autoWidth: false,
+                    columns: [{ width: '5%' }, { width: '15%' }, { width: '15%' }, { width: '15%' }, { width: '5%' }, { width: '15%' }, { width: '15%' }, { width: '5%' }, { width: '5%' },],
+                    // lengthChange: false,
                     // This is a fix to properly sort prettified datetimes
                     columnDefs: [
                         { 
