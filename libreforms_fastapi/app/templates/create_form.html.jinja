@@ -5,6 +5,8 @@
 {% endblock %}
 
 {% block content %}
+                            
+{% if form_name in request.user.permissions and "create" in request.user.permissions[form_name]  %}
 
 <div class="container">
 
@@ -26,10 +28,15 @@
     </form>
 
 </div>
+
+{% endif %}
+
 {% endblock %}
 
 
 {% block scripts %}
+{% if form_name in request.user.permissions and "create" in request.user.permissions[form_name]  %}
+
 <script>
 
 var apiKey = "{{ request.user.api_key }}"; 
@@ -271,4 +278,5 @@ function updateLabel(checkbox, enabledText, disabledText) {
 }
 
 </script>
+{% endif %}
 {% endblock %}

@@ -47,7 +47,11 @@
                         <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Submit Forms</a>
                         <div class="dropdown-menu">
                             {% for form in available_forms %}
+                            {% if form in request.user.permissions and "create" in request.user.permissions[form]  %}
+
                             <a class="dropdown-item" href="{{ url_for( 'ui_form_create', form_name=form ) }}">Submit {{ form | replace("_", " ") | title }}</a>
+                            
+                            {% endif %}
                             {% endfor %}
                         </div>
                     </li>
@@ -68,8 +72,12 @@
                                     </a>
                                     <ul class="dropdown-menu">
                                         {% for form in available_forms %}
+                                        {% if form in request.user.permissions and ("read_own" in request.user.permissions[form] or "read_all" in request.user.permissions[form]) %}
+
                                         <li><button class="btn-link dropdown-item" onclick="exportExcel('{{ form }}', '{{ request.user.api_key }}')">{{ form | replace("_", " ") | title }}</button></li>
-                                        {% endfor %}                                    </ul>
+                                        {% endif %}
+                                        {% endfor %}
+                                    </ul>
                                 </div>
                             </li>
                             {% endif %}
