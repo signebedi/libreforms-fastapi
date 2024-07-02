@@ -4993,6 +4993,18 @@ async def ui_redirect_to_home(response: Response, request: Request, config = Dep
     response = RedirectResponse(request.url_for("ui_home"), status_code=303)
     return response
 
+@app.get("/alive", response_class=JSONResponse, include_in_schema=False)
+async def ui_alive(response: Response, request: Request, config = Depends(get_config_depends),):
+
+    if not config.HEALTH_CHECKS_ENABLED:
+        raise HTTPException(status_code=404)
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "alive"},
+    )
+
+
 # Homepage
 @app.get("/ui/home", response_class=HTMLResponse, include_in_schema=False)
 async def ui_home(request: Request, config = Depends(get_config_depends),):

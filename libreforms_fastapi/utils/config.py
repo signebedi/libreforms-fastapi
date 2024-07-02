@@ -253,6 +253,8 @@ def get_config(env):
             # Utilize MongoDsn for validation if not empty
             return MongoDsn.validate(uri)
 
+        # Adding health check endpoints, see https://github.com/signebedi/libreforms-fastapi/issues/274
+        HEALTH_CHECKS_ENABLED:bool = os.getenv('HEALTH_CHECKS_ENABLED:', 'True') == 'True'
 
     class ProductionConfig(Config):
         # The DOMAIN is meant to fail in production if you have not set it
@@ -275,6 +277,8 @@ def get_config(env):
         # https://github.com/signebedi/libreforms-fastapi/issues/183
         FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'True') == 'True'
 
+        # Adding health check endpoints, see https://github.com/signebedi/libreforms-fastapi/issues/274
+        HEALTH_CHECKS_ENABLED:bool = os.getenv('HEALTH_CHECKS_ENABLED:', 'False') == 'True'
 
     class DevelopmentConfig(Config):
         DEBUG:bool = True
