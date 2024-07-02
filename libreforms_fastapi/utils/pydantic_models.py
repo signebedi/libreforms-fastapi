@@ -67,6 +67,10 @@ def get_user_model(
         # https://github.com/signebedi/libreforms-fastapi/issues/251
         password: None | SecretStr = Field(default=None)
 
+        # This will be used to manage creating service accounts, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/305
+        no_login: bool = Field(default=False)
+
         # @validator('username')
         # def username_pattern(cls, value):
         #     pattern = re.compile(username_regex)

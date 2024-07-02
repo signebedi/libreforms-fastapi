@@ -2759,6 +2759,11 @@ async def api_auth_login(
     if not user:
         raise HTTPException(status_code=400, detail="Incorrect username or password")
 
+    # Added to support no_login service accounts, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/305
+    if user.no_login:
+        raise HTTPException(status_code=403, detail="Login not permitted for this account")
+
     if not check_password_hash(user.password, form_data.password):
 
         # Implement failed_password_attempts, see 
@@ -3104,6 +3109,7 @@ async def api_admin_create_user(
         email=new_email, 
         username=new_username, 
         active=True,
+        no_login=user_request.no_login,
     ) 
 
     # Create the users API key with a 365 day expiry
@@ -3252,7 +3258,7 @@ async def api_admin_modify_user(
     Logs the action for audit purposes.
     """
 
-    if field not in ["active", "site_admin", "password", "api_key"]:
+    if field not in ["active", "site_admin", "no_login", "password", "api_key"]:
         raise HTTPException(status_code=404)
 
     # Get the requesting user details
@@ -3267,9 +3273,9 @@ async def api_admin_modify_user(
         raise HTTPException(status_code=404, detail="Could not find user. Are you sure they exist?")
 
     # Here we set the relevant value to change
-    if field in ["active", "site_admin"]:
+    if field in ["active", "site_admin", "no_login"]:
         if user.id == user_to_change.id:
-            raise HTTPException(status_code=418, detail=f"You really shouldn't be performing these operations against yourself...")
+            raise HTTPException(status_code=418, detail=f"You really shouldn't be performing these operations on yourself...")
         new_value = not getattr(user_to_change, field)
         setattr(user_to_change, field, new_value)
 

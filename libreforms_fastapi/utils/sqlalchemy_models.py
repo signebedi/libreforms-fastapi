@@ -133,6 +133,10 @@ def get_sqlalchemy_models(
         opt_out = Column(Boolean, nullable=False, default=False)
         site_admin = Column(Boolean, nullable=False, default=False)
 
+        # Added no_login for service accounts that should not login to the UI, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/305.
+        no_login = Column(Boolean, nullable=False, default=False)
+
         transaction_log = relationship("TransactionLog", order_by="TransactionLog.id", back_populates="user")
 
         relationships = relationship(
@@ -228,6 +232,7 @@ def get_sqlalchemy_models(
                 user_dict['api_key'] = self.api_key
                 user_dict['opt_out'] = self.opt_out
                 user_dict['site_admin'] = self.site_admin
+                user_dict['no_login'] = self.no_login
 
             if not exclude_password:
                 user_dict['password'] = self.password

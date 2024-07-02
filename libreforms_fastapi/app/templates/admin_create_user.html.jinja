@@ -28,7 +28,8 @@
         | {{ config['USERNAME_HELPER_TEXT'] }}
         </span>
         <input type="text" id="username" name="username" class="form-control" 
-            onchange="validateField('username', /^[a-z0-9_]{5,15}$/, 'Invalid username. Username should be 5-15 characters long and contain only letters, numbers, and underscores.')" required>
+            {# onchange="validateField('username', /^[a-z0-9_]{5,15}$/, 'Invalid username. Username should be 5-15 characters long and contain only letters, numbers, and underscores.')"  #}
+            required>
         {# Username should be 3-15 characters long and contain only lowercase letters, numbers, and underscores. #}
         <div class="valid-feedback" id="username-is-valid" style="display: none;">This field is valid!</div>
         <div class="invalid-feedback" id="username-is-invalid" style="display: none;"></div>
@@ -40,11 +41,23 @@
         | Please enter an email for this user
         </span>
         <input type="email" class="form-control" id="email" name="email" 
-            onchange="validateField('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email.')" required>
+            {# onchange="validateField('email', /^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Invalid email.')"  #}
+            required>
         <div class="valid-feedback" id="email-is-valid" style="display: none;">This field is valid!</div>
         <div class="invalid-feedback" id="email-is-invalid" style="display: none;"></div>
     </fieldset>
 
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <label aria-labelledby="noLoginHelpInline" for="no_login" class="form-label">Is this a service account?</label>
+        <span id="noLoginHelpInline" class="form-text">
+            | If checked, this user will not be able to login, but will still be able to use the RESTful API.
+        </span>
+        <div class="form-check form-switch bool-switch">
+            <input class="form-check-input bool-switch-checkbox" type="checkbox" name="no_login" id="no_login" onchange="updateLabel(this, 'Yes, disable traditional login for this account', 'No, permit traditional login for this account')"/>
+            <label class="form-check-label bool-switch-label" for="no_login">No, permit traditional login for this account</label>
+        </div>
+
+    </fieldset>
 
 
     <fieldset style="padding-top: 10px;" class="form-check">
@@ -80,6 +93,12 @@
 {% block scripts %}
 <script src="{{url_for('static', path='js/datatables.js')}}"></script>
 <script>
+
+    function updateLabel(checkbox, enabledText, disabledText) {
+        var label = checkbox.nextElementSibling;
+        label.textContent = checkbox.checked ? enabledText : disabledText;
+    }
+
     $(document).ready(function() {
 
         var apiKey = "{{ request.user.api_key }}";
@@ -105,8 +124,11 @@
                 username: $('#username').val().trim(),
                 email: $('#email').val().trim(),
                 groups: groups,
+                no_login: $('#no_login').is(':checked'),
                 password: password.length > 0 ? password : undefined
             };
+
+            // console.log(formData);
 
             // AJAX POST request to the API endpoint
             $.ajax({
@@ -143,5 +165,10 @@
 
 
     });
+
+
+
+
+
 </script>
 {% endblock %}
