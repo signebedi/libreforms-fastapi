@@ -70,11 +70,18 @@ $(document).ready(function () {
     // Create an array of promises
     let promises = formNames.map(formName => fetchData(formName));
 
-    // Use Promise.all to process data after all AJAX calls are complete
-    Promise.all(promises).then(results => {
-        results.forEach(documents => {
-            allFormData = allFormData.concat(documents);
+    // Use Promise.allSettled to process data after all AJAX calls are complete
+    Promise.allSettled(promises).then(results => {
+        results.forEach(result => {
+            if (result.status === 'fulfilled') {
+                allFormData = allFormData.concat(result.value);
+            } 
+            // else {
+            //     console.error("Failed to fetch data for form:", result.reason);
+            // }
         });
+
+        console.log(allFormData);
 
         // Now process allFormData
         allFormData.forEach(form => {

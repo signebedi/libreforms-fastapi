@@ -890,19 +890,20 @@ async def api_form_read_one(
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit them to see their own forms, which they
-    # should do as a matter of bureaucratic best practice, but might sometimes limit.
-    try:
-        user.validate_permission(form_name=form_name, required_permission="read_own")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
-
-    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
     try:
         user.validate_permission(form_name=form_name, required_permission="read_all")
         limit_query_to = False
     except Exception as e:
-        limit_query_to = user.username
+
+        try:
+            user.validate_permission(form_name=form_name, required_permission="read_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
+
 
     document = doc_db.get_one_document(
         form_name=form_name, 
@@ -959,16 +960,21 @@ async def api_form_read_history(
 
     user = session.query(User).filter_by(api_key=key).first()
     
-    try:
-        user.validate_permission(form_name=form_name, required_permission="read_own")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
 
+    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
     try:
         user.validate_permission(form_name=form_name, required_permission="read_all")
         limit_query_to = False
     except Exception as e:
-        limit_query_to = user.username
+
+        try:
+            user.validate_permission(form_name=form_name, required_permission="read_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
+
 
     history = doc_db.unpack_document_journal(
         document_id=document_id, 
@@ -1032,19 +1038,20 @@ async def api_form_export(
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit them to see their own forms, which they
-    # should do as a matter of bureaucratic best practice, but might sometimes limit.
-    try:
-        user.validate_permission(form_name=form_name, required_permission="read_own")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
-
-    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
     try:
         user.validate_permission(form_name=form_name, required_permission="read_all")
         limit_query_to = False
     except Exception as e:
-        limit_query_to = user.username
+
+        try:
+            user.validate_permission(form_name=form_name, required_permission="read_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
+
 
     document_path = doc_db.get_one_document(
         form_name=form_name, 
@@ -1126,21 +1133,22 @@ async def api_form_read_all(
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit them to see their own forms, which they
-    # should do as a matter of bureaucratic best practice, but might sometimes limit.
-    try:
-        user.validate_permission(form_name=form_name, required_permission="read_own")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
-
-    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
     try:
         user.validate_permission(form_name=form_name, required_permission="read_all")
         limit_query_to = False
     except Exception as e:
-        limit_query_to = user.username
 
-    print("\n\n\n",query_params)
+        try:
+            user.validate_permission(form_name=form_name, required_permission="read_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
+
+
+    # print("\n\n\n",query_params)
 
     # Decode the JSON string to a dictionary
     if query_params:
@@ -1226,19 +1234,20 @@ async def api_form_export_excel(
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit them to see their own forms, which they
-    # should do as a matter of bureaucratic best practice, but might sometimes limit.
-    try:
-        user.validate_permission(form_name=form_name, required_permission="read_own")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
-
-    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
     try:
         user.validate_permission(form_name=form_name, required_permission="read_all")
         limit_query_to = False
     except Exception as e:
-        limit_query_to = user.username
+
+        try:
+            user.validate_permission(form_name=form_name, required_permission="read_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
+
 
 
     document_path = doc_db.get_all_documents_as_excel(
@@ -1322,19 +1331,20 @@ async def api_form_update(
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit this level of access to the form
-    try:
-        user.validate_permission(form_name=form_name, required_permission="update_own")
-        # print("\n\n\nUser has valid permissions\n\n\n")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
-
-    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    # update_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES update_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
     try:
         user.validate_permission(form_name=form_name, required_permission="update_all")
         limit_query_to = False
     except Exception as e:
-        limit_query_to = user.username
+
+        try:
+            user.validate_permission(form_name=form_name, required_permission="update_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
+
 
     metadata={
         doc_db.last_editor_field: user.username,
@@ -1426,18 +1436,20 @@ async def api_form_delete(
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit this level of access to the form
-    try:
-        user.validate_permission(form_name=form_name, required_permission="delete_own")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
-
-    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    # delete_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES delete_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
     try:
         user.validate_permission(form_name=form_name, required_permission="delete_all")
         limit_query_to = False
     except Exception as e:
-        limit_query_to = user.username
+
+        try:
+            user.validate_permission(form_name=form_name, required_permission="delete_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
+
 
     metadata={
         doc_db.last_editor_field: user.username,
@@ -1522,19 +1534,20 @@ async def api_form_restore(
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit this level of access to the form
-    try:
-        user.validate_permission(form_name=form_name, required_permission="update_own")
-        # print("\n\n\nUser has valid permissions\n\n\n")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
-
-    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    # update_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES update_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
     try:
         user.validate_permission(form_name=form_name, required_permission="update_all")
         limit_query_to = False
     except Exception as e:
-        limit_query_to = user.username
+
+        try:
+            user.validate_permission(form_name=form_name, required_permission="update_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
+
 
     metadata={
         doc_db.last_editor_field: user.username,
@@ -1769,8 +1782,8 @@ async def api_form_sign(
         # for group in user.groups:
         #     print("\n\n", group.get_permissions()) 
 
-        # user.validate_permission(form_name=form_name, required_permission="sign_own")
-        assert (True) # Placeholder for SignatureRoles validation
+        user.validate_permission(form_name=form_name, required_permission="sign_own")
+        # assert (True) # Placeholder for SignatureRoles validation
 
     except Exception as e:
         raise HTTPException(status_code=403, detail=f"{e}")
@@ -1987,19 +2000,19 @@ async def api_validate_signatures(
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit them to see their own forms, which they
-    # should do as a matter of bureaucratic best practice, but might sometimes limit.
-    try:
-        user.validate_permission(form_name=form_name, required_permission="read_own")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
-
-    # Here, if the user is not able to see other user's data, then we denote the constraint.
+    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
     try:
         user.validate_permission(form_name=form_name, required_permission="read_all")
         limit_query_to = False
     except Exception as e:
-        limit_query_to = user.username
+
+        try:
+            user.validate_permission(form_name=form_name, required_permission="read_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
 
     document = doc_db.get_one_document(
         form_name=form_name, 

@@ -135,17 +135,17 @@ function prettifyTimeDiff(dateTimeStr, tz="America/New_York") {
       } else if (timeDiff / 420 < 1) {
           return "a few minutes ago";
       } else if (timeDiff / 900 < 1) {
-          return "about ten minutes ago";
+          return "about 10 minutes ago";
       } else if (timeDiff / 1500 < 1) {
-          return "about twenty minutes ago";
+          return "about 20 minutes ago";
       } else if (timeDiff / 2100 < 1) {
-          return "about thirty minutes ago";
+          return "about 30 minutes ago";
       } else if (timeDiff / 2700 < 1) {
-          return "about thirty minutes ago";
+          return "about 30 minutes ago";
       } else if (timeDiff / 3300 < 1) {
-          return "about forty minutes ago";
+          return "about 40 minutes ago";
       } else if (timeDiff / 3600 < 1) {
-          return "about fifty minutes ago";
+          return "about 50 minutes ago";
       }
   } else if (timeDiff >= 3600 && timeDiff < 7200) {
       return "about an hour ago";
