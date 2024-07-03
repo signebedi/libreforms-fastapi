@@ -882,7 +882,7 @@ async def api_form_create(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params=data_dict,
+            query_params={},
         )
 
     return {
@@ -1436,7 +1436,7 @@ async def api_form_update(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params=json_data,
+            query_params={},
         )
 
     return {
@@ -4163,7 +4163,7 @@ async def api_admin_update_relationship_type(
             api_key=key, 
             endpoint=request.url.path, 
             remote_addr=request.client.host, 
-            query_params=existing_relationship_type.to_dict(),
+            query_params={},
         )
 
     return JSONResponse(
@@ -4606,7 +4606,7 @@ async def api_admin_write_form_config(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params={"changes": get_string_differences(old_form_config_str, _form_config.content)},
+            query_params={},
         )
 
     return JSONResponse(
@@ -4670,7 +4670,7 @@ async def api_admin_update_site_config(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params={"changes": {**_site_config.content}},
+            query_params={**_site_config.content},
         )
 
     return JSONResponse(
