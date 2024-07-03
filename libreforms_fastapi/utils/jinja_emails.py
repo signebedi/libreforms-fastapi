@@ -1,4 +1,11 @@
-from jinja2 import Environment, Template, select_autoescape
+from jinja2 import Template, UndefinedError, Environment, make_logging_undefined, select_autoescape
+
+
+class RaiseExceptionUndefined(make_logging_undefined(base=UndefinedError)):
+    """This exception will raise when admins invoke a context in an email template that is not available"""
+    def _fail_with_undefined_error(self, *args, **kwargs):
+        raise UndefinedError(f"{self._undefined_name} is undefined but is required for rendering the email template.")
+
 
 # Here we create a jinja env
 env = Environment(autoescape=select_autoescape(['html', 'xml']))
@@ -29,13 +36,37 @@ default_templates = {
         'subj': "Form Restored",
         'cont': "This email serves to notify you that a deleted form was restored at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.",
     },
+    'form_signed': {
+        'subj': "Form Signed",
+        'cont': "This email serves to notify you that a form was signed at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator.",
+    },
+    'form_unsigned': {
+        'subj': "Form Unsigned",
+        'cont': "This email serves to notify you that a form was unsigned at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to unsign this form, please contact your system administrator.",
+    },
+
+    'user_password_changed': {
+        'subj': "{{ config.SITE_NAME }} User Password Changed",
+        'cont': "This email serves to notify you that the user {{ user.username }} has just had their password changed at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator.",
+    },
     'password_reset_instructions': {
         'subj': "{{ config.SITE_NAME }} User Password Reset Instructions",
         'cont': "This email serves to notify you that the user {{ user.username }} has just requested to reset their password at {{ config.DOMAIN }}. To do so, you may use the one-time password {{ otp }}. This one-time password will expire in three hours. If you have access to the user interface, you may reset your password at the following link: {{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}. If you believe this was a mistake, please contact your system administrator.",
     },
+
+     'password_reset_complete': {
+        'subj': "{{ config.SITE_NAME }} User Password Reset",
+        'cont': "This email serves to notify you that the user {{ user.username }} has just successfully reset their password at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator.",
+    },
+
     'user_registered': {
         'subj': "{{ config.SITE_NAME }} User Registered",
-        'cont': "This email serves to notify you that the user {{ new_username }} has just been registered for this email address at {{ config.DOMAIN }}. Your user has been given the following temporary password:\n\n{{ password }}\n\nPlease login to the system and update this password at your earliest convenience.",
+        'cont': "This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. Your user has been given the following temporary password:\n\n{{ password }}\n\nPlease login to the system and update this password at your earliest convenience.",
+    },
+
+    'user_registered_verification': {
+        'subj': "{{ config.SITE_NAME }} User Registered",
+        'cont': "This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. Please verify your email by clicking the following link: {{ config.DOMAIN }}/verify/{{ key }}. Please note this link will expire after 48 hours.",
     },
     'suspicious_activity': {
         'subj': "{{ config.SITE_NAME }} Suspicious Activity",
@@ -43,8 +74,9 @@ default_templates = {
     },
     'help_request': {
         'subj': "Help Request from {{ user.username }}",
-        'cont': "You are receiving this message because a user has submitted a request for help at {{ config.DOMAIN }}. You can see the request details below.\n\n****\nUser: {{ user.username }}\nEmail: {{ user.email }}\nTime of Submission: {{ time_str }}\nCategory: {{ help_request.category }}\nSubject: {{ help_request.subject }}\nMessage: {{ help_request.message }}\n****\n\nYou may reply directly to the user who submitted this request by replying to this email."
-    }
+        'cont': "You are receiving this message because a user has submitted a request for help at {{ config.DOMAIN }}. You can see the request details below.\n\n****\nUser: {{ user.username }}\nEmail: {{ user.email }}\nTime of Submission: {{ time }}\nCategory: {{ category }}\nSubject: {{ subject }}\nMessage: {{ message }}\n****\n\nYou may reply directly to the user who submitted this request by replying to this email."
+    },
+
 }
 
 
@@ -64,9 +96,9 @@ def render_email_message_from_jinja(message_type, **kwargs):
     # Get the template strings
     unrendered_subj, unrendered_cont = get_message_jinja(message_type)
 
-    # Create template objects from strings
-    template_subj = Template(unrendered_subj)
-    template_cont = Template(unrendered_cont)
+    # Create template objects from strings using the environment
+    template_subj = env.from_string(unrendered_subj)
+    template_cont = env.from_string(unrendered_cont)
 
     # Render the templates with the provided keyword arguments
     rendered_subj = template_subj.render(**kwargs)

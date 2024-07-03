@@ -138,6 +138,9 @@ from libreforms_fastapi.utils.docs import (
 
 from libreforms_fastapi.utils.custom_tinydb import CustomEncoder
 
+# Import to render more powerful email content
+from libreforms_fastapi.utils.jinja_emails import render_email_message_from_jinja
+
 # Here we set the application config using the get_config
 # factory pattern defined in libreforms_fastapi.utis.config.
 _env = os.environ.get('ENVIRONMENT', 'development')
@@ -681,9 +684,21 @@ def write_api_call_to_transaction_log(
                 session.rollback()
 
                 if send_mail_on_failure:
+                    subject, content = render_email_message_from_jinja(
+                        'transaction_log_error', 
+                        config=config, 
+                        user=user, 
+                        current_time=current_time, 
+                        endpoint=endpoint, 
+                        query_params=query_params, 
+                        remote_addr=remote_addr
+                    )
+
+                    # print(subject, content)
+
                     mailer.send_mail( 
-                        subject=f"Transaction Log Error", 
-                        content=f"You are receiving this message because you are the designated help email for {config.SITE_NAME}. This message is to notify you that there was an error when writing the following transaction to the transaction log for {config.SITE_NAME}:\n\n***\n\nUser: {user.username if not user.opt_out else 'N/A'}\nTimestamp: {current_time}\nEndpoint: {endpoint}\nQuery Params: {query_params if query_params else 'N/A'}\nRemote Address: {remote_addr if not user.opt_out else 'N/A'}", 
+                        subject=subject, 
+                        content=content, 
                         to_address=config.HELP_EMAIL,
                     )
 
@@ -718,9 +733,13 @@ async def check_key_rotation(
 
                 if config.SMTP_ENABLED:
 
-                    subject=f"{config.SITE_NAME} API Key Rotated"
-                    content=f"This email serves to notify you that an API key for user {user.username} has just rotated at {config.DOMAIN}. Please note that your past API key will no longer work if you are employing it in applications. Your new key will be active for 365 days. You can see your new key by visiting {config.DOMAIN}/profile."
+                    subject, content = render_email_message_from_jinja(
+                        'api_key_rotation', 
+                        config=config, 
+                        user=user, 
+                    )
 
+                    # print(subject, content)
                     mailer.send_mail(subject=subject, content=content, to_address=user.email)
 
         logger.info(f'Ran key rotation - {len(keypairs)} key/s rotated')
@@ -835,10 +854,19 @@ async def api_form_create(
 
     # Send email
     if config.SMTP_ENABLED:
+        subject, content = render_email_message_from_jinja(
+            'form_created', 
+            config=config, 
+            form_name=form_name,
+            document_id=document_id
+        )
+
+        # print(subject, content)
+
         background_tasks.add_task(
-            mailer.send_mail, 
-            subject=f"Form Created", 
-            content=f"This email servers to notify you that a form was submitted at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
+            mailer.send_mail,
+            subject=subject, 
+            content=content,
             to_address=user.email,
         )
 
@@ -1381,10 +1409,18 @@ async def api_form_update(
 
     # Send email
     if config.SMTP_ENABLED:
+        subject, content = render_email_message_from_jinja(
+            'form_updated', 
+            config=config, 
+            form_name=form_name,
+            document_id=document_id
+        )
+        # print(subject, content)
+
         background_tasks.add_task(
-            mailer.send_mail, 
-            subject="Form Updated", 
-            content=f"This email servers to notify you that an existing form was updated at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
+            mailer.send_mail,
+            subject=subject, 
+            content=content,
             to_address=user.email,
         )
 
@@ -1482,12 +1518,22 @@ async def api_form_delete(
 
     # Send email
     if config.SMTP_ENABLED:
+
+        subject, content = render_email_message_from_jinja(
+            'form_deleted', 
+            config=config, 
+            form_name=form_name,
+            document_id=document_id
+        )
+        # print(subject, content)
+
         background_tasks.add_task(
-            mailer.send_mail, 
-            subject="Form Deleted", 
-            content=f"This email servers to notify you that a form was deleted at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
+            mailer.send_mail,
+            subject=subject, 
+            content=content,
             to_address=user.email,
         )
+
 
 
     # Write this query to the TransactionLog
@@ -1580,13 +1626,21 @@ async def api_form_restore(
 
     # Send email
     if config.SMTP_ENABLED:
+
+        subject, content = render_email_message_from_jinja(
+            'form_restored', 
+            config=config, 
+            form_name=form_name,
+            document_id=document_id
+        )
+        # print(subject, content)
+
         background_tasks.add_task(
-            mailer.send_mail, 
-            subject="Form Restored", 
-            content=f"This email servers to notify you that a deleted form was restored at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
+            mailer.send_mail,
+            subject=subject, 
+            content=content,
             to_address=user.email,
         )
-
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
@@ -1830,10 +1884,19 @@ async def api_form_sign(
 
     # Send email
     if config.SMTP_ENABLED:
+
+        subject, content = render_email_message_from_jinja(
+            'form_signed', 
+            config=config, 
+            form_name=form_name,
+            document_id=document_id
+        )
+        # print(subject, content)
+
         background_tasks.add_task(
-            mailer.send_mail, 
-            subject="Form Signed", 
-            content=f"This email servers to notify you that a form was signed at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator.", 
+            mailer.send_mail,
+            subject=subject, 
+            content=content,
             to_address=user.email,
         )
 
@@ -1928,10 +1991,19 @@ async def api_form_sign(
 
     # Send email
     if config.SMTP_ENABLED:
+
+        subject, content = render_email_message_from_jinja(
+            'form_unsigned', 
+            config=config, 
+            form_name=form_name,
+            document_id=document_id
+        )
+        # print(subject, content)
+
         background_tasks.add_task(
-            mailer.send_mail, 
-            subject="Form Unsigned", 
-            content=f"This email servers to notify you that a form was unsigned at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator.", 
+            mailer.send_mail,
+            subject=subject, 
+            content=content,
             to_address=user.email,
         )
 
@@ -2183,13 +2255,16 @@ async def api_auth_create(
 
         if config.SMTP_ENABLED:
 
-            _subject=f"{config.SITE_NAME} Suspicious Activity"
-            _content=f"This email serves to notify you that there was an attempt to register a user with the same email as the account registered to you at {config.DOMAIN}. If this was you, you may safely disregard this email. If it was not you, you should consider contacting your system administrator and changing your password."
+            subject, content = render_email_message_from_jinja(
+                'suspicious_activity', 
+                config=config, 
+            )
+            # print(subject, content)
 
             background_tasks.add_task(
-                mailer.send_mail, 
-                subject=_subject, 
-                content=_content, 
+                mailer.send_mail,
+                subject=subject, 
+                content=content, 
                 to_address=new_email,
             )
 
@@ -2236,18 +2311,29 @@ async def api_auth_create(
     # Email notification
     if config.SMTP_ENABLED:
 
-        subject=f"{config.SITE_NAME} User Registered"
-
         if config.REQUIRE_EMAIL_VERIFICATION:
 
-            key = signatures.write_key(scope=['email_verification'], expiration=48, active=True, email=email)
-            content=f"This email serves to notify you that the user {new_username} has just been registered for this email address at {config.DOMAIN}. Please verify your email by clicking the following link: {config.DOMAIN}/verify/{key}. Please note this link will expire after 48 hours."
+            _key = signatures.write_key(scope=['email_verification'], expiration=48, active=True, email=email)
+
+            subject, content = render_email_message_from_jinja(
+                'user_registered_verification', 
+                config=config,
+                username=new_username, 
+                key=_key,
+            )
 
         else:
-            content=f"This email serves to notify you that the user {new_username} has just been registered for this email address at {config.DOMAIN}."
+
+            subject, content = render_email_message_from_jinja(
+                'user_registered', 
+                config=config,
+                username=new_username, 
+            )
+        # print(subject, content)
+
 
         background_tasks.add_task(
-            mailer.send_mail, 
+            mailer.send_mail,
             subject=subject, 
             content=content, 
             to_address=new_email,
@@ -2384,12 +2470,15 @@ async def api_auth_change_password(
     # Email notification
     if config.SMTP_ENABLED:
 
-        subject=f"{config.SITE_NAME} User Password Changed"
-
-        content=f"This email serves to notify you that the user {user.username} has just had their password changed at {config.DOMAIN}. If you believe this was a mistake, please contact your system adminstrator."
+        subject, content = render_email_message_from_jinja(
+            'user_password_changed', 
+            config=config,
+            username=user, 
+        )
+        # print(subject, content)
 
         background_tasks.add_task(
-            mailer.send_mail, 
+            mailer.send_mail,
             subject=subject, 
             content=content, 
             to_address=user.email,
@@ -2570,12 +2659,16 @@ async def api_auth_forgot_password(
     # Email notification
     if config.SMTP_ENABLED:
 
-        subject=f"{config.SITE_NAME} User Password Reset Instructions"
-
-        content=f"This email serves to notify you that the user {user.username} has just requested to reset their password at {config.DOMAIN}. To do so, you may use the one-time password {otp}. This one-time password will expire in three hours. If you have access to the user interface, you may reset your password at the following link: {config.DOMAIN}/ui/auth/forgot_password/{otp}. If you believe this was a mistake, please contact your system adminstrator."
+        subject, content = render_email_message_from_jinja(
+            'password_reset_instructions', 
+            config=config, 
+            otp=otp, 
+            user=user
+        )
+        # print(subject, content)
 
         background_tasks.add_task(
-            mailer.send_mail, 
+            mailer.send_mail,
             subject=subject, 
             content=content, 
             to_address=user.email,
@@ -2716,12 +2809,16 @@ async def api_auth_forgot_password_confirm(
     # Email notification
     if config.SMTP_ENABLED:
 
-        subject=f"{config.SITE_NAME} User Password Reset"
-
-        content=f"This email serves to notify you that the user {user.username} has just reset their password at {config.DOMAIN}. If you believe this was a mistake, please contact your system adminstrator."
+        subject, content = render_email_message_from_jinja(
+            'password_reset_complete', 
+            config=config, 
+            user=user
+        )
+        
+        # print(subject, content)
 
         background_tasks.add_task(
-            mailer.send_mail, 
+            mailer.send_mail,
             subject=subject, 
             content=content, 
             to_address=user.email,
@@ -2992,15 +3089,19 @@ async def api_auth_help(
 
     full_safe_subject = f"[{config.SITE_NAME}][{user.username}][{shortened_safe_category}] {shortened_safe_subject}"
 
-    full_safe_message = f"You are receiving this message because a user has submitted " \
-        f"a request for help at {config.DOMAIN}. You can see the request details below." \
-        f"\n\n****\nUser: {user.username}\nEmail: {user.email}\nTime of Submission:" \
-        f"{time_str}\nCategory: {shortened_safe_category}\nSubject: {safe_subject}\n" \
-        f"Message: {safe_message}\n****\n\nYou may reply directly to the user who " \
-        f"submitted this request by replying to this email."
+    subject, content = render_email_message_from_jinja(
+        'help_request', 
+        user=user, 
+        config=config, 
+        time=time_str, 
+        subject=safe_subject,
+        category=shortened_safe_category,
+        message=safe_message,
+    )
+    # print(subject, content)
 
     background_tasks.add_task(
-        mailer.send_mail, 
+        mailer.send_mail,
         subject=full_safe_subject, 
         content=full_safe_message, 
         to_address=config.HELP_EMAIL,
@@ -3170,11 +3271,15 @@ async def api_admin_create_user(
     # Email notification
     if config.SMTP_ENABLED:
 
-        subject=f"{config.SITE_NAME} User Registered"
-        content=f"This email serves to notify you that the user {new_username} has just been registered for this email address at {config.DOMAIN}. Your user has been given the following temporary password:\n\n{password}\n\nPlease login to the system and update this password at your earliest convenience."
+        subject, content = render_email_message_from_jinja(
+            'user_registered', 
+            config=config,
+            username=new_username, 
+        )
+        # print(subject, content)
 
         background_tasks.add_task(
-            mailer.send_mail, 
+            mailer.send_mail,
             subject=subject, 
             content=content, 
             to_address=new_email,
@@ -3565,10 +3670,19 @@ async def api_form_delete(
 
     # Send email
     if config.SMTP_ENABLED:
+
+        subject, content = render_email_message_from_jinja(
+            'form_deleted', 
+            config=config, 
+            form_name=form_name,
+            document_id=document_id
+        )
+        # print(subject, content)
+
         background_tasks.add_task(
-            mailer.send_mail, 
-            subject="Form Deleted", 
-            content=f"This email servers to notify you that a form was deleted at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
+            mailer.send_mail,
+            subject=subject, 
+            content=content, 
             to_address=user.email,
         )
 
@@ -3650,10 +3764,19 @@ async def api_form_restore(
 
     # Send email
     if config.SMTP_ENABLED:
+
+        subject, content = render_email_message_from_jinja(
+            'form_restored', 
+            config=config, 
+            form_name=form_name,
+            document_id=document_id
+        )
+        # print(subject, content)
+
         background_tasks.add_task(
-            mailer.send_mail, 
-            subject="Form Restored", 
-            content=f"This email servers to notify you that a deleted form was restored at {config.DOMAIN} by the user registered at this email address. The form's document ID is '{document_id}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.", 
+            mailer.send_mail,
+            subject=subject, 
+            content=content, 
             to_address=user.email,
         )
 
