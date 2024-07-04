@@ -24,6 +24,8 @@
         <button type="submit" class="btn btn-primary" id="loginButton">Login</button>
     </fieldset>
 
+</form>
+
 
     {% if not config['DISABLE_NEW_USERS'] or not config['DISABLE_FORGOT_PASSWORD']%}
     <fieldset style="padding-top: 10px;" class="form-check">
@@ -31,11 +33,28 @@
     </fieldset>
     {% endif %}
 
-</form>
+
+    {% if config['SAML_ENABLED'] %}
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="button" onclick="submitSSO()" class="btn btn-outline-success btn-sm">Login with SSO</button>
+    </fieldset>
+    {% endif %} 
+
 {% endblock %}
 
 {% block scripts %}
 <script>
+
+function submitSSO() {
+    // Create a form dynamically
+    var form = document.createElement("form");
+    form.method = "POST";
+    form.action = "{{ url_for('api_auth_sso') }}";
+
+    // Append it to the body and submit it
+    document.body.appendChild(form);
+    form.submit();
+}
 
 $(document).ready(function() {
     // Initially disable the submit button
