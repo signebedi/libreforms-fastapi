@@ -686,6 +686,7 @@ def write_api_call_to_transaction_log(
                 if send_mail_on_failure:
                     subject, content = render_email_message_from_jinja(
                         'transaction_log_error', 
+                        config.EMAIL_CONFIG_PATH,
                         config=config, 
                         user=user, 
                         current_time=current_time, 
@@ -735,6 +736,7 @@ async def check_key_rotation(
 
                     subject, content = render_email_message_from_jinja(
                         'api_key_rotation', 
+                        config.EMAIL_CONFIG_PATH,
                         config=config, 
                         user=user, 
                     )
@@ -856,6 +858,7 @@ async def api_form_create(
     if config.SMTP_ENABLED:
         subject, content = render_email_message_from_jinja(
             'form_created', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             form_name=form_name,
             document_id=document_id
@@ -1411,6 +1414,7 @@ async def api_form_update(
     if config.SMTP_ENABLED:
         subject, content = render_email_message_from_jinja(
             'form_updated', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             form_name=form_name,
             document_id=document_id
@@ -1521,6 +1525,7 @@ async def api_form_delete(
 
         subject, content = render_email_message_from_jinja(
             'form_deleted', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             form_name=form_name,
             document_id=document_id
@@ -1629,6 +1634,7 @@ async def api_form_restore(
 
         subject, content = render_email_message_from_jinja(
             'form_restored', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             form_name=form_name,
             document_id=document_id
@@ -1887,6 +1893,7 @@ async def api_form_sign(
 
         subject, content = render_email_message_from_jinja(
             'form_signed', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             form_name=form_name,
             document_id=document_id
@@ -1994,6 +2001,7 @@ async def api_form_sign(
 
         subject, content = render_email_message_from_jinja(
             'form_unsigned', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             form_name=form_name,
             document_id=document_id
@@ -2257,6 +2265,7 @@ async def api_auth_create(
 
             subject, content = render_email_message_from_jinja(
                 'suspicious_activity', 
+                config.EMAIL_CONFIG_PATH,
                 config=config, 
             )
             # print(subject, content)
@@ -2317,6 +2326,7 @@ async def api_auth_create(
 
             subject, content = render_email_message_from_jinja(
                 'user_registered_verification', 
+                config.EMAIL_CONFIG_PATH,
                 config=config,
                 username=new_username, 
                 key=_key,
@@ -2326,6 +2336,7 @@ async def api_auth_create(
 
             subject, content = render_email_message_from_jinja(
                 'user_registered', 
+                config.EMAIL_CONFIG_PATH,
                 config=config,
                 username=new_username, 
             )
@@ -2472,6 +2483,7 @@ async def api_auth_change_password(
 
         subject, content = render_email_message_from_jinja(
             'user_password_changed', 
+            config.EMAIL_CONFIG_PATH,
             config=config,
             username=user, 
         )
@@ -2661,6 +2673,7 @@ async def api_auth_forgot_password(
 
         subject, content = render_email_message_from_jinja(
             'password_reset_instructions', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             otp=otp, 
             user=user
@@ -2811,6 +2824,7 @@ async def api_auth_forgot_password_confirm(
 
         subject, content = render_email_message_from_jinja(
             'password_reset_complete', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             user=user
         )
@@ -3091,6 +3105,7 @@ async def api_auth_help(
 
     subject, content = render_email_message_from_jinja(
         'help_request', 
+        config.EMAIL_CONFIG_PATH,
         user=user, 
         config=config, 
         time=time_str, 
@@ -3273,6 +3288,7 @@ async def api_admin_create_user(
 
         subject, content = render_email_message_from_jinja(
             'user_registered_admin', 
+            config.EMAIL_CONFIG_PATH,
             config=config,
             username=new_username, 
         )
@@ -3673,6 +3689,7 @@ async def api_form_delete(
 
         subject, content = render_email_message_from_jinja(
             'form_deleted', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             form_name=form_name,
             document_id=document_id
@@ -3767,6 +3784,7 @@ async def api_form_restore(
 
         subject, content = render_email_message_from_jinja(
             'form_restored', 
+            config.EMAIL_CONFIG_PATH,
             config=config, 
             form_name=form_name,
             document_id=document_id

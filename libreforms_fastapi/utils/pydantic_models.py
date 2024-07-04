@@ -307,7 +307,7 @@ def clean_extra_spaces(data, exclude_fields=['description', 'field_label']):
             for key, value in data.items()
         }
     return data
-    
+
 def load_form_config(
     config_path: None | str = None,
     initialize_full_loader: bool = False,
@@ -373,22 +373,22 @@ def load_form_config(
 
     return cleaned_config
 
-def get_form_config_yaml(config_path=None):
+def get_form_config_yaml(config_path=None, default=EXAMPLE_FORM_CONFIG_YAML):
     """
-    Here we return the string representation of the yaml form config.
+    Here we return the string representation of a yaml config.
     """
 
     if not config_path or not os.path.exists(config_path):
-        return EXAMPLE_FORM_CONFIG_YAML
+        return default
 
     elif os.path.exists(config_path):
         try:
             with open(config_path, 'r') as file:
-                form_config = file.read()
+                _config = file.read()
         except Exception as e:
-            raise Exception(f"Failed to read the form config file at {config_path}: {e}")
+            raise Exception(f"Failed to read the config file at {config_path}: {e}")
 
-    return form_config
+    return _config
 
 
 def write_form_config_yaml(

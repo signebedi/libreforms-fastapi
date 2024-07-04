@@ -2,6 +2,8 @@ import yaml
 from jinja2 import Template, Undefined, Environment, make_logging_undefined, select_autoescape
 
 
+from libreforms_fastapi.utils.pydantic_models import get_form_config_yaml
+
 class RaiseExceptionUndefined(Undefined):
     """This exception will raise when admins invoke a context in an email template that is not available."""
     def _fail_with_undefined_error(self):
@@ -23,79 +25,6 @@ env = Environment(
     undefined=RaiseExceptionUndefined,
 )
 
-
-default_templates = {
-    'transaction_log_error': {
-        'subj': "Transaction Log Error",
-        'cont': "You are receiving this message because you are the designated help email for {{ config.SITE_NAME }}. This message is to notify you that there was an error when writing the following transaction to the transaction log for {{ config.SITE_NAME }}:\n\n***\n\nUser: {{ user.username if not user.opt_out else 'N/A' }}\nTimestamp: {{ current_time }}\nEndpoint: {{ endpoint }}\nQuery Params: {{ query_params if query_params else 'N/A' }}\nRemote Address: {{ remote_addr if not user.opt_out else 'N/A' }}",
-    },
-    'api_key_rotation': {
-        'subj': "{{ config.SITE_NAME }} API Key Rotated",
-        'cont': "This email serves to notify you that an API key for user {{ user.username }} has just rotated at {{ config.DOMAIN }}. Please note that your past API key will no longer work if you are employing it in applications. Your new key will be active for 365 days. You can see your new key by visiting {{ config.DOMAIN }}/profile.",
-    },
-    'form_created': {
-        'subj': "Form Created",
-        'cont': "This email serves to notify you that a form was submitted at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.",
-    },
-    'form_updated': {
-        'subj': "Form Updated",
-        'cont': "This email serves to notify you that an existing form was updated at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.",
-    },
-    'form_deleted': {
-        'subj': "Form Deleted",
-        'cont': "This email serves to notify you that a form was deleted at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.",
-    },
-    'form_restored': {
-        'subj': "Form Restored",
-        'cont': "This email serves to notify you that a deleted form was restored at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.",
-    },
-    'form_signed': {
-        'subj': "Form Signed",
-        'cont': "This email serves to notify you that a form was signed at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator.",
-    },
-    'form_unsigned': {
-        'subj': "Form Unsigned",
-        'cont': "This email serves to notify you that a form was unsigned at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to unsign this form, please contact your system administrator.",
-    },
-
-    'user_password_changed': {
-        'subj': "{{ config.SITE_NAME }} User Password Changed",
-        'cont': "This email serves to notify you that the user {{ user.username }} has just had their password changed at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator.",
-    },
-    'password_reset_instructions': {
-        'subj': "{{ config.SITE_NAME }} User Password Reset Instructions",
-        'cont': "This email serves to notify you that the user {{ user.username }} has just requested to reset their password at {{ config.DOMAIN }}. To do so, you may use the one-time password {{ otp }}. This one-time password will expire in three hours. If you have access to the user interface, you may reset your password at the following link: {{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}. If you believe this was a mistake, please contact your system administrator.",
-    },
-
-     'password_reset_complete': {
-        'subj': "{{ config.SITE_NAME }} User Password Reset",
-        'cont': "This email serves to notify you that the user {{ user.username }} has just successfully reset their password at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator.",
-    },
-
-    'user_registered_admin': {
-        'subj': "{{ config.SITE_NAME }} User Registered",
-        'cont': "This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. Your user has been given the following temporary password:\n\n{{ password }}\n\nPlease login to the system and update this password at your earliest convenience.",
-    },
-    'user_registered': {
-        'subj': "{{ config.SITE_NAME }} User Registered",
-        'cont': "This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}.",
-    },
-
-    'user_registered_verification': {
-        'subj': "{{ config.SITE_NAME }} User Registered",
-        'cont': "This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. Please verify your email by clicking the following link: {{ config.DOMAIN }}/verify/{{ key }}. Please note this link will expire after 48 hours.",
-    },
-    'suspicious_activity': {
-        'subj': "{{ config.SITE_NAME }} Suspicious Activity",
-        'cont': "This email serves to notify you that there was an attempt to register a user with the same email as the account registered to you at {{ config.DOMAIN }}. If this was you, you may safely disregard this email. If it was not you, you should consider contacting your system administrator and changing your password."
-    },
-    'help_request': {
-        'subj': "Help Request from {{ user.username }}",
-        'cont': "You are receiving this message because a user has submitted a request for help at {{ config.DOMAIN }}. You can see the request details below.\n\n****\nUser: {{ user.username }}\nEmail: {{ user.email }}\nTime of Submission: {{ time }}\nCategory: {{ category }}\nSubject: {{ subject }}\nMessage: {{ message }}\n****\n\nYou may reply directly to the user who submitted this request by replying to this email."
-    },
-}
-
-
 EXAMPLE_EMAIL_CONFIG_YAML = '''
 transaction_log_error:
   subj: "Transaction Log Error"
@@ -116,39 +45,39 @@ api_key_rotation:
 form_created:
   subj: "Form Created"
   cont: |
-    This email serves to notify you that a form was submitted at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.
+    This email serves to notify you that a form was submitted at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 form_updated:
   subj: "Form Updated"
   cont: |
-    This email serves to notify you that an existing form was updated at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.
+    This email serves to notify you that an existing form was updated at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 form_deleted:
   subj: "Form Deleted"
   cont: |
-    This email serves to notify you that a form was deleted at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.
+    This email serves to notify you that a form was deleted at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 form_restored:
   subj: "Form Restored"
   cont: |
-    This email serves to notify you that a deleted form was restored at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator.
+    This email serves to notify you that a deleted form was restored at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 form_signed:
   subj: "Form Signed"
   cont: |
-    This email serves to notify you that a form was signed at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator.
+    This email serves to notify you that a form was signed at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 form_unsigned:
   subj: "Form Unsigned"
   cont: |
-    This email serves to notify you that a form was unsigned at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to unsign this form, please contact your system administrator.
+    This email serves to notify you that a form was unsigned at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to unsign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 user_password_changed:
   subj: "{{ config.SITE_NAME }} User Password Changed"
   cont: |
-    This email serves to notify you that the user {{ user.username }} has just had their password changed at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator.
+    This email serves to notify you that the user {{ user.username }} has just had their password changed at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 password_reset_instructions:
   subj: "{{ config.SITE_NAME }} User Password Reset Instructions"
   cont: |
-    This email serves to notify you that the user {{ user.username }} has just requested to reset their password at {{ config.DOMAIN }}. To do so, you may use the one-time password {{ otp }}. This one-time password will expire in three hours. If you have access to the user interface, you may reset your password at the following link: {{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}. If you believe this was a mistake, please contact your system administrator.
+    This email serves to notify you that the user {{ user.username }} has just requested to reset their password at {{ config.DOMAIN }}. To do so, you may use the one-time password {{ otp }}. This one-time password will expire in three hours. If you have access to the user interface, you may reset your password at the following link: {{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}. If you believe this was a mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 password_reset_complete:
   subj: "{{ config.SITE_NAME }} User Password Reset"
   cont: |
-    This email serves to notify you that the user {{ user.username }} has just successfully reset their password at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator.
+    This email serves to notify you that the user {{ user.username }} has just successfully reset their password at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 user_registered_admin:
   subj: "{{ config.SITE_NAME }} User Registered"
   cont: |
@@ -189,20 +118,34 @@ help_request:
 
 
 
-def get_message_jinja(message_type):
-    # Retrieve the unrendered Jinja templates from the dictionary
-    subj_template_str = default_templates[message_type]['subj']
-    cont_template_str = default_templates[message_type]['cont']
+def get_message_jinja(message_type, config_path):
 
-    # Placeholder: we want to add logic to read and overwrite 
+    # We want to add logic to read and overwrite 
     # these template key-value pairs using yaml.
+    default_config = yaml.safe_load(EXAMPLE_EMAIL_CONFIG_YAML)
+
+    try:
+        assert(os.path.exists(config_path)) # If it doesn't exist, let's skip this rigamarole
+        with open(config_path, 'r') as file:
+            loaded_config = yaml.safe_load(file.read())
+
+    except Exception as e:
+        loaded_config = {}
+
+    # Overwrite default config with values from the default path
+    for key, value in loaded_config.items():
+        default_config[key] = value
+
+    # Retrieve the unrendered Jinja templates from the dictionary
+    subj_template_str = default_config[message_type]['subj']
+    cont_template_str = default_config[message_type]['cont']
 
     return subj_template_str, cont_template_str
 
 
-def render_email_message_from_jinja(message_type, **kwargs):
+def render_email_message_from_jinja(message_type, config_path, **kwargs):
     # Get the template strings
-    unrendered_subj, unrendered_cont = get_message_jinja(message_type)
+    unrendered_subj, unrendered_cont = get_message_jinja(message_type, config_path)
 
     # Create template objects from strings using the environment
     template_subj = env.from_string(unrendered_subj)
@@ -217,7 +160,7 @@ def render_email_message_from_jinja(message_type, **kwargs):
 
 def test_email_config(email_config_yaml, **kwargs):
     # Load the YAML configuration into a Python dictionary
-    email_configs = safe_load(email_config_yaml)
+    email_configs = yaml.safe_load(email_config_yaml)
 
     # Set default values for parameters
     defaults = {

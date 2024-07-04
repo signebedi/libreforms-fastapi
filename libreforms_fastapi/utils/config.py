@@ -155,6 +155,12 @@ def get_config(env):
         # https://github.com/signebedi/libreforms-fastapi/issues/37.
         FORM_CONFIG_PATH:str = os.getenv('FORM_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", f"{env}_form_config.yml")))
 
+
+        # Here we specify a path to our JSON EMAIL config representation, see 
+        # https://github.com/signebedi/libreforms-fastapi/issues/284.
+        EMAIL_CONFIG_PATH:str = os.getenv('EMAIL_CONFIG_PATH', os.path.join(os.path.join(os.getcwd(), "instance", f"{env}_email_config.yml")))
+
+
         # Here we allow admins to decide whether to enable site documentation 
         DOCS_ENABLED:bool = os.getenv('DOCS_ENABLED', 'False') == 'True'
         DOCS_PATH:str = os.getenv('DOCS_PATH', os.path.join(os.path.join(os.getcwd(), "instance", f"{env}_docs.md")))
