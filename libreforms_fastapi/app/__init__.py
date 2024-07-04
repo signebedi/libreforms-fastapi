@@ -5596,6 +5596,29 @@ async def ui_admin_write_form_config(request: Request, config = Depends(get_conf
     )
 
 
+@app.get("/ui/admin/write_email_config", response_class=HTMLResponse, include_in_schema=False)
+@requires(['admin'], redirect="ui_home")
+async def ui_admin_write_email_config(request: Request, config = Depends(get_config_depends),):
+    
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not request.user.site_admin:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    config_str = get_email_yaml(config_path=config.EMAIL_CONFIG_PATH, return_as_yaml_str=True).strip()
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="admin_email_config.html.jinja", 
+        context={
+            **build_ui_context(),
+            "config_str": config_str,
+        }
+    )
+
+
+
 
 
 # Edit privacy policy

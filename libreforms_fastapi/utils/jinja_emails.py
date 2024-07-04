@@ -1,4 +1,6 @@
-import yaml
+import yaml, os, shutil
+from pathlib import Path
+from datetime import datetime
 from zoneinfo import ZoneInfo
 from jinja2 import Template, Undefined, Environment, make_logging_undefined, select_autoescape
 
@@ -228,6 +230,7 @@ def test_email_config(email_config_yaml, **kwargs):
     defaults = {
         'config': {'SITE_NAME': 'ExampleSite', 'DOMAIN': 'example.com'},
         'user': {'username': 'default_user', 'opt_out': False},
+        'username': "default_user",
         'current_time': '2022-07-01 12:00:00',
         'endpoint': '/default/endpoint',
         'query_params': 'default=query',
@@ -268,7 +271,8 @@ def test_email_config(email_config_yaml, **kwargs):
         if email_type != 'user_registered_admin':
             modified_defaults.pop('password')
 
-
+        if email_type not in ['user_registered', 'user_registered_verification', 'user_registered_admin']:
+            modified_defaults.pop('username')
 
         subj_template = env.from_string(template_data['subj'])
         cont_template = env.from_string(template_data['cont'])

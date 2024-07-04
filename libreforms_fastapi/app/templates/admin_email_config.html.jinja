@@ -1,0 +1,102 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+{{config.SITE_NAME}} — Edit Email Config
+{% endblock %}
+
+{% block header %}
+{% endblock %}
+
+
+{% block content %}
+<h4>
+    Edit Email Config
+    <sup title="This is an admin page">
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-star-fill" viewBox="0 0 16 16">
+            <path d="M3.612 15.443c-.386.198-.824-.149-.746-.592l.83-4.73L.173 6.765c-.329-.314-.158-.888.283-.95l4.898-.696L7.538.792c.197-.39.73-.39.927 0l2.184 4.327 4.898.696c.441.062.612.636.282.95l-3.522 3.356.83 4.73c.078.443-.36.79-.746.592L8 13.187l-4.389 2.256z"/>
+        </svg>
+    </sup>
+</h4>
+
+<p>Here you can make changes to the email templates that are sent out based on standard event triggers, and add custom emails of your own.</p>
+
+<hr>
+
+<form id="configForm">
+    <fieldset class="form-check" style="padding-top: 10px;">
+        <label aria-labelledby="configDescription" for="content" class="form-check-label">Email Config</label>
+        <span id="configDescription" class="form-text">| Update the email config for the site using this page</span>
+
+        <!-- Monaco editor -->
+        <div id="editor" style="height: 500px;"></div>  
+
+    </fieldset>
+
+    <fieldset style="padding-top: 10px;" class="form-check">
+        <button type="submit" class="btn btn-primary" id="updateButton">Update</button>
+    </fieldset>
+
+</form>
+
+
+
+
+{% endblock %}
+
+
+{% block scripts %}
+<script src="{{ url_for('static', path='js/monaco-editor-0.48.0/min/vs/loader.js') }}"></script>
+
+<script>
+require.config({ paths: { 'vs': '{{ url_for("static", path="js/monaco-editor-0.48.0/min/vs") }}' }});
+
+require(['vs/editor/editor.main'], function() {
+
+    // Map site theme to the monaco theme
+    function getMonacoTheme() {
+        var siteTheme = localStorage.getItem('theme');
+        return siteTheme === 'dark' ? 'vs-dark' : 'vs'; 
+    }
+
+    var editor = monaco.editor.create(document.getElementById('editor'), {
+        value: "{{ config_str | replace('\n', '\\n') | replace('\"', '\\\"') | safe }}", 
+        language: 'yaml',
+        wordWrap: 'on',
+        theme: getMonacoTheme()
+    });
+
+    // Listen for theme changes 
+    document.addEventListener('themeChanged', function(event) {
+        var newTheme = event.detail.theme === 'dark' ? 'vs-dark' : 'vs';
+        monaco.editor.setTheme(newTheme);
+    });
+
+    $('#configForm').submit(function(event) {
+        event.preventDefault();
+        var formData = {
+            "content": editor.getValue() // Get content from Monaco Editor
+        };
+        // console.log(formData);
+        var apiKey = "{{ request.user.api_key }}"; 
+
+        $.ajax({
+            url: `/api/admin/write_email_config`,
+            type: 'POST',
+            headers: {
+                'X-API-KEY': apiKey,
+            },
+            data: JSON.stringify(formData),
+            contentType: 'application/json; charset=utf-8',
+            dataType: 'json',
+            success: function(response) {
+                flashMessage("Successfully updated email config", "success");
+            },
+            error: function(xhr) {
+                console.error('Operation failed', xhr.responseText);
+                flashMessage(xhr.responseText, 'warning');
+            }
+        });
+    });
+});
+</script>
+{% endblock %}
