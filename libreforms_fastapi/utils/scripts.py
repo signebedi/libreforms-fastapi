@@ -1,7 +1,27 @@
-import re, random, string, os
+import re, random, string, os, secrets, hashlib, time
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
+
+
+
+def generate_unique_username(base_username):
+    timestamp = str(int(time.time()))
+    unique_string = hashlib.sha256((base_username + timestamp).encode()).hexdigest()[:6]
+    return f"{base_username}{unique_string}"
+
+def generate_dummy_password_hash():
+    """
+    The point here is to generate a password for eg. when saml auth 
+    is enabled, so the user is not expected to use passwords... but
+    how do we plan to integrate this with req'd password changes in:
+    https://github.com/signebedi/libreforms-fastapi/issues/231 and
+    https://github.com/signebedi/libreforms-fastapi/issues/237
+    """
+    password = secrets.token_urlsafe(24)
+    hashed_password = generate_password_hash(password)
+
+    return hashed_password
 
 def generate_password_hash(password: str):
 
