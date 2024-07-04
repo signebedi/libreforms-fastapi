@@ -262,6 +262,22 @@ def get_config(env):
         # Adding health check endpoints, see https://github.com/signebedi/libreforms-fastapi/issues/274
         HEALTH_CHECKS_ENABLED:bool = os.getenv('HEALTH_CHECKS_ENABLED:', 'True') == 'True'
 
+
+        # SAML Authentication configuration settings, see discussion at
+        # https://github.com/signebedi/libreforms-fastapi/issues/80 and
+        # https://github.com/libreForms/libreForms-flask/issues/7.
+        SAML_ENABLED: bool = False
+        SAML_IDP_ENTITY_ID: str | None = None
+        SAML_IDP_SSO_URL: str | None = None
+        SAML_IDP_SLO_URL: str | None = None
+        SAML_IDP_X509_CERT: str | None = None
+        SAML_STRICT: bool = True
+        SAML_DEBUG: bool = False
+        SAML_NAME_ID_FORMAT: str = "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified"
+        SAML_SP_X509_CERT: str = ""
+        SAML_SP_PRIVATE_KEY: str = ""
+
+
     class ProductionConfig(Config):
         # The DOMAIN is meant to fail in production if you have not set it
         DOMAIN:str = os.getenv('DOMAIN', None)
