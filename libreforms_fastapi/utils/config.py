@@ -266,16 +266,16 @@ def get_config(env):
         # SAML Authentication configuration settings, see discussion at
         # https://github.com/signebedi/libreforms-fastapi/issues/80 and
         # https://github.com/libreForms/libreForms-flask/issues/7.
-        SAML_ENABLED: bool = False
-        SAML_IDP_ENTITY_ID: str | None = None
-        SAML_IDP_SSO_URL: str | None = None
-        SAML_IDP_SLO_URL: str | None = None
-        SAML_IDP_X509_CERT: str | None = None
-        SAML_STRICT: bool = True
-        SAML_DEBUG: bool = False
-        SAML_NAME_ID_FORMAT: str = "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified"
-        SAML_SP_X509_CERT: str = ""
-        SAML_SP_PRIVATE_KEY: str = ""
+        SAML_ENABLED: bool = os.getenv('SAML_ENABLED:', 'False') == 'True'
+        SAML_IDP_ENTITY_ID: str | None = os.getenv('SAML_IDP_ENTITY_ID:', None)
+        SAML_IDP_SSO_URL: str | None = os.getenv('SAML_IDP_SSO_URL:', None)
+        SAML_IDP_SLO_URL: str | None = os.getenv('SAML_IDP_SLO_URL:', None)
+        SAML_IDP_X509_CERT: str | None = os.getenv('SAML_IDP_X509_CERT:', None)
+        SAML_STRICT: bool = os.getenv('SAML_STRICT:', "True") == 'True'
+        SAML_DEBUG: bool = os.getenv('SAML_DEBUG:', "False") == 'True'
+        SAML_NAME_ID_FORMAT: str = os.getenv('SAML_NAME_ID_FORMAT:', "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified")
+        SAML_SP_X509_CERT: str = os.getenv('SAML_SP_X509_CERT:', "")
+        SAML_SP_PRIVATE_KEY: str = os.getenv('SAML_SP_PRIVATE_KEY:', "")
 
 
     class ProductionConfig(Config):
