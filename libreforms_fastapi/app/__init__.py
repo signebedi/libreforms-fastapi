@@ -5,6 +5,7 @@ from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
 from typing import Dict, Optional, Annotated
+from urllib.parse import urlparse
 from markupsafe import escape
 from bson import ObjectId
 from watchdog.observers import Observer
@@ -86,6 +87,8 @@ from libreforms_fastapi.utils.sqlalchemy_models import (
 from libreforms_fastapi.utils.scripts import (
     check_configuration_assumptions,
     generate_password_hash,
+    generate_dummy_password_hash,
+    generate_unique_username,
     check_password_hash,
     percentage_alphanumeric_generate_password,
     prettify_time_diff,
@@ -453,6 +456,41 @@ with get_config_context() as config:
     #                 log_file_name="document_db.log", 
     #                 namespace="document_db.log",
     # )
+
+    # If saml is enabled, create the auth payload here, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/80.
+    if config.SAML_ENABLED:
+
+        # import saml dependencies 
+        from onelogin.saml2.auth import OneLogin_Saml2_Auth
+        from onelogin.saml2.utils import OneLogin_Saml2_Utils
+
+        from libreforms_fastapi.utils.saml import generate_saml_config, verify_metadata
+        
+        APP_SAML_AUTH = generate_saml_config(
+            domain=config.DOMAIN, 
+            saml_idp_entity_id=config.SAML_IDP_ENTITY_ID, 
+            saml_idp_sso_url=config.SAML_IDP_SSO_URL, 
+            saml_idp_slo_url=config.SAML_IDP_SLO_URL, 
+            saml_idp_x509_cert=config.SAML_IDP_X509_CERT,
+            strict=config.SAML_STRICT, 
+            debug=config.SAML_DEBUG, 
+            saml_name_id_format=config.SAML_NAME_ID_FORMAT,
+            saml_sp_x509_cert=config.SAML_SP_X509_CERT, 
+            saml_sp_private_key=config.SAML_SP_PRIVATE_KEY,
+        )
+
+        # here we pull for any errors to help with logging
+        metadata, errors = verify_metadata(APP_SAML_AUTH)
+
+        if len(errors) == 0:
+            logger.info("Successfully loaded SAML config")
+
+        else:
+            for error in errors:
+                logger.warning(f"SAML config error: {error}")
+                raise Exception ("SAML configuration error")
+
 
     def start_config_watcher():
         path_to_watch = config.CONFIG_FILE_PATH
@@ -3147,6 +3185,223 @@ async def api_auth_help(
         status_code=202,
         content={"status": "success"},
     )
+
+
+# SAML auth routes
+def load_user_by_email(
+    session: SessionLocal, 
+    config,
+    email: str, 
+    username: str|None = None, 
+    group: str|None = None
+):
+    user = session.query(User).filter(User.email.ilike(email)).first()
+    
+    if not user:
+        base_username = username if username else email.split('@')[0]
+        new_username = base_username
+        # I'm not sure how I feel about the whole "random number appended to the end" approach
+        # but it works for now.
+        while session.query(User).filter_by(username=new_username).first() is not None:
+            new_username = generate_unique_username(base_username)
+
+
+        user = User(
+            email=email, 
+            username=new_username,
+            password=generate_dummy_password_hash(),
+            active=True,
+            opt_out=False,
+        )
+
+        # Add to the default group, unless a specific group is specified
+        if group:
+            _group = session.query(Group).filter_by(name=group).first()
+
+        else:
+            _group = session.query(Group).filter_by(id=1).first()
+
+        user.groups.append(_group)
+
+        # Create the users API key with a 365 day expiry
+        expiration = 8760
+        api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=email)
+        user.api_key = api_key
+
+        # Here we add user key pair information, namely, the path to the user private key, and the
+        # contents of the public key, see https://github.com/signebedi/libreforms-fastapi/issues/71.
+        ds_manager = DigitalSignatureManager(username=new_username, env=config.ENVIRONMENT)
+        ds_manager.generate_rsa_key_pair()
+        user.private_key_ref = ds_manager.get_private_key_file()
+        user.public_key = ds_manager.public_key_bytes
+
+        session.add(user)
+        session.commit()
+    
+    return user
+
+
+async def prepare_saml_request(request: Request, config):
+    parsed_url = urlparse(config.DOMAIN)
+    host = parsed_url.netloc + parsed_url.path
+
+    return {
+        'https': 'on' if config.DOMAIN.startswith('https://') else 'off',
+        'http_host': host,
+        'server_port': None,
+        'script_name': request.url.path,
+        'get_data': request.query_params,
+        'post_data': await request.form(),
+        'query_string': request.url.query
+    }
+
+
+@app.post('/api/auth/sso', include_in_schema=False)
+async def api_auth_sso(background_tasks: BackgroundTasks, request: Request, config = Depends(get_config_depends), session: SessionLocal = Depends(get_db)):
+
+    if not config.SAML_ENABLED:
+        raise HTTPException(status_code=404)
+
+    try:
+        req_data = await prepare_saml_request(request, config)
+        saml_auth = OneLogin_Saml2_Auth(req_data, APP_SAML_AUTH)
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+        
+    return RedirectResponse(saml_auth.login())
+
+
+
+@app.post('/api/auth/acs', include_in_schema=False)
+async def api_auth_acs(background_tasks: BackgroundTasks, request: Request, config = Depends(get_config_depends), session: SessionLocal = Depends(get_db)):
+    if not config.SAML_ENABLED:
+        raise HTTPException(status_code=404)
+
+    try:
+        req_data = await prepare_saml_request(request, config)
+        saml_auth = OneLogin_Saml2_Auth(req_data, APP_SAML_AUTH)
+        saml_auth.process_response()
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    errors = saml_auth.get_errors()
+    if errors:
+        error_reason = saml_auth.get_last_error_reason()
+        detailed_error = f"SAML authentication error: {errors}. Reason: {error_reason}"
+        raise HTTPException(status_code=401, detail=detailed_error)
+
+    if not saml_auth.is_authenticated():
+        return RedirectResponse(request.url_for("ui_auth_login"), status_code=303)
+    
+    email = saml_auth.get_attributes().get('email', [None])[0]
+    if email:
+        user = load_user_by_email(session, config, email=email)
+        if not user.active:
+            raise HTTPException(status_code=400, detail="User authentication failed")
+
+        # Clear failed login attempts and set last login time
+        user.failed_login_attempts = 0
+        user.last_login = datetime.now(config.TIMEZONE)
+        session.add(user)
+        session.commit()
+
+        # Generate JWT token
+        user_dict = {
+            "id": user.id,
+            "sub": user.username,
+            "aud": f"{config.SITE_NAME}WebUser",
+            "iss": config.SITE_NAME,
+            "exp": datetime.now(config.TIMEZONE) + config.PERMANENT_SESSION_LIFETIME,
+            "email": user.email,
+            "active": user.active,
+            "admin": user.site_admin,
+        }
+
+        token = jwt.encode(
+            user_dict, 
+            site_key_pair.get_private_key(), 
+            algorithm='RS256'
+        )
+
+        # Set the HTTP-only cookie with the token
+        # response = JSONResponse({"access_token": token, "token_type": "bearer"})
+        response = RedirectResponse(request.url_for("ui_home"), status_code=303)
+
+        response.set_cookie(
+            key="access_token",
+            value=f"Bearer {token}",
+            httponly=True,
+            max_age=config.PERMANENT_SESSION_LIFETIME.total_seconds(),
+            expires=config.PERMANENT_SESSION_LIFETIME.total_seconds(),
+        )
+
+        # Log transaction if applicable
+        if config.COLLECT_USAGE_STATISTICS:
+            background_tasks.add_task(
+                write_api_call_to_transaction_log, 
+                api_key=user.api_key, 
+                endpoint=request.url.path,
+                remote_addr=request.client.host,
+                query_params={"user": user.username},
+            )
+
+
+        return response
+
+    else:
+        raise HTTPException(status_code=401, detail="SAML response doesn't contain an email attribute.")
+
+
+@app.get('/api/auth/metadata', include_in_schema=False)
+async def api_auth_metadata(background_tasks: BackgroundTasks, request: Request, config = Depends(get_config_depends), session: SessionLocal = Depends(get_db)):
+
+    if not config.SAML_ENABLED:
+        raise HTTPException(status_code=404)
+
+    try:
+        req_data = await prepare_saml_request(request, config)
+        saml_auth = OneLogin_Saml2_Auth(req_data, APP_SAML_AUTH)
+        metadata = saml_auth.get_settings().get_sp_metadata()
+        errors = saml_auth.get_errors()
+        if errors:
+            raise Exception('Errors in generating metadata')
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    return Response(content=metadata, media_type='application/xml')
+
+
+
+@app.post('/api/auth/sls', include_in_schema=False)
+async def api_auth_sls(background_tasks: BackgroundTasks, request: Request, response: Response, config = Depends(get_config_depends), session: SessionLocal = Depends(get_db)):
+
+    if not config.SAML_ENABLED:
+        raise HTTPException(status_code=404)
+
+    try:
+        req_data = await prepare_saml_request(request, config)
+        saml_auth = OneLogin_Saml2_Auth(req_data, APP_SAML_AUTH)
+        saml_auth.process_slo()
+        errors = saml_auth.get_errors()
+        if errors:
+            raise Exception('SAML logout error')
+    except Exception as e:
+        raise HTTPException(status_code=404, detail=str(e))
+
+    if not saml_auth.is_authenticated():
+
+        # Redirect to the homepage
+        response = RedirectResponse(request.url_for("ui_home"), status_code=303)
+
+        # If the user is still authenticated, log them out locally by
+        # setting the cookie to expire in the past, effectively removing it
+        response.delete_cookie(key="access_token")
+
+        return response
+
+    # Redirect the user to the home page after successful logout
+    return RedirectResponse(request.url_for("ui_home"), status_code=303)
+
 
 ##########################
 ### API Routes - Admin
