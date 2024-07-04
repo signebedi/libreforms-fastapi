@@ -25,6 +25,12 @@ from libreforms_fastapi.utils.custom_yaml import (
     get_custom_loader,
 )
 
+
+# from libreforms_fastapi.utils.jinja_emails import (
+#     test_email_config,
+# )
+
+
 class ImproperUsernameFormat(Exception):
     """Raised when the username does not meet the regular expression defined in the app config"""
     pass
@@ -980,6 +986,29 @@ class FormConfigUpdateRequest(BaseModel):
             raise ValueError(f"The content is not valid YAML: {e}")
         except Exception as e:
             raise ValueError(f"An error occurred while parsing YAML: {e}")
+
+
+class EmailConfigUpdateRequest(BaseModel):
+    """Another quick model for managing admin update email config API calls"""
+    content: str
+
+    @validator('content')
+    def validate_yaml(cls, v):
+
+        try:
+            # Remove leading and trailing double and single quotes
+            v = v.strip('"\'')
+
+            # _ = test_email_config(v, **kwargs)
+
+            data = yaml.safe_load(v)
+
+            return v
+        except yaml.YAMLError as e:
+            raise ValueError(f"The content is not valid YAML: {e}")
+        except Exception as e:
+            raise ValueError(f"An error occurred while parsing YAML: {e}")
+
 
 
 class GroupModel(BaseModel):

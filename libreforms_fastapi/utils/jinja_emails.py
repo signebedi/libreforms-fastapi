@@ -1,4 +1,5 @@
 import yaml
+from zoneinfo import ZoneInfo
 from jinja2 import Template, Undefined, Environment, make_logging_undefined, select_autoescape
 
 
@@ -117,8 +118,7 @@ help_request:
 
 
 
-
-def get_message_jinja(message_type, config_path):
+def get_email_yaml(config_path, return_as_yaml_str=False):
 
     # We want to add logic to read and overwrite 
     # these template key-value pairs using yaml.
@@ -127,18 +127,35 @@ def get_message_jinja(message_type, config_path):
     try:
         assert(os.path.exists(config_path)) # If it doesn't exist, let's skip this rigamarole
         with open(config_path, 'r') as file:
-            loaded_config = yaml.safe_load(file.read())
+
+            yaml_str = file.read()
+
+        if return_as_yaml_str: 
+            return yaml_str
+
+        loaded_config = yaml.safe_load(yaml_str)
 
     except Exception as e:
+
+        if return_as_yaml_str: 
+            return EXAMPLE_EMAIL_CONFIG_YAML
+
         loaded_config = {}
 
     # Overwrite default config with values from the default path
     for key, value in loaded_config.items():
         default_config[key] = value
 
+    return default_config
+
+
+def get_message_jinja(message_type, config_path):
+
+    config = get_email_yaml(config_path)
+    
     # Retrieve the unrendered Jinja templates from the dictionary
-    subj_template_str = default_config[message_type]['subj']
-    cont_template_str = default_config[message_type]['cont']
+    subj_template_str = config[message_type]['subj']
+    cont_template_str = config[message_type]['cont']
 
     return subj_template_str, cont_template_str
 
@@ -156,6 +173,51 @@ def render_email_message_from_jinja(message_type, config_path, **kwargs):
     rendered_cont = template_cont.render(**kwargs)
 
     return rendered_subj, rendered_cont
+
+def write_email_config_yaml(
+    config_path:str,
+    email_config_str:str,
+    env:str,
+    timezone=ZoneInfo("America/New_York"),
+    test_on_write:bool=True,
+    **kwargs,
+):
+    """
+    Here we write the string representation of the yaml email config.
+    """
+
+    if test_on_write:
+        # Attempt to load the YAML string to check its validity
+        _ = test_email_config(email_config_str, **kwargs)
+
+    # Ensure the base directory exists
+    basedir = os.path.dirname(config_path)
+    if not os.path.exists(basedir):
+        os.makedirs(basedir)
+
+    # Create a backup of the current config
+    config_backup_directory = Path(os.getcwd()) / 'instance' / f'{env}_email_config_backups'
+    config_backup_directory.mkdir(parents=True, exist_ok=True)
+
+    datetime_format = datetime.now(timezone).strftime("%Y%m%d%H%M%S")
+    config_file_name = Path(config_path).name
+    backup_file_name = f"{config_file_name}.{datetime_format}"
+    backup_file_path = config_backup_directory / backup_file_name
+
+    # Copy the existing config file to the backup location
+    if os.path.exists(config_path):
+        shutil.copy(config_path, backup_file_path)
+
+    # Write the cleaned YAML string to the config file
+    try:
+        with open(config_path, 'w') as file:
+            # file.write(cleaned_form_config_str)
+            file.write(email_config_str)
+    except Exception as e:
+        raise Exception(f"Failed to write the email config to {config_path}: {e}")
+
+    return True
+
 
 
 def test_email_config(email_config_yaml, **kwargs):

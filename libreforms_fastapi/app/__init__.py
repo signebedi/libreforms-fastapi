@@ -119,6 +119,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     RelationshipTypeModel,
     UserRelationshipModel,
     FormConfigUpdateRequest,
+    EmailConfigUpdateRequest,
     SiteConfig,
     get_user_model,
     get_form_model,
@@ -139,7 +140,12 @@ from libreforms_fastapi.utils.docs import (
 from libreforms_fastapi.utils.custom_tinydb import CustomEncoder
 
 # Import to render more powerful email content
-from libreforms_fastapi.utils.jinja_emails import render_email_message_from_jinja
+from libreforms_fastapi.utils.jinja_emails import ( 
+    render_email_message_from_jinja,
+    write_email_config_yaml,
+    test_email_config,
+    get_email_yaml,
+)
 
 # Here we set the application config using the get_config
 # factory pattern defined in libreforms_fastapi.utis.config.
@@ -4552,7 +4558,7 @@ async def api_admin_get_form_config(
         raise HTTPException(status_code=404)
 
 
-    _form_config = _get_form_config_yaml(config_path=config.FORM_CONFIG_PATH)
+    _form_config = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH)
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
@@ -4600,7 +4606,7 @@ async def api_admin_write_form_config(
         raise HTTPException(status_code=404)
 
 
-    old_form_config_str = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH).strip()
+    # old_form_config_str = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH).strip()
 
     try:
         write_form_config_yaml(
@@ -4631,6 +4637,115 @@ async def api_admin_write_form_config(
         status_code=200,
         content={"status": "success"},
     )
+
+
+
+# Get email yaml
+@app.get(
+    "/api/admin/get_email_config", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_get_email_config(
+    request: Request, 
+    background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY),
+    return_as_yaml_str: bool = False,
+):
+    """
+    Allows site administrators to view the site email config as yaml. This operation is logged for audit purposes. Set
+    `return_as_yaml_str` to True to receive back a string of the yaml config file.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    email_config = get_email_yaml(config_path=config.EMAIL_CONFIG_PATH, return_as_yaml_str=return_as_yaml_str)
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "content": email_config},
+    )
+
+
+# Update email config string
+@app.post(
+    "/api/admin/write_email_config", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+)
+async def api_admin_write_email_config(
+    request: Request, 
+    _email_config: EmailConfigUpdateRequest,
+    background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Allows site administrators to update the site email config as yaml. This operation is logged for audit purposes.
+    """
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    # old_config_str = get_email_yaml(config_path=config.EMAIL_CONFIG_PATH, return_as_yaml_str=return_as_yaml_str).strip()
+
+
+    try:
+        write_email_config_yaml(
+            config_path=config.EMAIL_CONFIG_PATH, 
+            email_config_str=_email_config.content, 
+            env=config.ENVIRONMENT,
+            timezone=config.TIMEZONE,
+            config=config, user=user, # Add'l kwargs to validate with better data
+        )
+    except Exception as e:
+        raise HTTPException(status_code=422, detail=f"{e}")
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success"},
+    )
+
 
 
 
