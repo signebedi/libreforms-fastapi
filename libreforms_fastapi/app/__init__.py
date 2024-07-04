@@ -3272,7 +3272,7 @@ async def api_admin_create_user(
     if config.SMTP_ENABLED:
 
         subject, content = render_email_message_from_jinja(
-            'user_registered', 
+            'user_registered_admin', 
             config=config,
             username=new_username, 
         )

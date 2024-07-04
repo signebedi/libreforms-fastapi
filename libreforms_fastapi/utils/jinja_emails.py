@@ -1,10 +1,20 @@
-from jinja2 import Template, UndefinedError, Environment, make_logging_undefined, select_autoescape
+import yaml
+from jinja2 import Template, Undefined, Environment, make_logging_undefined, select_autoescape
 
 
-class RaiseExceptionUndefined(make_logging_undefined(base=UndefinedError)):
-    """This exception will raise when admins invoke a context in an email template that is not available"""
-    def _fail_with_undefined_error(self, *args, **kwargs):
-        raise UndefinedError(f"{self._undefined_name} is undefined but is required for rendering the email template.")
+class RaiseExceptionUndefined(Undefined):
+    """This exception will raise when admins invoke a context in an email template that is not available."""
+    def _fail_with_undefined_error(self):
+        raise Exception(f"{self._undefined_name} is undefined but is required for rendering the email template.")
+
+    # Override the __getattr__ to raise error when accessing undefined attributes
+    def __getattr__(self, name):
+        self._fail_with_undefined_error()
+
+    # Override other methods that should raise an exception when dealing with undefined
+    def __str__(self):
+        self._fail_with_undefined_error()
+
 
 
 # Here we create a jinja env and pass our custom undefined exception
@@ -62,9 +72,13 @@ default_templates = {
         'cont': "This email serves to notify you that the user {{ user.username }} has just successfully reset their password at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator.",
     },
 
-    'user_registered': {
+    'user_registered_admin': {
         'subj': "{{ config.SITE_NAME }} User Registered",
         'cont': "This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. Your user has been given the following temporary password:\n\n{{ password }}\n\nPlease login to the system and update this password at your earliest convenience.",
+    },
+    'user_registered': {
+        'subj': "{{ config.SITE_NAME }} User Registered",
+        'cont': "This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}.",
     },
 
     'user_registered_verification': {
@@ -79,9 +93,7 @@ default_templates = {
         'subj': "Help Request from {{ user.username }}",
         'cont': "You are receiving this message because a user has submitted a request for help at {{ config.DOMAIN }}. You can see the request details below.\n\n****\nUser: {{ user.username }}\nEmail: {{ user.email }}\nTime of Submission: {{ time }}\nCategory: {{ category }}\nSubject: {{ subject }}\nMessage: {{ message }}\n****\n\nYou may reply directly to the user who submitted this request by replying to this email."
     },
-
 }
-
 
 
 EXAMPLE_EMAIL_CONFIG_YAML = '''
@@ -137,7 +149,7 @@ password_reset_complete:
   subj: "{{ config.SITE_NAME }} User Password Reset"
   cont: |
     This email serves to notify you that the user {{ user.username }} has just successfully reset their password at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator.
-user_registered:
+user_registered_admin:
   subj: "{{ config.SITE_NAME }} User Registered"
   cont: |
     This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. Your user has been given the following temporary password:
@@ -145,6 +157,10 @@ user_registered:
     {{ password }}
 
     Please login to the system and update this password at your earliest convenience.
+user_registered:
+  subj: "{{ config.SITE_NAME }} User Registered"
+  cont: |
+    This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. 
 user_registered_verification:
   subj: "{{ config.SITE_NAME }} User Registered"
   cont: |
@@ -171,6 +187,8 @@ help_request:
 '''
 
 
+
+
 def get_message_jinja(message_type):
     # Retrieve the unrendered Jinja templates from the dictionary
     subj_template_str = default_templates[message_type]['subj']
@@ -195,3 +213,64 @@ def render_email_message_from_jinja(message_type, **kwargs):
     rendered_cont = template_cont.render(**kwargs)
 
     return rendered_subj, rendered_cont
+
+
+def test_email_config(email_config_yaml, **kwargs):
+    # Load the YAML configuration into a Python dictionary
+    email_configs = safe_load(email_config_yaml)
+
+    # Set default values for parameters
+    defaults = {
+        'config': {'SITE_NAME': 'ExampleSite', 'DOMAIN': 'example.com'},
+        'user': {'username': 'default_user', 'opt_out': False},
+        'current_time': '2022-07-01 12:00:00',
+        'endpoint': '/default/endpoint',
+        'query_params': 'default=query',
+        'remote_addr': '192.168.0.1',
+        'document_id': 'default_doc_id',
+        'form_name': 'default_form_name',
+        'otp': '123456',
+        'time': '12:00 PM',
+        'category': 'General Inquiry',
+        'subject': 'Default Subject',
+        'message': 'Default Message',
+        'key': 'default_key',
+        'password': 'tempPassword123'
+    }
+
+    # Update defaults with any additional provided parameters
+    defaults.update(kwargs)
+
+    # Iterate through each email type in the configuration
+    for email_type, template_data in email_configs.items():
+        
+        # We create a copy of defaults so we can remove some context
+        # that is not available to certain events
+        modified_defaults = defaults.copy()
+
+        # We remove form details here because 
+        if email_type in ['transaction_log_error', 'api_key_rotation', 'user_password_changed', 'password_reset_instructions', 'password_reset_complete', 'user_registered', 'user_registered_verification', 'suspicious_activity', 'help_request']:
+
+            modified_defaults.pop('document_id')
+            modified_defaults.pop('form_name')
+
+        if email_type != 'user_registered_verification':
+            modified_defaults.pop('key')
+        
+        if email_type != 'password_reset_instructions':
+            modified_defaults.pop('otp')
+
+        if email_type != 'user_registered_admin':
+            modified_defaults.pop('password')
+
+
+
+        subj_template = env.from_string(template_data['subj'])
+        cont_template = env.from_string(template_data['cont'])
+
+        # Render the subject and content templates without try-except block
+        rendered_subj = subj_template.render(**modified_defaults)
+        rendered_cont = cont_template.render(**modified_defaults)
+        # print(f"Successfully rendered '{email_type}':\nSubject: {rendered_subj}\nContent: {rendered_cont[:60]}...")
+    
+    return True
