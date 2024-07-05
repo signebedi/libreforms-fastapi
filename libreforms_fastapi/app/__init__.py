@@ -3336,6 +3336,10 @@ async def api_auth_acs(background_tasks: BackgroundTasks, request: Request, conf
         if not user.active:
             raise HTTPException(status_code=400, detail="User authentication failed")
 
+        if user.no_login:
+            raise HTTPException(status_code=403, detail="Login not permitted for this account")
+
+
         # Clear failed login attempts and set last login time
         user.failed_login_attempts = 0
         user.last_login = datetime.now(config.TIMEZONE)
