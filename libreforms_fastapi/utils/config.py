@@ -201,6 +201,29 @@ def get_config(env):
             hours = int(os.getenv('PERMANENT_SESSION_LIFETIME', '6'))
             return timedelta(hours=hours)
 
+        # See https://github.com/signebedi/libreforms-fastapi/issues/231
+        MAX_INACTIVITY_PERIOD: str | bool | timedelta = timedelta(days=365)
+
+        @field_validator('MAX_INACTIVITY_PERIOD')
+        def set_max_inactivity_period(cls, v):
+            value_check = os.getenv('MAX_INACTIVITY_PERIOD', 'False') != "False"
+            if value_check is False:
+                return False
+            days = int(value_check)
+            return timedelta(days=days)
+
+        # See https://github.com/signebedi/libreforms-fastapi/issues/237
+        MAX_PASSWORD_AGE: str | bool | timedelta = timedelta(days=365) 
+
+        @field_validator('MAX_PASSWORD_AGE')
+        def set_max_password_age(cls, v):
+            value_check = os.getenv('MAX_PASSWORD_AGE', 'False') != "False"
+            if value_check is False:
+                return False
+            days = int(value_check)
+            return timedelta(days=days)
+
+
         # In development we do not force HTTPS, see
         # https://github.com/signebedi/libreforms-fastapi/issues/183
         FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'False') == 'True'

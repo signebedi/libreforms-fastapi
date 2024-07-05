@@ -639,7 +639,13 @@ with get_config_context() as config:
             logger.info("Default signature role already exists")
 
 
-
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+        
 # Here we define an API key header for the api view functions.
 X_API_KEY = APIKeyHeader(name="X-API-Key")
 
@@ -678,12 +684,18 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
             detail="API key expired"
         )
 
-def get_db():
-    db = SessionLocal()
-    try:
-        yield db
-    finally:
-        db.close()
+    # This logic is implemented in most API routes. Adding it here would reduce
+    # boilerplate, but I am going to hold off on doing so for right now. However,
+    # we can also use this to update the last_login field ... if we want the API
+    # to count toward that, since we are adding auto-lock after inactive periods,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/231.
+    # with get_db() as session:
+    #     user = session.query(User).filter_by(api_key=x_api_key).first()
+    #     if not user:
+    #         raise Exception("User does not exist")
+    #     if not user.active:
+    #         raise Exception("User is not active")
+
 
 def get_column_length(model, column_name):
     column = getattr(model, column_name, None)
@@ -2953,6 +2965,31 @@ async def api_auth_login(
 
     if not user.active:
         raise HTTPException(status_code=400, detail="User authentication failed")
+
+    if config.MAX_INACTIVITY_PERIOD is not False:
+
+        inactivity_period = datetime.now() - user.last_login
+
+        if inactivity_period > config.MAX_INACTIVITY_PERIOD:
+            user.active = False
+            session.add(user)
+            session.commit()
+
+
+            raise HTTPException(status_code=400, detail=f"User {user.username} has exceeded the maximum inactivity period of {config.MAX_INACTIVITY_PERIOD.days} days. Please contact your system administrator to reactivate the account.")
+
+
+    if config.MAX_PASSWORD_AGE is not False:
+        password_age = datetime.now() - user.last_password_change
+
+        if password_age > config.MAX_PASSWORD_AGE:
+            user.active = False
+            session.add(user)
+            session.commit()
+
+            raise HTTPException(status_code=400, detail=f"User {user.username} has a password that exceeds the maximum password age of {config.MAX_PASSWORD_AGE.days} days. Please contact your system administrator to reactivate the account.")
+
+
 
     # Validate that user has not exceeded the max failed login attempts,
     # see https://github.com/signebedi/libreforms-fastapi/issues/78
