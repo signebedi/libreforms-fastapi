@@ -575,8 +575,30 @@ def get_form_model(
     class Config:
         arbitrary_types_allowed = True
 
+    # Here we set defaults that will be overwritten by __config__ if it is passed,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/315.
+    _config = fields.get("__config__", {})
+
+    # Here we provide for event hooks, see discussion in
+    # https://github.com/signebedi/libreforms-fastapi/issues/210
+    event_hooks: dict[str, list[dict[str, Any]]] = {
+        x: _config.get(x, [])
+        for x in [
+            "on_create", 
+            "on_delete", 
+            "on_update", 
+            "on_duplicate", 
+            "on_read", 
+            "on_sign", 
+        ]}
+
+
     for field_name, field_info in fields.items():
         
+        # Continue if we encounter a __config__ field
+        if field_name == "__config__":
+            continue
+
         # Here, we tell the model factory to ignore header fields, see
         # https://github.com/signebedi/libreforms-fastapi/issues/204.
         if field_info.get("is_header", False):
@@ -592,28 +614,6 @@ def get_form_model(
         _links_to_form = field_info.get("links_to_form", False)
         if isinstance(_links_to_form, str):
             form_fields[field_name] = _links_to_form
-
-        # Here we provide for event hooks, see discussion in
-        # https://github.com/signebedi/libreforms-fastapi/issues/210
-        event_hooks: dict[str, list[dict[str, Any]]] = {
-            x: field_info.get(x, [])
-            for x in [
-                "on_create", 
-                "on_delete", 
-                "on_update", 
-                "on_duplicate", 
-                "on_read", 
-                "on_sign", 
-            ]}
-
-        # More verbose way to do the same thing
-        # event_hooks = {}
-        # event_hooks["on_create"] = field_info.get("on_create",[])
-        # event_hooks["on_delete"] = field_info.get("on_delete",[])
-        # event_hooks["on_update"] = field_info.get("on_update",[])
-        # event_hooks["on_duplicate"] = field_info.get("on_duplicate",[])
-        # event_hooks["on_read"] = field_info.get("on_read",[])
-        # event_hooks["on_sign"] = field_info.get("on_sign",[])
 
 
         python_type = field_info["output_type"]
@@ -643,19 +643,6 @@ def get_form_model(
 
     # Create dynamic model
     dynamic_model = create_model(form_name, __config__=Config, **field_definitions)
-
-    
-    def get_additional_metadata(self):
-        """
-        Return additional metadata for the form based on the form config. Added based on
-        the discussion in https://github.com/signebedi/libreforms-fastapi/issues/280
-        and https://github.com/signebedi/libreforms-fastapi/issues/281.
-        """
-
-        return user_fields, form_fields
-
-    # Attach the method to the dynamic model
-    dynamic_model.get_additional_metadata = get_additional_metadata
 
     def get_additional_metadata(self):
         """
@@ -717,6 +704,9 @@ def get_form_html(
     # Structured this way so we can access the list position
     for list_index, (field_name, field_info) in enumerate(list(form_config[form_name].items())):
     
+        # Continue if we encounter a __config__ field
+        if field_name == "__config__":
+            continue
 
         # Added from https://github.com/signebedi/libreforms-fastapi/issues/280
         links_to_form: str | None = field_info.get("links_to_form", False)
@@ -798,6 +788,7 @@ def get_form_html(
                     </fieldset>'''
 
             # Do not try to parse any of the other logic for this element
+            form_html.append(field_html)
             continue
 
         # See https://github.com/signebedi/libreforms-fastapi/issues/275. We make 
