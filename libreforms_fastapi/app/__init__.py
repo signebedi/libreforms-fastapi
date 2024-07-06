@@ -1186,9 +1186,9 @@ async def api_form_create(
             query_params={},
         )
 
-    # background_tasks.add_task(
-        # run_event_hooks,
-    run_event_hooks(
+    # run_event_hooks(
+    background_tasks.add_task(
+        run_event_hooks,
         document_id=document_id, 
         form_name=form_name,
         event_hooks=form_data.event_hooks['on_create'],
@@ -1269,6 +1269,22 @@ async def api_form_read_one(
 
     if not document:
         raise HTTPException(status_code=404, detail=f"Requested data could not be found")
+
+    # Here we implement event hooks, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/210
+    # run_event_hooks(
+    background_tasks.add_task(
+        run_event_hooks,
+        document_id=document_id, 
+        form_name=form_name,
+        event_hooks=form_data.event_hooks['on_read'],
+        config=config,
+        doc_db=doc_db,
+        mailer=mailer,
+        session=session,
+        user=user,
+    )
+
 
     return {
         "message": "Data successfully retrieved", 
@@ -1754,6 +1770,21 @@ async def api_form_update(
             query_params={},
         )
 
+    # Here we implement event hooks, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/210
+    # run_event_hooks(
+    background_tasks.add_task(
+        run_event_hooks,
+        document_id=document_id, 
+        form_name=form_name,
+        event_hooks=form_data.event_hooks['on_update'],
+        config=config,
+        doc_db=doc_db,
+        mailer=mailer,
+        session=session,
+        user=user,
+    )
+
     return {
         "message": "Form successfully updated", 
         "document_id": document_id, 
@@ -1865,6 +1896,22 @@ async def api_form_delete(
             remote_addr=remote_addr, 
             query_params={},
         )
+
+    # Here we implement event hooks, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/210
+    # run_event_hooks(
+    background_tasks.add_task(
+        run_event_hooks,
+        document_id=document_id, 
+        form_name=form_name,
+        event_hooks=form_data.event_hooks['on_delete'],
+        config=config,
+        doc_db=doc_db,
+        mailer=mailer,
+        session=session,
+        user=user,
+    )
+
 
     return {
         "message": "Form successfully deleted", 
@@ -2232,6 +2279,22 @@ async def api_form_sign(
             remote_addr=remote_addr, 
             query_params={},
         )
+
+    # Here we implement event hooks, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/210
+    # run_event_hooks(
+    background_tasks.add_task(
+        run_event_hooks,
+        document_id=document_id, 
+        form_name=form_name,
+        event_hooks=form_data.event_hooks['on_sign'],
+        config=config,
+        doc_db=doc_db,
+        mailer=mailer,
+        session=session,
+        user=user,
+    )
+
 
     return {
         "message": "Form successfully signed", 
