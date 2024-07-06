@@ -361,7 +361,8 @@ def load_form_config(
 
         except yaml.YAMLError as e:
             # raise Exception(f"Error parsing YAML file: {e}")
-            return default_config
+            # return default_config
+            raise e
         except IOError as e:
             # raise Exception(f"Error reading file: {e}")
             return default_config
@@ -553,6 +554,7 @@ def get_form_model(
     Returns:
         A dynamically created Pydantic model class.
     """
+
     form_config = load_form_config(
         config_path=config_path, 
         initialize_full_loader=initialize_full_loader,

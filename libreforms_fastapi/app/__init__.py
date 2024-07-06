@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
-from typing import Dict, Optional, Annotated
+from typing import Dict, Optional, Annotated, Any
 from urllib.parse import urlparse
 from markupsafe import escape
 from bson import ObjectId
@@ -825,6 +825,141 @@ if config.DEBUG:
 ##########################
 
 
+def run_event_hooks(
+    document_id:str,
+    form_name:str,
+    event_hooks: list[dict[str, Any]],
+    config,
+    doc_db,
+    mailer,
+    session,
+    user,
+):
+
+    # print("\n\n\n", event_hooks)
+
+    for event in event_hooks:
+        # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/313
+        if event['type'] == "send_mail":
+
+            if not config.SMTP_ENABLED:
+                continue
+
+            template = event.get('template', None)
+            target = event.get('target', None)
+            if not template or not target:
+                continue
+
+            method = event.get('method', None)
+
+            if method == "static":
+                emails = target
+
+            elif method == "group":
+                group = session.query(Group).filter(Group.name == target).one_or_none()
+
+                if not group:
+                    continue
+
+                emails = ", ".join([x.email for x in group.users])
+
+            elif method == "relationship":
+
+                # Here we let admins set this as a reciprocal relationship, but it defaults to 
+                # a regular one.
+                use_reciprocal_relationship = event.get('use_reciprocal_relationship', False)
+
+                if use_reciprocal_relationship:
+
+                    # Query the UserRelationship model to get the recprocal relationship instances
+                    relationships = session.query(UserRelationship).join(RelationshipType).filter(
+                        UserRelationship.related_user_id == user.id,
+                        RelationshipType.reciprocal_name == target
+                    ).all()
+
+                    if not relationships:
+                        continue 
+
+                    # Retrieve all related users ... need to think through whether this will
+                    # run into type-1 and type-2 errors; selecting reciprocal relationships
+                    # for the wrong users, or failing to select from reciprical relationships
+                    # when we want it to...
+                    related_users = [relationship.user for relationship in relationships]
+
+                else:
+                    # Query the UserRelationship model to get the relationship instances
+                    relationships = session.query(UserRelationship).join(RelationshipType).filter(
+                        UserRelationship.user_id == user.id,
+                        RelationshipType.name == target
+                    ).all()
+                    
+                    if not relationships:
+                        continue 
+
+                    related_users = [relationship.related_user for relationship in relationships]
+
+                emails = ", ".join([x.email for x in related_users])
+
+            else:
+                continue
+
+            # print("\n\n\n\n\n\n", method, "\n\n\n\n", emails)
+
+                
+            subject, content = render_email_message_from_jinja(
+                template, 
+                config.EMAIL_CONFIG_PATH,
+                config=config, 
+                form_name=form_name,
+                document_id=document_id
+            )
+
+            mailer.send_mail(
+                subject=subject, 
+                content=content,
+                to_address=emails,
+            )
+
+        # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/314
+        elif event['type'] == "set_value":
+            pass
+
+"""
+EXAMPLES:
+on_create:
+  - type: send_mail
+    template: form_message
+    method: static
+    target: bob@hr.example.com
+
+  - type: send_mail
+    template: form_message2
+    method: group
+    target: default
+
+  - type: send_mail
+    use_reciprocal_relationship: false
+    template: form_message3
+    method: relationship
+    target: some_relationship
+
+  - type: send_mail
+    use_reciprocal_relationship: true
+    template: form_message4
+    method: relationship
+    target: some_reciprical relationship_name
+
+
+  - type: set_value
+    selector_method: from_field
+    value_method: static
+    target_form_name: leave_requests
+    target_field_name: approval_status
+    target_document_id: request_id
+    value: "approved"
+"""
+
+
 # Create form
 @app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth)])
 async def api_form_create(
@@ -943,6 +1078,19 @@ async def api_form_create(
             remote_addr=remote_addr, 
             query_params={},
         )
+
+    # background_tasks.add_task(
+        # run_event_hooks,
+    run_event_hooks(
+        document_id=document_id, 
+        form_name=form_name,
+        event_hooks=form_data.event_hooks['on_create'],
+        config=config,
+        doc_db=doc_db,
+        mailer=mailer,
+        session=session,
+        user=user,
+    )
 
     return {
         "message": "Form submission received and validated", 
@@ -3593,6 +3741,7 @@ async def api_admin_create_user(
             config.EMAIL_CONFIG_PATH,
             config=config,
             username=new_username, 
+            password=password,
         )
         # print(subject, content)
 
@@ -4336,7 +4485,7 @@ async def api_admin_relationship_type(
         logger.warning(f'Attempt to create relationship type {new_relationship_request.name} but relationship type already exists. Did you mean to modify the relationship type?')
 
         raise HTTPException(status_code=409, detail="Could not create relationship type. Already exists.")
-    
+
     # Create and write the new Relationship Type
     new_relationship_type = RelationshipType(
         name=escape(new_relationship_request.name),
@@ -4346,6 +4495,18 @@ async def api_admin_relationship_type(
 
     # Assign a reciprocal name / title if one was passed
     if new_relationship_request.reciprocal_name:
+
+        existing_relationship_type_reciprocal = session.query(RelationshipType).filter_by(
+            reciprocal_name=new_relationship_request.reciprocal_name
+        ).first()
+
+        if existing_relationship_type_reciprocal:
+            # Consider adding IP tracking to failed attempt
+            logger.warning(f'Attempt to create relationship type {new_relationship_request.reciprocal_name} but relationship with this reciprocal type already exists. Did you mean to modify the reciprocal type?')
+
+            raise HTTPException(status_code=409, detail="Could not create relationship type. Reciprocal type already exists.")
+
+
         new_relationship_type.reciprocal_name = new_relationship_request.reciprocal_name
 
     session.add(new_relationship_type)
