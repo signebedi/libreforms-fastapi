@@ -512,6 +512,7 @@ class ManageTinyDB(ManageDocumentDB):
         limit_users:Union[bool, str]=False, 
         exclude_deleted:bool=True,
         sanitize_data:bool=True,
+        allow_unchanged_data:bool=False
     ):
         """Updates existing form in specified form's database."""
 
@@ -568,7 +569,7 @@ class ManageTinyDB(ManageDocumentDB):
 
         # If there are no unchanged fields, then raise an exception, 
         # see https://github.com/signebedi/libreforms-fastapi/issues/74
-        if len(dropping_unchanged_data.keys()) == 0:
+        if len(dropping_unchanged_data.keys()) == 0 and not allow_unchanged_data:
             raise NoChangesProvided(form_name, document_id)
 
         # print("\n\n\nDropping Unchanged Fields: ", dropping_unchanged_data)

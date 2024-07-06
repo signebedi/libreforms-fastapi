@@ -197,11 +197,16 @@ $(document).ready(function() {
                 if (dateFields.includes(attributeName)) {
                     table += `<td id="${key}-value-field"><span title="${value}">${prettifyTimeDiff(value, "{{config['TIMEZONE']|string}}")}</td>`; 
                 } else if (userFields.includes(attributeName)) { 
-                    table += `<td id="${key}-value-field">
-                        <a target="_blank" href="/ui/auth/p/${value}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${value}">
-                            ${value}
-                        </a>
-                    </td>`;
+                    if (value) { // This checks if 'value' is truthy
+                        table += `<td id="${key}-value-field">
+                                    <a target="_blank" href="/ui/auth/p/${value}" class="badge bg-primary text-decoration-none" style="{% if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin %}pointer-events: none;{% endif %}" aria-label="Link to ${value}">
+                                        ${value}
+                                    </a>
+                                </td>`;
+                    } else {
+                        table += `<td id="${key}-value-field"></td>`;
+                    }
+
                 } else if (attributeName in linkedFormFields) {
                     table += `<td id="${key}-value-field">
                         <a target="_blank" href="/ui/form/read_one/${linkedFormFields[attributeName]}/${value}" class="badge bg-primary text-decoration-none" aria-label="Link to ${linkedFormFields[attributeName]} with Document ID ${value}">

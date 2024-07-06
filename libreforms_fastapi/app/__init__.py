@@ -922,7 +922,95 @@ def run_event_hooks(
 
         # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/314
         elif event['type'] == "set_value":
-            pass
+
+            permitted_methods = ['static', 'from_field']
+
+            selector_method = event.get('selector_method', None)
+            value_method = event.get('value_method', None)
+
+            target_form_name = event.get('target_form_name', None)
+            target_field_name = event.get('target_field_name', None)
+            target_document_id = event.get('target_document_id', None)
+
+            value = event.get('value', None)
+
+            if not selector_method or not value_method or not target_field_name:
+                continue
+
+            if selector_method not in permitted_methods or value_method not in permitted_methods:
+                continue
+
+            if target_form_name not in doc_db._get_form_names():
+                continue
+
+            document = doc_db.get_one_document(
+                form_name=form_name,
+                document_id=document_id, 
+            )
+
+            if not document:
+                continue
+
+
+            metadata = {
+                doc_db.last_editor_field: user.username,
+            }
+
+            # Identify the value, parsing metadata fields
+            if value_method == "static":
+                _value = value
+            
+            elif value_method == "from_field":
+                # Get the current form's value of a given field
+                if value.startswith("__metadata__"):
+                    _value = document['metadata'].get(value[12:], None)
+                else:
+                    _value = document['data'].get(value, None)
+
+            else:
+                continue
+
+            data = {}
+
+            if target_field_name.startswith("__metadata__"):
+                metadata[target_field_name[12:]] = _value
+            else: 
+                data[target_field_name] = _value
+
+            # Dump to JSON
+            json_data = json.dumps(data)
+
+            # Determine the target document_id
+
+            if selector_method == "static":
+                _target_document_id = target_document_id
+
+            elif selector_method == "from_field":
+                if target_document_id.startswith("__metadata__"):
+                    _target_document_id = document['metadata'].get(target_document_id[12:], None)
+                else:
+                    _target_document_id = document['data'].get(target_document_id, None)
+
+            else:
+                continue
+
+            if not _target_document_id:
+                continue
+
+
+            print("\n\n\n\n", _target_document_id, "\n\n\n", _value)
+
+            # Write to the target
+            d = doc_db.update_document(
+                form_name = target_form_name, 
+                document_id = _target_document_id, 
+                json_data=json_data,
+                metadata=metadata, 
+                exclude_deleted=False,
+                allow_unchanged_data=True,
+            )
+
+
 
 """
 EXAMPLES:
@@ -949,7 +1037,7 @@ on_create:
     method: relationship
     target: some_reciprical relationship_name
 
-
+    # Here we set a from_field target document, with a static value
   - type: set_value
     selector_method: from_field
     value_method: static
@@ -957,6 +1045,25 @@ on_create:
     target_field_name: approval_status
     target_document_id: request_id
     value: "approved"
+
+    # Here we set a from_field target document, with a from_field value
+  - type: set_value
+    selector_method: from_field
+    value_method: from_field
+    target_form_name: leave_requests
+    target_field_name: approver
+    target_document_id: request_id
+    value: __metadata__created_by
+
+    # Here we set a static target document, with a from_field value
+  - type: set_value
+    selector_method: static
+    value_method: from_field
+    target_form_name: master_leave_record
+    target_field_name: approver
+    target_document_id: 664eab5c46c99199a7b22ab7
+    value: __metadata__created_by
+
 """
 
 
