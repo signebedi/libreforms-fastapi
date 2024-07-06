@@ -593,6 +593,29 @@ def get_form_model(
         if isinstance(_links_to_form, str):
             form_fields[field_name] = _links_to_form
 
+        # Here we provide for event hooks, see discussion in
+        # https://github.com/signebedi/libreforms-fastapi/issues/210
+        event_hooks: dict[str, list[dict[str, Any]]] = {
+            x: field_info.get(x, [])
+            for x in [
+                "on_create", 
+                "on_delete", 
+                "on_update", 
+                "on_duplicate", 
+                "on_read", 
+                "on_sign", 
+            ]}
+
+        # More verbose way to do the same thing
+        # event_hooks = {}
+        # event_hooks["on_create"] = field_info.get("on_create",[])
+        # event_hooks["on_delete"] = field_info.get("on_delete",[])
+        # event_hooks["on_update"] = field_info.get("on_update",[])
+        # event_hooks["on_duplicate"] = field_info.get("on_duplicate",[])
+        # event_hooks["on_read"] = field_info.get("on_read",[])
+        # event_hooks["on_sign"] = field_info.get("on_sign",[])
+
+
         python_type = field_info["output_type"]
         default_value = None if update else field_info.get("default", ...)
         required = field_info.get("required", False)
@@ -633,6 +656,22 @@ def get_form_model(
 
     # Attach the method to the dynamic model
     dynamic_model.get_additional_metadata = get_additional_metadata
+
+    def get_additional_metadata(self):
+        """
+        Return additional metadata for the form based on the form config. Added based on
+        the discussion in https://github.com/signebedi/libreforms-fastapi/issues/280
+        and https://github.com/signebedi/libreforms-fastapi/issues/281.
+        """
+
+        return user_fields, form_fields
+
+    # Attach the method to the dynamic model
+    dynamic_model.get_additional_metadata = get_additional_metadata
+
+    # Attach event hook attr to the dynamic model, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/210
+    dynamic_model.event_hooks = event_hooks
 
     return dynamic_model
 
