@@ -1273,17 +1273,17 @@ async def api_form_read_one(
     # Here we implement event hooks, see
     # https://github.com/signebedi/libreforms-fastapi/issues/210
     # run_event_hooks(
-    background_tasks.add_task(
-        run_event_hooks,
-        document_id=document_id, 
-        form_name=form_name,
-        event_hooks=form_data.event_hooks['on_read'],
-        config=config,
-        doc_db=doc_db,
-        mailer=mailer,
-        session=session,
-        user=user,
-    )
+    # background_tasks.add_task(
+    #     run_event_hooks,
+    #     document_id=document_id, 
+    #     form_name=form_name,
+    #     event_hooks=form_data.event_hooks['on_read'],
+    #     config=config,
+    #     doc_db=doc_db,
+    #     mailer=mailer,
+    #     session=session,
+    #     user=user,
+    # )
 
 
     return {
@@ -1900,17 +1900,17 @@ async def api_form_delete(
     # Here we implement event hooks, see
     # https://github.com/signebedi/libreforms-fastapi/issues/210
     # run_event_hooks(
-    background_tasks.add_task(
-        run_event_hooks,
-        document_id=document_id, 
-        form_name=form_name,
-        event_hooks=form_data.event_hooks['on_delete'],
-        config=config,
-        doc_db=doc_db,
-        mailer=mailer,
-        session=session,
-        user=user,
-    )
+    # background_tasks.add_task(
+    #     run_event_hooks,
+    #     document_id=document_id, 
+    #     form_name=form_name,
+    #     event_hooks=form_data.event_hooks['on_delete'],
+    #     config=config,
+    #     doc_db=doc_db,
+    #     mailer=mailer,
+    #     session=session,
+    #     user=user,
+    # )
 
 
     return {
@@ -2283,17 +2283,17 @@ async def api_form_sign(
     # Here we implement event hooks, see
     # https://github.com/signebedi/libreforms-fastapi/issues/210
     # run_event_hooks(
-    background_tasks.add_task(
-        run_event_hooks,
-        document_id=document_id, 
-        form_name=form_name,
-        event_hooks=form_data.event_hooks['on_sign'],
-        config=config,
-        doc_db=doc_db,
-        mailer=mailer,
-        session=session,
-        user=user,
-    )
+    # background_tasks.add_task(
+    #     run_event_hooks,
+    #     document_id=document_id, 
+    #     form_name=form_name,
+    #     event_hooks=form_data.event_hooks['on_sign'],
+    #     config=config,
+    #     doc_db=doc_db,
+    #     mailer=mailer,
+    #     session=session,
+    #     user=user,
+    # )
 
 
     return {
