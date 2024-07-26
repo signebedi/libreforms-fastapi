@@ -27,45 +27,81 @@ class Mailer():
         self, 
         subject=None, 
         content=None, 
-        to_address:str=None, 
-        # to_address:str|list=None, 
-        cc_address_list:list=[], 
+        to_address:str|list=[], 
+        cc_address_list:str|list=[], 
         logfile=None, 
-        reply_to_addr=None
+        reply_to_addr=None,
+        # body_type="plain",
+        # parse_to_addr_as_list:bool=False,
     ):
 
         # only proceed if we have enabled SMTP
         if not self.enabled:
             return
 
+        # # We want to verify the to address
+        # if not isinstance(to_address, list) and parse_to_addr_as_list:
+        #     # to_address = ", ".join(to_address)
+        #     raise Exception("You must pass a list of emails to send_mail if parse_to_addr_as_list is True")
 
-        # We want to verify the to address
-        # if isinstance(to_address, list):
-        #     to_address = ", ".join(to_address)
+        # if isinstance(to_address, list) and not parse_to_addr_as_list:
+        #     # to_address = ", ".join(to_address)
+        #     raise Exception("You must emails to send_mail as a string if parse_to_addr_as_list is False")
 
+        # Check to_address
+        if not to_address:
+            raise Exception("You must pass a to_addr as a string or list")
+
+        # Cast to address as a list
+        if isinstance(to_address, str):
+            to_address = [to_address]
+        string_to_address_list = ", ".join(to_address).strip()
+
+        print("\n\n\n", string_to_address_list)
 
         # We want to verify the type of the cc list
-        if all([
-            cc_address_list,
-            isinstance(cc_address_list, list),
-            len(cc_address_list)>0
-        ]):
-            final_cc_address_list = ", ".join(cc_address_list)
-        else:
-            final_cc_address_list = None
+        if isinstance(cc_address_list, str):
+            cc_address_list = [cc_address_list]
+        string_cc_address_list = ", ".join(cc_address_list).strip()
+
+        print("\n\n\n", string_cc_address_list)
+
+        # if all([
+        #     cc_address_list,
+        #     isinstance(cc_address_list, list),
+        #     len(cc_address_list)>0
+        # ]):
+        #     final_cc_address_list = ", ".join(cc_address_list)
+        # else:
+        #     final_cc_address_list = None
+
+        # merged_email_list = to_address + cc_address_list
 
         try:
             # creating an unsecure smtp connection
             with smtplib.SMTP(self.mail_server,self.port) as server:
 
+                # Generate the message content
                 msg = MIMEMultipart()
                 msg['Subject'] = Header(subject, 'utf-8')
                 msg['From'] = self.from_address
-                msg['To'] = to_address
-                msg['Cc'] = final_cc_address_list
+                msg['To'] = string_to_address_list
+
+                if len(cc_address_list) > 0:
+                    msg['Cc'] = string_cc_address_list
+                
                 msg['Reply-To'] = reply_to_addr if reply_to_addr else self.from_address
 
-                msg.attach(MIMEText(content))
+                # msg.attach(MIMEText(content, body_type))
+                msg.attach(MIMEText(content, 'plain', 'utf-8'))
+
+                # part = MIMEText(file_content, body_type, 'utf-8')
+                # part = MIMEText(content, 'plain', 'utf-8')
+                # part.add_header('Content-Disposition', 'attachment; filename="filename.txt"')
+                # msg.attach(part)
+
+
+                print("\n\n\n", msg.as_string())
 
                 # securing using tls
                 server.starttls(context=self.context)
@@ -73,9 +109,16 @@ class Mailer():
                 # authenticating with the server to prove our identity
                 server.login(self.username, self.password)
 
+                # if obfuscate_emails_for_recipients:
+                #     for email_target in merged_email_list:
+
                 # sending a plain text email
-                server.sendmail(self.from_address, [to_address]+cc_address_list, msg.as_string())
+                # server.sendmail(self.from_address, merged_email_list, msg.as_string())
                 # server.send_message(msg.as_string())
+
+                # Sending mail using send_message should address issues in list concating, see 
+                # https://github.com/signebedi/libreforms-fastapi/issues/326
+                server.send_message(msg)
 
                 if logfile: logfile.info(f'successfully sent an email to {to_address}')
                 

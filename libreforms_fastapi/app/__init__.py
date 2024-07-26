@@ -853,7 +853,7 @@ def run_event_hooks(
             method = event.get('method', None)
 
             if method == "static":
-                emails = target
+                emails = [target]
 
             elif method == "group":
                 group = session.query(Group).filter(Group.name == target).one_or_none()
@@ -861,7 +861,11 @@ def run_event_hooks(
                 if not group:
                     continue
 
-                emails = ", ".join([x.email for x in group.users])
+                # https://stackoverflow.com/a/12422921
+                # emails = ", ".join([x.email for x in group.users])
+                # The formulation above was causing errors when sending mail, see 
+                # https://github.com/signebedi/libreforms-fastapi/issues/326.
+                emails = [x.email for x in group.users]
 
             elif method == "relationship":
 
@@ -898,7 +902,13 @@ def run_event_hooks(
 
                     related_users = [relationship.related_user for relationship in relationships]
 
-                emails = ", ".join([x.email for x in related_users])
+                # https://stackoverflow.com/a/12422921
+                # emails = ", ".join([x.email for x in related_users])
+                # The formulation above was causing errors when sending mail, see 
+                # https://github.com/signebedi/libreforms-fastapi/issues/326.
+                emails = [x.email for x in related_users]
+
+
 
             else:
                 continue
@@ -914,11 +924,22 @@ def run_event_hooks(
                 document_id=document_id
             )
 
-            mailer.send_mail(
-                subject=subject, 
-                content=content,
-                to_address=emails,
-            )
+            # mailer.send_mail(
+            #     subject=subject, 
+            #     content=content,
+            #     to_address=emails,
+            # )
+
+            # Ugh .. until we can figure out how to send to multiple email targets, 
+            # which has been giving difficulty, we will send each individually. See
+            # https://github.com/signebedi/libreforms-fastapi/issues/326.
+            for _email_target in emails:
+                mailer.send_mail(
+                    subject=subject, 
+                    content=content,
+                    to_address=_email_target,
+                )
+
 
         # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/314
         elif event['type'] == "set_value":
