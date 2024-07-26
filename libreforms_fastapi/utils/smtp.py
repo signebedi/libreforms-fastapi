@@ -1,18 +1,21 @@
 import ssl
 import smtplib 
+import copy
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from email.header import Header
+from logging import Logger, ERROR, INFO, WARNING
 
 class Mailer():
     def __init__(
         self,
-        mail_server=None, 
-        port=None,
-        username=None, 
-        password=None, 
-        from_address=None, 
-        enabled=True
+        mail_server: str | None = None, 
+        port: str | None = None,
+        username: str | None = None, 
+        password: str | None = None, 
+        from_address: str | None = None, 
+        enabled: bool = True,
+        logger: Logger | None = None,
     ):
 
         if enabled:
@@ -26,6 +29,8 @@ class Mailer():
             self.enabled = True
         else: 
             self.enabled = False
+
+        self.logger = logger
 
     # borrowed shamelessly from 
     # https://www.aabidsofi.com/posts/sending-emails-with-aws-ses-and-python/
@@ -43,6 +48,8 @@ class Mailer():
 
         # only proceed if we have enabled SMTP
         if not self.enabled:
+            if self.logger:
+                self.logger.warning("Mailer is disabled. Email not sent.")
             return
 
         # Check to_address
@@ -109,29 +116,51 @@ class Mailer():
             if not send_individually:
 
                 msg['To'] = string_to_address_list
-                server.send_message(msg)
+
+                try:
+                    server.send_message(msg)
+
+                    self._log_or_print(INFO, f'Email sent to {string_to_address_list}')
+                except smtplib.SMTPRecipientsRefused as e:
+                    self._log_or_print(ERROR, f'Failed to send email to {string_to_address_list}: {e.recipients}')
+                except smtplib.SMTPException as e:
+                    self._log_or_print(ERROR, f'An SMTP error occurred while sending to {string_to_address_list}: {e}')
+                except Exception as e:
+                    self._log_or_print(ERROR, f'An unexpected error occurred while sending to {string_to_address_list}: {e}')
 
                 return True
 
             for recipient in to_address:
-                msg['To'] = recipient
+                _msg = copy.deepcopy(msg) # this prevents boilerplate and inadvertently sending multiple emails
+                _msg['To'] = recipient
                 try:
-                    server.send_message(msg)
-                    print(f'Email sent to {recipient}')
+                    server.send_message(_msg)
+                    self._log_or_print(INFO, f'Email sent to {string_to_address_list}')
                 except smtplib.SMTPRecipientsRefused as e:
-                    print(f'Failed to send email to {recipient}: {e.recipients}')
+                    self._log_or_print(ERROR, f'Failed to send email to {string_to_address_list}: {e.recipients}')
                 except smtplib.SMTPException as e:
-                    print(f'An SMTP error occurred while sending to {recipient}: {e}')
+                    self._log_or_print(ERROR, f'An SMTP error occurred while sending to {string_to_address_list}: {e}')
                 except Exception as e:
-                    print(f'An unexpected error occurred while sending to {recipient}: {e}')
+                    self._log_or_print(ERROR, f'An unexpected error occurred while sending to {string_to_address_list}: {e}')
 
 
             return True
 
 
+        #  This is not really doing anything ...
         return False
 
 
+    def _log_or_print(self, level: int, message: str):
+        if self.logger:
+            if level == INFO:
+                self.logger.info(message)
+            elif level == WARNING:
+                self.logger.warning(message)
+            elif level == ERROR:
+                self.logger.error(message)
+        else:
+            print(message)
 
 
 
