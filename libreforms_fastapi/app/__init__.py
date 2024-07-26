@@ -924,21 +924,21 @@ def run_event_hooks(
                 document_id=document_id
             )
 
-            # mailer.send_mail(
-            #     subject=subject, 
-            #     content=content,
-            #     to_address=emails,
-            # )
+            mailer.send_mail(
+                subject=subject, 
+                content=content,
+                to_address=emails,
+            )
 
             # Ugh .. until we can figure out how to send to multiple email targets, 
             # which has been giving difficulty, we will send each individually. See
             # https://github.com/signebedi/libreforms-fastapi/issues/326.
-            for _email_target in emails:
-                mailer.send_mail(
-                    subject=subject, 
-                    content=content,
-                    to_address=_email_target,
-                )
+            # for _email_target in emails:
+            #     mailer.send_mail(
+            #         subject=subject, 
+            #         content=content,
+            #         to_address=_email_target,
+            #     )
 
 
         # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/314

@@ -5,9 +5,15 @@ from email.mime.multipart import MIMEMultipart
 from email.header import Header
 
 class Mailer():
-    def __init__(self, mail_server=None, port=None, 
-                        username=None, password=None, 
-                        from_address=None, enabled=True):
+    def __init__(
+        self,
+        mail_server=None, 
+        port=None,
+        username=None, 
+        password=None, 
+        from_address=None, 
+        enabled=True
+    ):
 
         if enabled:
             # setting up ssl context
@@ -25,28 +31,19 @@ class Mailer():
     # https://www.aabidsofi.com/posts/sending-emails-with-aws-ses-and-python/
     def send_mail(
         self, 
-        subject=None, 
-        content=None, 
-        to_address:str|list=[], 
-        cc_address_list:str|list=[], 
-        logfile=None, 
-        reply_to_addr=None,
-        body_type="plain",
+        subject: None | str = None, 
+        content: None | str = None, 
+        to_address: str | list = [], 
+        cc_address_list: str | list = [], 
+        reply_to_addr: None | str = None,
+        body_type: str = "plain",
+        send_individually: bool = True,
         # parse_to_addr_as_list:bool=False,
     ):
 
         # only proceed if we have enabled SMTP
         if not self.enabled:
             return
-
-        # # We want to verify the to address
-        # if not isinstance(to_address, list) and parse_to_addr_as_list:
-        #     # to_address = ", ".join(to_address)
-        #     raise Exception("You must pass a list of emails to send_mail if parse_to_addr_as_list is True")
-
-        # if isinstance(to_address, list) and not parse_to_addr_as_list:
-        #     # to_address = ", ".join(to_address)
-        #     raise Exception("You must emails to send_mail as a string if parse_to_addr_as_list is False")
 
         # Check to_address
         if not to_address:
@@ -57,76 +54,85 @@ class Mailer():
             to_address = [to_address]
         string_to_address_list = ", ".join(to_address).strip()
 
-        print("\n\n\n", string_to_address_list)
+        # print("\n\n\n", string_to_address_list)
 
         # We want to verify the type of the cc list
         if isinstance(cc_address_list, str):
             cc_address_list = [cc_address_list]
         string_cc_address_list = ", ".join(cc_address_list).strip()
 
-        print("\n\n\n", string_cc_address_list)
+        # print("\n\n\n", string_cc_address_list)
 
-        # if all([
-        #     cc_address_list,
-        #     isinstance(cc_address_list, list),
-        #     len(cc_address_list)>0
-        # ]):
-        #     final_cc_address_list = ", ".join(cc_address_list)
-        # else:
-        #     final_cc_address_list = None
+        # Generate the message content
+        msg = MIMEMultipart()
+        msg['Subject'] = Header(subject, 'utf-8')
+        msg['From'] = self.from_address
+        # msg['To'] = string_to_address_list
 
-        # merged_email_list = to_address + cc_address_list
+        if len(cc_address_list) > 0:
+            msg['Cc'] = string_cc_address_list
+        
+        msg['Reply-To'] = reply_to_addr if reply_to_addr else self.from_address
 
-        try:
-            # creating an unsecure smtp connection
-            with smtplib.SMTP(self.mail_server,self.port) as server:
+        msg.attach(MIMEText(content, body_type, 'utf-8'))
 
-                # Generate the message content
-                msg = MIMEMultipart()
-                msg['Subject'] = Header(subject, 'utf-8')
-                msg['From'] = self.from_address
+        # In the future we may want to add support for attachments
+        # part = MIMEText(file_content, body_type, 'utf-8')
+        # part = MIMEText(content, 'plain', 'utf-8')
+        # part.add_header('Content-Disposition', 'attachment; filename="filename.txt"')
+        # msg.attach(part)
+
+
+        # print("\n\n\n", msg.as_string())
+
+
+        # creating an unsecure smtp connection
+        with smtplib.SMTP(self.mail_server,self.port) as server:
+
+
+            # securing using tls
+            server.starttls(context=self.context)
+
+            # authenticating with the server to prove our identity
+            server.login(self.username, self.password)
+
+            # if obfuscate_emails_for_recipients:
+            #     for email_target in merged_email_list:
+
+            # sending a plain text email
+            # server.sendmail(self.from_address, merged_email_list, msg.as_string())
+            # server.send_message(msg.as_string())
+
+            # Sending messages individually may increase quota usage and costs, see
+            # https://github.com/signebedi/libreforms-fastapi/issues/326. Note:
+            # there are issues with sending to multiple recipients.
+            if not send_individually:
+
                 msg['To'] = string_to_address_list
-
-                if len(cc_address_list) > 0:
-                    msg['Cc'] = string_cc_address_list
-                
-                msg['Reply-To'] = reply_to_addr if reply_to_addr else self.from_address
-
-                msg.attach(MIMEText(content, body_type, 'utf-8'))
-
-                # part = MIMEText(file_content, body_type, 'utf-8')
-                # part = MIMEText(content, 'plain', 'utf-8')
-                # part.add_header('Content-Disposition', 'attachment; filename="filename.txt"')
-                # msg.attach(part)
-
-
-                print("\n\n\n", msg.as_string())
-
-                # securing using tls
-                server.starttls(context=self.context)
-
-                # authenticating with the server to prove our identity
-                server.login(self.username, self.password)
-
-                # if obfuscate_emails_for_recipients:
-                #     for email_target in merged_email_list:
-
-                # sending a plain text email
-                # server.sendmail(self.from_address, merged_email_list, msg.as_string())
-                # server.send_message(msg.as_string())
-
-                # Sending mail using send_message should address issues in list concating, see 
-                # https://github.com/signebedi/libreforms-fastapi/issues/326
                 server.send_message(msg)
 
-                if logfile: logfile.info(f'successfully sent an email to {to_address}')
-                
                 return True
 
-        except Exception as e: 
-            if logfile: logfile.error(f'could not send an email to {to_address} - {e}')
-            
-            return False
+            for recipient in to_address:
+                msg['To'] = recipient
+                try:
+                    server.send_message(msg)
+                    print(f'Email sent to {recipient}')
+                except smtplib.SMTPRecipientsRefused as e:
+                    print(f'Failed to send email to {recipient}: {e.recipients}')
+                except smtplib.SMTPException as e:
+                    print(f'An SMTP error occurred while sending to {recipient}: {e}')
+                except Exception as e:
+                    print(f'An unexpected error occurred while sending to {recipient}: {e}')
+
+
+            return True
+
+
+        return False
+
+
+
 
 
     def test_connection(
