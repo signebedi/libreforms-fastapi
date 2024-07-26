@@ -31,7 +31,7 @@ class Mailer():
         cc_address_list:str|list=[], 
         logfile=None, 
         reply_to_addr=None,
-        # body_type="plain",
+        body_type="plain",
         # parse_to_addr_as_list:bool=False,
     ):
 
@@ -92,8 +92,7 @@ class Mailer():
                 
                 msg['Reply-To'] = reply_to_addr if reply_to_addr else self.from_address
 
-                # msg.attach(MIMEText(content, body_type))
-                msg.attach(MIMEText(content, 'plain', 'utf-8'))
+                msg.attach(MIMEText(content, body_type, 'utf-8'))
 
                 # part = MIMEText(file_content, body_type, 'utf-8')
                 # part = MIMEText(content, 'plain', 'utf-8')
