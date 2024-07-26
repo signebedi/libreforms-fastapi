@@ -41,7 +41,8 @@ class Mailer():
         to_address: str | list = [], 
         cc_address_list: str | list = [], 
         reply_to_addr: None | str = None,
-        body_type: str = "plain",
+        # body_type: str = "plain",
+        body_type: str = "html",
         send_individually: bool = True,
         # parse_to_addr_as_list:bool=False,
     ):

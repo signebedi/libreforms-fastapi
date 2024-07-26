@@ -28,7 +28,159 @@ env = Environment(
     undefined=RaiseExceptionUndefined,
 )
 
+
 EXAMPLE_EMAIL_CONFIG_YAML = '''
+transaction_log_error:
+  subj: "Transaction Log Error"
+  cont: |
+    <html>
+    <body>
+      <p>You are receiving this message because you are the designated help email for <b>{{ config.SITE_NAME }}</b>. This message is to notify you that there was an error when writing the following transaction to the transaction log for <b>{{ config.SITE_NAME }}</b>:</p>
+      <hr>
+      <p>
+        <b>User:</b> {{ user.username if not user.opt_out else 'N/A' }}<br>
+        <b>Timestamp:</b> {{ current_time }}<br>
+        <b>Endpoint:</b> {{ endpoint }}<br>
+        <b>Query Params:</b> {{ query_params if query_params else 'N/A' }}<br>
+        <b>Remote Address:</b> {{ remote_addr if not user.opt_out else 'N/A' }}
+      </p>
+    </body>
+    </html>
+api_key_rotation:
+  subj: "{{ config.SITE_NAME }} API Key Rotated"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that an API key for user <b>{{ user.username }}</b> has just rotated at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. Please note that your past API key will no longer work if you are employing it in applications. Your new key will be active for 365 days. You can see your new key by visiting <a href="{{ config.DOMAIN }}/profile">{{ config.DOMAIN }}/profile</a>.</p>
+    </body>
+    </html>
+form_created:
+  subj: "Form Created"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that a form was submitted at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a> by the user registered at this email address. The form's document ID is <b>{{ document_id }}</b>. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
+form_updated:
+  subj: "Form Updated"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that an existing form was updated at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a> by the user registered at this email address. The form's document ID is <b>{{ document_id }}</b>. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
+form_deleted:
+  subj: "Form Deleted"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that a form was deleted at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a> by the user registered at this email address. The form's document ID is <b>{{ document_id }}</b>. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
+form_restored:
+  subj: "Form Restored"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that a deleted form was restored at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a> by the user registered at this email address. The form's document ID is <b>{{ document_id }}</b>. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
+form_signed:
+  subj: "Form Signed"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that a form was signed at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a> by the user registered at this email address. The form's document ID is <b>{{ document_id }}</b>. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
+form_unsigned:
+  subj: "Form Unsigned"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that a form was unsigned at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a> by the user registered at this email address. The form's document ID is <b>{{ document_id }}</b>. If you believe this was a mistake, or did not intend to unsign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
+user_password_changed:
+  subj: "{{ config.SITE_NAME }} User Password Changed"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that the user <b>{{ user.username }}</b> has just had their password changed at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. If you believe this was a mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
+password_reset_instructions:
+  subj: "{{ config.SITE_NAME }} User Password Reset Instructions"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that the user <b>{{ user.username }}</b> has just requested to reset their password at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. To do so, you may use the one-time password <b>{{ otp }}</b>. This one-time password will expire in three hours. If you have access to the user interface, you may reset your password at the following link: <a href="{{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}">{{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}</a>. If you believe this was a mistake, please contact your system administrator {{ "at" + config.HELP_EMAIL + "'>" + config.HELP_EMAIL + "</a>" if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
+password_reset_complete:
+  subj: "{{ config.SITE_NAME }} User Password Reset"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that the user <b>{{ user.username }}</b> has just successfully reset their password at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. If you believe this was a mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
+user_registered_admin:
+  subj: "{{ config.SITE_NAME }} User Registered"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that the user <b>{{ username }}</b> has just been registered for this email address at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. Your user has been given the following temporary password:</p>
+      <p><b>{{ password }}</b></p>
+      <p>Please login to the system and update this password at your earliest convenience.</p>
+    </body>
+    </html>
+user_registered:
+  subj: "{{ config.SITE_NAME }} User Registered"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that the user <b>{{ username }}</b> has just been registered for this email address at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>.</p>
+    </body>
+    </html>
+user_registered_verification:
+  subj: "{{ config.SITE_NAME }} User Registered"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that the user <b>{{ username }}</b> has just been registered for this email address at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. Please verify your email by clicking the following link: <a href="{{ config.DOMAIN }}/verify/{{ key }}">{{ config.DOMAIN }}/verify/{{ key }}</a>. Please note this link will expire after 48 hours.</p>
+    </body>
+    </html>
+suspicious_activity:
+  subj: "{{ config.SITE_NAME }} Suspicious Activity"
+  cont: |
+    <html>
+    <body>
+      <p>This email serves to notify you that there was an attempt to register a user with the same email as the account registered to you at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. If this was you, you may safely disregard this email. If it was not you, you should consider contacting your system administrator and changing your password.</p>
+    </body>
+    </html>
+help_request:
+  subj: "Help Request from {{ user.username }}"
+  cont: |
+    <html>
+    <body>
+      <p>You are receiving this message because a user has submitted a request for help at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. You can see the request details below.</p>
+      <hr>
+      <p>
+        <b>User:</b> {{ user.username }}<br>
+        <b>Email:</b> {{ user.email }}<br>
+        <b>Time of Submission:</b> {{ time }}<br>
+        <b>Category:</b> {{ category }}<br>
+        <b>Subject:</b> {{ subject }}<br>
+        <b>Message:</b> {{ message }}
+      </p>
+      <p>You may reply directly to the user who submitted this request by replying to this email.</p>
+    </body>
+    </html>
+'''
+
+OLD_EXAMPLE_EMAIL_CONFIG_YAML = '''
 transaction_log_error:
   subj: "Transaction Log Error"
   cont: |
