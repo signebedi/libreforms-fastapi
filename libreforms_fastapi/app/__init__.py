@@ -205,24 +205,6 @@ def clear_config_cache():
     get_config_depends.cache_clear()
 
 
-def get_mailer():
-
-    # with get_config_context() as config:
-
-    config = get_config_depends()
-
-    # Instantiate the Mailer object
-    mailer = Mailer(
-        enabled = config.SMTP_ENABLED,
-        mail_server = config.SMTP_MAIL_SERVER,
-        port = config.SMTP_PORT,
-        username = config.SMTP_USERNAME,
-        password = config.SMTP_PASSWORD,
-        from_address = config.SMTP_FROM_ADDRESS,
-    )
-
-    return mailer
-
 
 def get_doc_db():
 
@@ -638,6 +620,28 @@ with get_config_context() as config:
         else:
             logger.info("Default signature role already exists")
 
+
+
+def get_mailer():
+
+    # with get_config_context() as config:
+
+    config = get_config_depends()
+
+    # Instantiate the Mailer object
+    mailer = Mailer(
+        enabled = config.SMTP_ENABLED,
+        mail_server = config.SMTP_MAIL_SERVER,
+        port = config.SMTP_PORT,
+        username = config.SMTP_USERNAME,
+        password = config.SMTP_PASSWORD,
+        from_address = config.SMTP_FROM_ADDRESS,
+        # Cowabunga! We'll see if this causes log handler issues. Added in
+        # https://github.com/signebedi/libreforms-fastapi/issues/326.
+        logger=logger,
+    )
+
+    return mailer
 
 def get_db():
     db = SessionLocal()
