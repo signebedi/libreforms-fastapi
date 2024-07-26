@@ -637,8 +637,10 @@ def get_mailer():
         password = config.SMTP_PASSWORD,
         from_address = config.SMTP_FROM_ADDRESS,
         # Cowabunga! We'll see if this causes log handler issues. Added in
-        # https://github.com/signebedi/libreforms-fastapi/issues/326.
-        logger=logger,
+        # https://github.com/signebedi/libreforms-fastapi/issues/326. We
+        # should implement a singleton pattern for log objects used in dependency
+        # injections, see https://github.com/signebedi/libreforms-fastapi/issues/330.
+        logger=logger if config.ENVIRONMENT == "development" else None,
     )
 
     return mailer
