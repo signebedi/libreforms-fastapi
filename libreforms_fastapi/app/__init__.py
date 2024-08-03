@@ -552,7 +552,7 @@ with get_config_context() as config:
     PasswordReuse = models['PasswordReuse']
     Group = models['Group']
     TransactionLog = models['TransactionLog']
-    SignatureRoles = models['SignatureRoles']
+    # SignatureRoles = models['SignatureRoles']
     Signing = models['Signing']
 
     # Adding user relationship models below, see
@@ -604,21 +604,21 @@ with get_config_context() as config:
             logger.info("Default group already exists")
 
         # Check if a signature role with id 1 exists
-        _default_signature_role = session.query(SignatureRoles).get(1)
+        # _default_signature_role = session.query(SignatureRoles).get(1)
 
-        if not _default_signature_role:
-            # If not, create and add the new signature for the example_form
-            _default_signature_role = SignatureRoles(
-                id=1, 
-                role_name="default signature role", 
-                role_method="signature",
-                form_name="example_form"
-            )
-            session.add(_default_signature_role)
-            session.commit()
-            logger.info("Default signature role created")
-        else:
-            logger.info("Default signature role already exists")
+        # if not _default_signature_role:
+        #     # If not, create and add the new signature for the example_form
+        #     _default_signature_role = SignatureRoles(
+        #         id=1, 
+        #         role_name="default signature role", 
+        #         role_method="signature",
+        #         form_name="example_form"
+        #     )
+        #     session.add(_default_signature_role)
+        #     session.commit()
+        #     logger.info("Default signature role created")
+        # else:
+        #     logger.info("Default signature role already exists")
 
 
 

@@ -391,7 +391,8 @@ def get_sqlalchemy_models(
 
 
 
-    # Allow custom approval chains to be defined here
+    # Allow custom approval chains to be defined here. Deprecated in favor of config-based
+    # approach, see https://github.com/signebedi/libreforms-fastapi/issues/62.
     class SignatureRoles(Base):
         __tablename__ = 'signature_roles'
         id = Column(Integer, primary_key=True)
@@ -477,7 +478,7 @@ def get_sqlalchemy_models(
         "PasswordReuse": PasswordReuse,
         "Group": Group,
         "TransactionLog": TransactionLog,
-        "SignatureRoles": SignatureRoles,
+        # "SignatureRoles": SignatureRoles,
         "Signing": Signing,
         "RelationshipType": RelationshipType,
         "UserRelationship": UserRelationship,
