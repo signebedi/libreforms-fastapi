@@ -595,6 +595,12 @@ def get_form_model(
         ]}
 
 
+    # Here we provide for approval stages, see discussion in
+    # https://github.com/signebedi/libreforms-fastapi/issues/62
+    form_stages: dict = _config.get("form_stage", {}) 
+    # Presumably, we will want to add some validation step here to 
+    # ensure the form_stages data structure conforms to expectations.
+
     for field_name, field_info in fields.items():
         
         # Continue if we encounter a __config__ field
@@ -661,6 +667,10 @@ def get_form_model(
     # Attach event hook attr to the dynamic model, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/210
     dynamic_model.event_hooks = event_hooks
+
+    # Attach event hook attr to the dynamic model, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/62
+    dynamic_model.form_stages = form_stages
 
     return dynamic_model
 
