@@ -1,0 +1,13 @@
+{% extends "read_one_form.html.jinja" %}
+
+{% block header %}
+    <link href="{{ url_for('static', path='css/datatables.css') }}" rel="stylesheet">
+{% endblock %}
+
+{% block title %}
+{{config.SITE_NAME}} — Individual Form Review & Approval 
+{% endblock %}
+
+{% block approval_interface %}
+<p>This is a placeholder for the approval interface</p>
+{% endblock %}

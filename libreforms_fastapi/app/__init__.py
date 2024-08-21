@@ -5952,6 +5952,48 @@ async def ui_form_review_and_approval(request: Request, config = Depends(get_con
         }
     )
 
+@app.get("/ui/form/review_and_approval/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], redirect="ui_auth_login")
+async def ui_form_review_and_approval_individual(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db), session: SessionLocal = Depends(get_db)):
+
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # Placeholder: if this form is not in the user's approval chain currently, then return a 404
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404)
+
+    if document_id not in doc_db._get_existing_document_ids(form_name):
+        raise HTTPException(status_code=404)
+
+    # Here we create a mask of metadata field names for the UI
+    metadata_field_mask = {
+        x: x.replace("_", " ").title() for x in doc_db.metadata_fields 
+        if x not in [doc_db.journal_field, doc_db.linked_to_user_field, doc_db.linked_to_form_field]
+    }
+
+    # # Here we load the form config in order to mask data field names correctly
+    form_config = load_form_config(config.FORM_CONFIG_PATH)
+    this_form = form_config[form_name]
+    form_field_mask = {x: y.get("field_label", x.replace("_", " ").title()) for x, y in this_form.items()}
+
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="review_and_approval_individual.html.jinja", 
+        context={
+            "form_name": form_name,
+            "document_id": document_id,
+            "metadata_field_mask": metadata_field_mask,
+            "form_field_mask": form_field_mask,
+            **build_ui_context(),
+        }
+    )
+
+
+
 
 ##########################
 ### UI Routes - Default Routes
