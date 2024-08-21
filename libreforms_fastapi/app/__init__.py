@@ -5910,18 +5910,10 @@ async def ui_form_duplicate(form_name:str, document_id:str, request: Request, co
 
 
 
-# Approve form
-    # @app.get("/ui/form/approve/{form_name}", include_in_schema=False)
-    # async def ui_form_approve():
-    #     if not config.UI_ENABLED:
-    #         raise HTTPException(status_code=404, detail="This page does not exist")
-
-
-
 # Search forms
 @app.get("/ui/form/search", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], redirect="ui_auth_login")
-async def ui_admin_form_search(
+async def ui_form_search(
     request: Request, 
     config = Depends(get_config_depends),
     search_term: str = Query(None, title="Search Term"),
@@ -5941,6 +5933,25 @@ async def ui_admin_form_search(
             **build_ui_context(),
         }
     )
+
+
+# Form review and approval - general UI page
+@app.get("/ui/form/review_and_approval", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], redirect="ui_auth_login")
+async def ui_form_review_and_approval(request: Request, config = Depends(get_config_depends)):
+
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="review_and_approval.html.jinja", 
+        context={
+            "form_names": list(get_form_names(config_path=config.FORM_CONFIG_PATH)),
+            **build_ui_context(),
+        }
+    )
+
 
 ##########################
 ### UI Routes - Default Routes

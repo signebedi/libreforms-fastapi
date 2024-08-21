@@ -59,7 +59,7 @@
                     <div class="nav-item dropdown">
                         <button class="nav-link dropdown-toggle" type="button" id="AdminMenu"
                                 data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
-                            View Submissions
+                            Manage Submissions
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="AdminMenu">
                             <li><a class="dropdown-item" href="{{ url_for('ui_form_read_all') }}">View All</a></li>
@@ -68,7 +68,7 @@
                             <li>
                                 <div class="btn-group dropend">
                                     <a class="dropdown-item dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">
-                                        Export
+                                        Export to Excel
                                     </a>
                                     <ul class="dropdown-menu">
                                         {% for form in available_forms %}
@@ -81,8 +81,14 @@
                                 </div>
                             </li>
                             {% endif %}
+                            <li><a class="dropdown-item" href="{{ url_for('ui_form_review_and_approval') }}">Review & Approval</a></li>
                         </ul>
                     </div>
+
+                    <!-- Review and Approval -->
+                    {# <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('ui_form_review_and_approval') }}">Review & Approval</a>
+                    </li> #}
 
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Account</a>
