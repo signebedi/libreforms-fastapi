@@ -41,7 +41,7 @@
             {# {% if "sign_own" in request.user.permissions[form_name] | tojson %}
             <a class="dropdown-item" id="signLink" onclick="signForm();" href="#">Sign Form</a>
             {% endif %} #}
-            <a class="dropdown-item" id="signLink" onclick="signForm();" href="#">Sign Form</a>
+            {# <a class="dropdown-item" id="signLink" onclick="signForm();" href="#">Sign Form</a> #}
             <a class="dropdown-item" id="signLink" onclick="exportForm('json');" href="#">Export as JSON</a>
             {# <a class="dropdown-item disabled" id="historyLink" href="#">View Form History</a> #}
             <a class="dropdown-item" id="duplicateLink" target="_blank" href="{{ url_for('ui_form_printer_friedly', form_name=form_name, document_id=document_id) }}">Print Form</a>
@@ -80,7 +80,7 @@ var documentId = "{{ document_id }}";
 var currentUser = "{{ request.user.username }}";
 var userPermissions = {{ request.user.permissions[form_name] | default({}) | tojson }};
 
-function signForm() {
+{# function signForm() {
     $.ajax({
         url: `/api/form/sign/${formName}/${documentId}`,
         type: 'PATCH',
@@ -102,7 +102,7 @@ function signForm() {
             flashMessage(xhr.responseText, 'danger'); 
         }
     });
-}
+} #}
 
 function deleteForm() {
     $.ajax({
