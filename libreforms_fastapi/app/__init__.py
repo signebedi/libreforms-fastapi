@@ -142,6 +142,9 @@ from libreforms_fastapi.utils.docs import (
 
 from libreforms_fastapi.utils.custom_tinydb import CustomEncoder
 
+# This import is used for caching with selective invalidation
+from libreforms_fastapi.utils.parameterized_caching import parameterized_lru_cache
+
 # Import to render more powerful email content
 from libreforms_fastapi.utils.jinja_emails import ( 
     render_email_message_from_jinja,
@@ -153,6 +156,78 @@ from libreforms_fastapi.utils.jinja_emails import (
 # Here we set the application config using the get_config
 # factory pattern defined in libreforms_fastapi.utis.config.
 _env = os.environ.get('ENVIRONMENT', 'development')
+
+
+
+# The following functions will be used to cache form stage data, 
+# see https://github.com/signebedi/libreforms-fastapi/issues/62
+@parameterized_lru_cache(maxsize=128)
+def cache_form_stage_data(
+    form_name: str,
+    form_stages: dict,
+    doc_db: ManageDocumentDB,
+):
+    """
+    This function wraps ManageDocumentDB.get_all_documents_by_stage() so we can cache values 
+    outside the class scope, since we are using it largely as a dependency injection...
+    """ 
+
+    # We begin be instantiating an empty container to store document_id values for each stage
+    stage_dict = {}
+
+    # Then we iterate through each stage and collect each of the items 
+    for stage_name, _stage_conf in form_stages.items(): # _stage_conf is not important in this function
+
+        document_ids = [] # Reset this variable... perhaps redundant
+        document_ids = doc.db.get_all_documents_by_stage(form_name, stage_name) # Get all values with the current stage
+
+        # Add these values to stage_dict
+        stage_dict[stage_name] = document_ids
+
+    return stage_dict
+
+# @parameterized_lru_cache(maxsize=128)
+@lru_cache() # Opt for a standard cache because we probably need to rebuild this entire cache when there are changes
+def cache_form_stage_data_for_specified_user(
+    form_name: str,
+    form_stages: dict,
+    current_user, # This is a sqlalchemy row
+    doc_db: ManageDocumentDB,
+):
+    """
+    This function wraps extends cache_form_stage_data to get a list of documents that a given 
+    user is eligible to approve.
+    """ 
+
+    # Get the list of documents in each stage from cached data
+    all_stage_data = cache_form_stage_data(form_name, form_stages, doc_db)
+
+    user_specific_data = []
+
+    # Iterate through each form stage in form_stages
+    for stage_name, stage_conf in form_stages.items():
+
+        stage_specific_data = all_stage_data[stage_name]
+
+        # Start with the static form approval method
+        if stage_conf.method == "static":
+            # If this user is the specified approver, then append all the stage-
+            # specific data to the user's list of documents needing their action
+            if user.email == stage_conf.target:
+                user_specific_data.extend(stage_specific_data)
+
+        # Then do group based approval
+        if stage_conf.method == "group":
+            # If the user is a member of the approving group, then add all the stage-
+            # specific data to the user's list of docs needing their action
+            if stage_conf.target in user.groups:
+                user_specific_data.extend(stage_specific_data)
+
+        # Relationship-based approval is... complex, to say the least. This will remain unimplemented
+        # for now, see https://github.com/signebedi/libreforms-fastapi/issues/332
+
+    return user_specific_data
+
 
 
 class ConfigFileChangeHandler(FileSystemEventHandler):
