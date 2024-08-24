@@ -2,6 +2,7 @@ cryptography
 email_validator
 fastapi
 fuzzywuzzy
+immutables
 Jinja2
 html-sanitizer
 Markdown
