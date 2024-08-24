@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from contextlib import contextmanager
 from functools import lru_cache
 from pathlib import Path
+from immutables import Map
 from typing import Dict, Optional, Annotated, Any
 from urllib.parse import urlparse
 from markupsafe import escape
@@ -164,8 +165,8 @@ _env = os.environ.get('ENVIRONMENT', 'development')
 @parameterized_lru_cache(maxsize=128)
 def cache_form_stage_data(
     form_name: str,
-    form_stages: dict,
-    doc_db: ManageDocumentDB,
+    form_stages: Map,
+    doc_db,
 ):
     """
     This function wraps ManageDocumentDB.get_all_documents_by_stage() so we can cache values 
@@ -190,9 +191,9 @@ def cache_form_stage_data(
 @lru_cache() # Opt for a standard cache because we probably need to rebuild this entire cache when there are changes
 def cache_form_stage_data_for_specified_user(
     form_name: str,
-    form_stages: dict,
+    form_stages: Map,
     current_user, # This is a sqlalchemy row
-    doc_db: ManageDocumentDB,
+    doc_db,
 ):
     """
     This function wraps extends cache_form_stage_data to get a list of documents that a given 
@@ -637,6 +638,30 @@ with get_config_context() as config:
 
     logger.info('Relational database has been initialized')
 
+
+    with SessionLocal() as session:
+        # Here we build our initial form_stage cache... see 
+        # https://github.com/signebedi/libreforms-fastapi/issues/62
+        __form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
+        __doc_db = get_doc_db()
+
+        for form_name in __form_names:
+
+            __form_model = get_form_model(
+                form_name=form_name, 
+                config_path=config.FORM_CONFIG_PATH,
+                session=session,
+                User=User,
+                Group=Group,
+                doc_db=__doc_db,
+
+            )
+
+            _ = cache_form_stage_data(
+                form_name=form_name,
+                form_stages=Map(__form_model.form_stages), # Need this to be immutable so it can be hashed and cached
+                doc_db=__doc_db,
+            )
 
     # Very temporary! Coerce usernames to lowercase at startup, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/239
