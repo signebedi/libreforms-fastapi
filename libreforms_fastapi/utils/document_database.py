@@ -203,6 +203,7 @@ class ManageDocumentDB(ABC):
         self.ip_address_field = "ip_address"
         self.created_by_field = "created_by"
         self.signature_field = "signatures"        
+        self.form_stage_field = "form_stage"        
         self.last_editor_field = "last_editor"
         # self.approved_field = "approved"
         # self.approved_by_field = "approved_by"
@@ -223,6 +224,7 @@ class ManageDocumentDB(ABC):
             self.ip_address_field, 
             self.created_by_field, 
             self.signature_field, 
+            self.form_stage_field,
             self.last_editor_field, 
             # self.approved_field, 
             # self.approved_by_field, 
@@ -294,6 +296,12 @@ class ManageDocumentDB(ABC):
     @abstractmethod
     def get_all_documents(self, form_name:str, exclude_deleted:bool=True):
         """Retrieves all entries from the specified form's database."""
+        pass
+
+
+    @abstractmethod
+    def get_all_documents_by_stage(self, form_name:str, stage_name:str, exclude_deleted:bool=True):
+        """Retrieves all entries from the specified form's database when they reside in a specified stage."""
         pass
 
     @abstractmethod
@@ -1089,6 +1097,33 @@ class ManageTinyDB(ManageDocumentDB):
 
 
         return documents
+
+    def get_all_documents_by_stage(
+        self, 
+        form_name:str, 
+        stage_name:str, 
+        exclude_deleted:bool=True
+    ) -> list:
+        """Retrieves all entries from the specified form's database where metadata['form_stage'] equals stage_name."""
+
+        # Ensure the form exists in the configuration
+        self._check_form_exists(form_name)
+        
+        # Query the database for documents with the specified stage_name. I'm using Query here, 
+        # which I don't do very often. Considering pivoting to just using straight python logic instead...
+        query = (self.Form.metadata['form_stage'] == stage_name)
+        
+        if exclude_deleted:
+            query &= (self.Form.metadata[self.is_deleted_field] == False)
+        
+        documents = self.databases[form_name].search(query)
+        
+        # Construct a list of Document IDs ... this is better for caching because 
+        # other form data might change without needing to trigger cache invalidation...
+        # So, storing the full document is alluring, but will lead to unwise assumptions.
+        document_ids = [x.doc_id for x in documents]  
+
+        return document_ids
 
     def get_one_document(
         self, 
