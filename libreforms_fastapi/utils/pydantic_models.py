@@ -597,7 +597,7 @@ def get_form_model(
 
     # Here we provide for approval stages, see discussion in
     # https://github.com/signebedi/libreforms-fastapi/issues/62
-    form_stages: dict = _config.get("form_stage", {}) 
+    form_stages: dict = _config.get("form_stages", {}) 
     # Presumably, we will want to add some validation step here to 
     # ensure the form_stages data structure conforms to expectations.
 

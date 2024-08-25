@@ -78,6 +78,16 @@ class SignatureError(Exception):
             f"with ID '{document_id}' in collection '{form_name}'."
         super().__init__(message)
 
+
+class ImproperFormStage(Exception):
+    """Exception raised when attempting to sign a document but the form_stage passed is incorrect."""
+    def __init__(self, form_name, document_id, username):
+        message = f"User '{username}' has failed to sign the document " \
+            f"with ID '{document_id}' in collection '{form_name}'. The " \
+            "form_stage does not match the current stage"
+        super().__init__(message)
+
+
 class DocumentAlreadyHasValidSignature(Exception):
     """Exception raised when attempting to sign a document but it's been signed and the signature is valid."""
     def __init__(self, form_name, document_id, username):
@@ -264,7 +274,7 @@ class ManageDocumentDB(ABC):
         pass
 
     @abstractmethod
-    def sign_document(self, form_name:str, json_data, metadata={}):
+    def sign_document(self, form_name:str, json_data, metadata={}, form_stage:str=None):
         """Manage signatures existing form in specified form's database."""
         pass
 
@@ -492,6 +502,12 @@ class ManageTinyDB(ManageDocumentDB):
             }
         }
 
+        # Some of this logic is redundant with logic in the create API route... perhaps unhelpfully so.
+        initial_form_stage = metadata.get(self.form_stage_field, None)
+        if initial_form_stage is not None:
+            data_dict['metadata'][self.form_stage_field] = initial_form_stage
+
+
         # Here we an an initial dictionary
         journal = []
         journal.append (
@@ -652,7 +668,12 @@ class ManageTinyDB(ManageDocumentDB):
         form_name:str, 
         document_id:str, 
         username:str, 
-        role_id:int, 
+        # Add a form_stage and next_form_stage str. We assume that 
+        # when a form is being signed, there will always be a "next 
+        # stage" ... necessitating at least one terminal stage for 
+        # all form lifecycles.
+        form_stage:str,
+        next_form_stage:str,
         public_key=None, 
         private_key_path=None, 
         metadata={}, 
@@ -694,7 +715,7 @@ class ManageTinyDB(ManageDocumentDB):
             if username not in document['metadata'][self.signature_field].keys() \
                 or not document['metadata'][self.signature_field][username][0]: 
                 # Note: the structure of the signature field is:
-                # { username: (key, timestamp, role_id), ...}
+                # { username: (key, timestamp, form_stage), ...}
                 
                 raise NoChangesProvided(form_name, document_id)
 
@@ -732,8 +753,14 @@ class ManageTinyDB(ManageDocumentDB):
 
         current_timestamp = datetime.now(self.timezone)
 
+        # Now, we verify that the document is in the correct stage. It may make sense 
+        # to move this earlier... or to just have the API take care of this check to 
+        # reduce unhelpful redundancies that cut against separation of concerns.
+        if not document['metadata'].get(self.form_stage_field) == form_stage:
+            raise ImproperFormStage(form_name, document_id, username)
+
         # Build the signature data structure
-        signature_tuple = (signature, current_timestamp, role_id)
+        signature_tuple = (signature, current_timestamp, form_stage)
         reconstructed_signature_dict = document['metadata'].get(self.signature_field)
         reconstructed_signature_dict[username] = signature_tuple
 
@@ -743,6 +770,9 @@ class ManageTinyDB(ManageDocumentDB):
             {
                 "metadata": {
                     self.signature_field: reconstructed_signature_dict,
+                    # Set the form stage stored in the document's metadata to the 
+                    # next_form_stage passed in params
+                    self.form_stage_field: next_form_stage,
                     self.last_modified_field: current_timestamp.isoformat(),
                     self.last_editor_field: metadata.get(self.last_editor_field, None),
                     self.ip_address_field: metadata.get(self.ip_address_field, None),
