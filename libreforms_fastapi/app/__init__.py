@@ -162,11 +162,19 @@ _env = os.environ.get('ENVIRONMENT', 'development')
 
 # The following functions will be used to cache form stage data, 
 # see https://github.com/signebedi/libreforms-fastapi/issues/62
-@parameterized_lru_cache(maxsize=128)
+
+def make_immutable_map(nested_dict):
+    # Recursively convert all nested dictionaries to immutable maps
+    return Map({
+        k: make_immutable_map(v) if isinstance(v, dict) else v
+        for k, v in nested_dict.items()
+    })
+
+# @parameterized_lru_cache(maxsize=128)
 def cache_form_stage_data(
     form_name: str,
     form_stages: Map,
-    doc_db,
+    doc_db,  # Because this is produced using a dependency injection, it may not cache correctly... will need to test and/or modify caching behavior
 ):
     """
     This function wraps ManageDocumentDB.get_all_documents_by_stage() so we can cache values 
@@ -180,7 +188,7 @@ def cache_form_stage_data(
     for stage_name, _stage_conf in form_stages.items(): # _stage_conf is not important in this function
 
         document_ids = [] # Reset this variable... perhaps redundant
-        document_ids = doc.db.get_all_documents_by_stage(form_name, stage_name) # Get all values with the current stage
+        document_ids = doc_db.get_all_documents_by_stage(form_name, stage_name) # Get all values with the current stage
 
         # Add these values to stage_dict
         stage_dict[stage_name] = document_ids
@@ -188,12 +196,13 @@ def cache_form_stage_data(
     return stage_dict
 
 # @parameterized_lru_cache(maxsize=128)
-@lru_cache() # Opt for a standard cache because we probably need to rebuild this entire cache when there are changes
+# @lru_cache() # Opt for a standard cache because we probably need to rebuild this entire cache when there are changes
 def cache_form_stage_data_for_specified_user(
     form_name: str,
     form_stages: Map,
     current_user, # This is a sqlalchemy row
-    doc_db,
+
+    doc_db,  # Because this is produced using a dependency injection, it may not cache correctly... will need to test and/or modify caching behavior
 ):
     """
     This function wraps extends cache_form_stage_data to get a list of documents that a given 
@@ -211,21 +220,23 @@ def cache_form_stage_data_for_specified_user(
         stage_specific_data = all_stage_data[stage_name]
 
         # Start with the static form approval method
-        if stage_conf.method == "static":
+        if stage_conf.get('method', None) == "static":
             # If this user is the specified approver, then append all the stage-
             # specific data to the user's list of documents needing their action
-            if user.email == stage_conf.target:
+            if current_user.email == stage_conf.target:
                 user_specific_data.extend(stage_specific_data)
 
         # Then do group based approval
-        if stage_conf.method == "group":
+        if stage_conf.get('method', None) == "group":
             # If the user is a member of the approving group, then add all the stage-
             # specific data to the user's list of docs needing their action
-            if stage_conf.target in user.groups:
+            if stage_conf.get('target', None) in current_user.to_dict(just_the_basics=True)['groups']:
                 user_specific_data.extend(stage_specific_data)
 
         # Relationship-based approval is... complex, to say the least. This will remain unimplemented
         # for now, see https://github.com/signebedi/libreforms-fastapi/issues/332
+
+        # We may need to add some logic here to handle or drop duplicates...
 
     return user_specific_data
 
@@ -654,12 +665,14 @@ with get_config_context() as config:
                 User=User,
                 Group=Group,
                 doc_db=__doc_db,
-
             )
+
+            # Create a recursive Map of the form_stages
+            __mapped_form_stages = make_immutable_map(__form_model.form_stages)
 
             _ = cache_form_stage_data(
                 form_name=form_name,
-                form_stages=Map(__form_model.form_stages), # Need this to be immutable so it can be hashed and cached
+                form_stages=Map(__mapped_form_stages), # Need this to be immutable so it can be hashed and cached
                 doc_db=__doc_db,
             )
 
@@ -1265,6 +1278,21 @@ async def api_form_create(
         doc_db.linked_to_form_field: form_fields,
     }
 
+    # print("\n\n\n\n\n\n", form_data.form_stages)
+
+    # Get the initial form stage, see https://github.com/signebedi/libreforms-fastapi/issues/62
+    initial_form_stage = None
+    for form_stage, form_conf in form_data.form_stages.items():
+        if form_conf.get('initial_stage', False):
+            initial_form_stage = form_stage
+
+
+    # print("\n", initial_form_stage)
+
+    # Add our initial form stage, if it exists
+    if initial_form_stage is not None:
+        metadata[doc_db.form_stage_field] = initial_form_stage
+
     # Add the remote addr host if enabled
     if config.COLLECT_USAGE_STATISTICS:
         metadata[doc_db.ip_address_field] = request.client.host
@@ -1331,6 +1359,80 @@ async def api_form_create(
         "document_id": document_id, 
         "data": d,
     }
+
+
+
+# Read all forms that need action
+@app.get("/api/form/read_all_needing_action", dependencies=[Depends(api_key_auth)])
+async def api_form_read_all_needing_action(
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    This method returns a dict of all the documents needing action from the current user.
+    """
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+
+    # Here we build our initial form_stage cache... see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/62
+    __form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
+    __doc_db = get_doc_db()
+
+    dict_of_return_values = {}
+
+    for form_name in __form_names:
+
+        __form_model = get_form_model(
+            form_name=form_name, 
+            config_path=config.FORM_CONFIG_PATH,
+            session=session,
+            User=User,
+            Group=Group,
+            doc_db=__doc_db,
+        )
+
+
+        # Create a recursive Map of the form_stages
+        __mapped_form_stages = make_immutable_map(__form_model.form_stages)
+
+        print ('\n\n\n', __mapped_form_stages)
+
+        __documents = cache_form_stage_data_for_specified_user(
+            form_name=form_name,
+            form_stages=__mapped_form_stages, # Need this to be immutable so it can be hashed and cached
+            current_user=user,
+            doc_db=__doc_db,
+        )
+
+        dict_of_return_values[form_name] = __documents
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+
+    return dict_of_return_values
+
 
 # Read one form
 @app.get("/api/form/read_one/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
@@ -2344,17 +2446,45 @@ async def api_form_sign(
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit this level of access to the form
-    try:
-        # for group in user.groups:
-        #     print("\n\n", group.get_permissions()) 
+    # Yield the pydantic form model, for form stages and event hooks
+    FormModel = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
 
-        user.validate_permission(form_name=form_name, required_permission="sign_own")
-        # assert (True) # Placeholder for SignatureRoles validation
+    # We start by verifying that the form is in the list of forms needing the user's approval
+    list_of_documents_this_user_can_approve = cache_form_stage_data_for_specified_user(
+        form_name=form_name,
+        form_stage=make_immutable_map(FormModel.form_stages),
+        current_user=user,
+        doc_db=doc_db,
+    )
 
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
-        
+    if not document_id in list_of_documents_this_user_can_approve:
+        raise HTTPException(status_code=403, detail=f"This user is not eligible to approve this document")
+
+
+    # Now we need to read the form data (ugh, RIP efficiency) and get the current stage
+    __temp_get_doc = doc_db.get_one_document(
+        form_name=form_name, 
+        document_id=document_id, 
+    )
+
+    form_stage = __temp_get_doc["metadata"]["form_stage"]
+
+
+    # And then pull the next stage... there MUST be a better way to do this, mais helas
+    # that we must proceed with this approach for now. If there is not a next_stage, then 
+    # we must treat this as a terminal stage.
+    next_form_stage = FormModel.form_stages[form_stage].get('on_approve', None)
+    if not next_form_stage:
+        raise HTTPException(status_code=404, detail=f"This form lacks an eligible next stage designated under the 'on_approve' key. Are you sure this isn't a terminal stage?")
+
+    # Build the metadata field
     metadata={
         doc_db.last_editor_field: user.username,
     }
@@ -2370,7 +2500,8 @@ async def api_form_sign(
             document_id=document_id,
             metadata=metadata,
             username=user.username,
-            role_id=1,
+            form_stage=form_stage,
+            next_form_stage=next_form_stage,
             public_key=user.public_key,
             private_key_path=user.private_key_ref,
         )
@@ -2430,16 +2561,6 @@ async def api_form_sign(
         )
 
 
-    # Yield the pydantic form model, solely for the event hooks
-    FormModel = get_form_model(
-        form_name=form_name, 
-        config_path=config.FORM_CONFIG_PATH,
-        session=session,
-        User=User,
-        Group=Group,
-        doc_db=doc_db,
-    )
-
     # Here we implement event hooks, see
     # https://github.com/signebedi/libreforms-fastapi/issues/210
     # run_event_hooks(
@@ -2462,118 +2583,112 @@ async def api_form_sign(
     }
 
 
-@app.patch("/api/form/unsign/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
-async def api_form_sign(
-    form_name:str,
-    document_id:str,
-    background_tasks: BackgroundTasks,
-    request: Request, 
-    config = Depends(get_config_depends),
-    mailer = Depends(get_mailer), 
-    doc_db = Depends(get_doc_db), 
-    session: SessionLocal = Depends(get_db),
-    key: str = Depends(X_API_KEY),
-):
-    """
-    Removes a digital signature from a specific document, subject to user permissions 
-    and form validation. Logs the unsigning action.
-    """
+# @app.patch("/api/form/unsign/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+# async def api_form_sign(
+#     form_name:str,
+#     document_id:str,
+#     background_tasks: BackgroundTasks,
+#     request: Request, 
+#     config = Depends(get_config_depends),
+#     mailer = Depends(get_mailer), 
+#     doc_db = Depends(get_doc_db), 
+#     session: SessionLocal = Depends(get_db),
+#     key: str = Depends(X_API_KEY),
+# ):
+#     """
+#     Removes a digital signature from a specific document, subject to user permissions 
+#     and form validation. Logs the unsigning action.
+#     """
 
 
-    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
-        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+#     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+#         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
-    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
-    # the sqlalchemy-signing table is not optimized alongside the user model...
-    user = session.query(User).filter_by(api_key=key).first()
+#     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+#     # the sqlalchemy-signing table is not optimized alongside the user model...
+#     user = session.query(User).filter_by(api_key=key).first()
 
-    # Here we validate the user groups permit this level of access to the form
-    try:
-        user.validate_permission(form_name=form_name, required_permission="sign_own")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
+#     # Here we validate the user groups permit this level of access to the form
+#     try:
+#         user.validate_permission(form_name=form_name, required_permission="sign_own")
+#     except Exception as e:
+#         raise HTTPException(status_code=403, detail=f"{e}")
         
-    metadata={
-        doc_db.last_editor_field: user.username,
-    }
+#     metadata={
+#         doc_db.last_editor_field: user.username,
+#     }
 
-    # Add the remote addr host if enabled
-    if config.COLLECT_USAGE_STATISTICS:
-        metadata[doc_db.ip_address_field] = request.client.host
+#     # Add the remote addr host if enabled
+#     if config.COLLECT_USAGE_STATISTICS:
+#         metadata[doc_db.ip_address_field] = request.client.host
 
-    try:
-        # Process the request as needed
-        success = doc_db.sign_document(
-            form_name=form_name, 
-            document_id=document_id,
-            metadata=metadata,
-            username=user.username,
-            public_key=user.public_key,
-            private_key_path=user.private_key_ref,
-            unsign=True,
-        )
+#     try:
+#         # Process the request as needed
+#         success = doc_db.sign_document(
+#             form_name=form_name, 
+#             document_id=document_id,
+#             metadata=metadata,
+#             username=user.username,
+#             public_key=user.public_key,
+#             private_key_path=user.private_key_ref,
+#             unsign=True,
+#         )
 
-    # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
-    # it fails to ensure the user knows their operation was not successful.
-    except DocumentDoesNotExist as e:
-        raise HTTPException(status_code=404, detail=f"{e}")
+#     # Unlike other methods, like get_one_document or fuzzy_search_documents, this method raises exceptions when 
+#     # it fails to ensure the user knows their operation was not successful.
+#     except DocumentDoesNotExist as e:
+#         raise HTTPException(status_code=404, detail=f"{e}")
 
-    except DocumentIsDeleted as e:
-        raise HTTPException(status_code=410, detail=f"{e}")
+#     except DocumentIsDeleted as e:
+#         raise HTTPException(status_code=410, detail=f"{e}")
 
-    except SignatureError as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
+#     except SignatureError as e:
+#         raise HTTPException(status_code=403, detail=f"{e}")
 
-    except InsufficientPermissions as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
+#     except InsufficientPermissions as e:
+#         raise HTTPException(status_code=403, detail=f"{e}")
 
-    except NoChangesProvided as e:
-        raise HTTPException(status_code=200, detail=f"{e}")
+#     except NoChangesProvided as e:
+#         raise HTTPException(status_code=200, detail=f"{e}")
 
-    # Send email
-    if config.SMTP_ENABLED:
+#     # Send email
+#     if config.SMTP_ENABLED:
 
-        subject, content = render_email_message_from_jinja(
-            'form_unsigned', 
-            config.EMAIL_CONFIG_PATH,
-            config=config, 
-            form_name=form_name,
-            document_id=document_id
-        )
-        # print(subject, content)
+#         subject, content = render_email_message_from_jinja(
+#             'form_unsigned', 
+#             config.EMAIL_CONFIG_PATH,
+#             config=config, 
+#             form_name=form_name,
+#             document_id=document_id
+#         )
+#         # print(subject, content)
 
-        background_tasks.add_task(
-            mailer.send_mail,
-            subject=subject, 
-            content=content,
-            to_address=user.email,
-        )
+#         background_tasks.add_task(
+#             mailer.send_mail,
+#             subject=subject, 
+#             content=content,
+#             to_address=user.email,
+#         )
 
-    # Write this query to the TransactionLog
-    if config.COLLECT_USAGE_STATISTICS:
+#     # Write this query to the TransactionLog
+#     if config.COLLECT_USAGE_STATISTICS:
 
-        endpoint = request.url.path
-        remote_addr = request.client.host
+#         endpoint = request.url.path
+#         remote_addr = request.client.host
 
-        background_tasks.add_task(
-            write_api_call_to_transaction_log, 
-            api_key=key, 
-            endpoint=endpoint, 
-            remote_addr=remote_addr, 
-            query_params={},
-        )
+#         background_tasks.add_task(
+#             write_api_call_to_transaction_log, 
+#             api_key=key, 
+#             endpoint=endpoint, 
+#             remote_addr=remote_addr, 
+#             query_params={},
+#         )
 
-    return {
-        "message": "Form successfully unsigned", 
-        "document_id": document_id, 
-    }
+#     return {
+#         "message": "Form successfully unsigned", 
+#         "document_id": document_id, 
+#     }
 
-
-# Approve form
-# This is a metadata-only field. It should not impact the data, just the metadata - namely, to afix 
-# an approval - in the format of a digital signature - to the form. 
-    # @app.patch("/api/form/approve/{form_name}/{document_id}")
-    # async def api_form_approve():
 
 
 ##########################
