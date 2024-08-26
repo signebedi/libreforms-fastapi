@@ -81,7 +81,17 @@
                                 </div>
                             </li>
                             {% endif %}
-                            <li><a class="dropdown-item" href="{{ url_for('ui_form_review_and_approval') }}">Review & Approval</a></li>
+                            <li>
+                                <a class="dropdown-item" href="{{ url_for('ui_form_review_and_approval') }}">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <span>Review & Approval</span>
+                                        <span id="actionBadgeContainer" style="margin-left: 5px;"></span>
+                                    </div>
+                                </a>
+                            </li>
+
+
+
                         </ul>
                     </div>
 
@@ -426,6 +436,36 @@
 
             {% if request.user.is_authenticated %}
 
+
+            $.ajax({
+                url: '/api/form/read_all_needing_action?return_count_only=true',
+                type: 'GET',
+                dataType: 'json',
+                beforeSend: function(xhr) {
+                    xhr.setRequestHeader('X-API-KEY', "{{ request.user.api_key }}");
+                },
+                success: function(response) {
+
+                    // console.log('AJAX response:', response); // Debugging: log the entire response
+
+                    // Assuming response.record_count contains the number of actions needed
+                    if (response.record_count && response.record_count > 0) {
+                        // Create the badge
+                        var badge = `<span class="badge bg-primary">${response.record_count}</span>`;
+                        
+                        // Insert the badge into the container
+                        $('#actionBadgeContainer').html(badge);
+                    } else {
+                        // Clear the badge if record_count is 0 or undefined
+                        $('#actionBadgeContainer').empty();
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('Error:', status, error);
+                }
+            });
+
+
             if (localStorage.getItem('jwt_token')) {
                 $.ajax({
                     url: '/api/auth/refresh',
@@ -444,6 +484,7 @@
 
 
                 });
+
             } else {
                 console.log("No JWT token found in localStorage.");
             }

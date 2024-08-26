@@ -170,7 +170,7 @@ def make_immutable_map(nested_dict):
         for k, v in nested_dict.items()
     })
 
-# @parameterized_lru_cache(maxsize=128)
+@parameterized_lru_cache(maxsize=128)
 def cache_form_stage_data(
     form_name: str,
     form_stages: Map,
@@ -196,7 +196,7 @@ def cache_form_stage_data(
     return stage_dict
 
 # @parameterized_lru_cache(maxsize=128)
-# @lru_cache() # Opt for a standard cache because we probably need to rebuild this entire cache when there are changes
+@lru_cache() # Opt for a standard cache because we probably need to rebuild this entire cache when there are changes
 def cache_form_stage_data_for_specified_user(
     form_name: str,
     form_stages: Map,
@@ -1371,10 +1371,15 @@ async def api_form_read_all_needing_action(
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),
     session: SessionLocal = Depends(get_db), 
-    key: str = Depends(X_API_KEY)
+    key: str = Depends(X_API_KEY),
+    return_full_records_flat: bool = False,
+    return_count_only: bool = False,
+
 ):
     """
-    This method returns a dict of all the documents needing action from the current user.
+    This method returns a dict of all the documents needing action from the current user. Pass the 
+    `return_full_records_flat` option to get all the records in full, and to flatten these into a 
+    list of documents. Pass the `return_count_only` option to return an int count of actions needed.
     """
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
@@ -1404,7 +1409,7 @@ async def api_form_read_all_needing_action(
         # Create a recursive Map of the form_stages
         __mapped_form_stages = make_immutable_map(__form_model.form_stages)
 
-        print ('\n\n\n', __mapped_form_stages)
+        # print ('\n\n\n', __mapped_form_stages)
 
         __documents = cache_form_stage_data_for_specified_user(
             form_name=form_name,
@@ -1414,6 +1419,30 @@ async def api_form_read_all_needing_action(
         )
 
         dict_of_return_values[form_name] = __documents
+
+
+    if return_count_only:
+
+        __record_count = sum(len(records) for records in dict_of_return_values.values())
+
+        return {"record_count": __record_count}
+
+    if return_full_records_flat:
+
+        __temp = []
+        seen_records = set()
+
+        for __form_name, __records in dict_of_return_values.items():
+            for __record_id in __records:
+                if __record_id not in seen_records:
+                    __record = doc_db.get_one_document(
+                        form_name=__form_name, 
+                        document_id=__record_id, 
+                    )
+                    __temp.append(__record)
+                    seen_records.add(__record_id)
+
+        return {"documents": __temp}
 
 
     # Write this query to the TransactionLog
@@ -1431,7 +1460,7 @@ async def api_form_read_all_needing_action(
         )
 
 
-    return dict_of_return_values
+    return {"documents": dict_of_return_values}
 
 
 # Read one form
