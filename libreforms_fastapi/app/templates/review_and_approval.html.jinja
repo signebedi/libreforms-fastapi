@@ -104,7 +104,10 @@ $(document).ready(function () {
                             </td>
                             <td>${form['metadata']['form_name'].replace(/_/g, ' ')}</td>
                             {# <td>${GFG(JSON.stringify(form['data']), 60)}</td> #}
-                            <td>${formatObject(form['data'])}</td>
+            {# <div class="dropdown-divider"></div>
+            <h6 class="dropdown-header">Review and Approval</h6>
+            <a class="dropdown-item disabled" id="approveLink" href="#">Go to Approval</a> #}
+                            <td>${GFG(formatObject(form['data']), 150)}</td>
                             <td>
                                 <a target="_blank" href="/ui/auth/p/${form['metadata']['last_editor']}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${form['metadata']['last_editor']}">
                                     ${form['metadata']['last_editor']}
@@ -137,7 +140,10 @@ $(document).ready(function () {
                         return type === 'sort' ? date : data; 
                     }
                 }
-            ]
+            ],
+            language: {
+                "emptyTable":     "There are no submissions that require your review or approval at this time"
+            }
         });
 
     }).catch(error => {
