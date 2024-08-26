@@ -20,10 +20,10 @@ def parameterized_lru_cache(maxsize=128):
 
         @wraps(func)
         def wrapped_func(*args, **kwargs):
-            # Custom key generation based on args (form_name, stage_name) and kwargs
-            form_name = kwargs.get('form_name') or args[0]
-            stage_name = kwargs.get('stage_name') or None
-            cache_key = (form_name, stage_name)
+            # Convert unhashable types to hashable types for caching
+            hashable_args = tuple(make_hashable(arg) for arg in args)
+            hashable_kwargs = tuple(sorted((k, make_hashable(v)) for k, v in kwargs.items()))
+            cache_key = (hashable_args, hashable_kwargs)
             
             if cache_key in cache._manual_cache:
                 return cache._manual_cache[cache_key]
@@ -32,12 +32,28 @@ def parameterized_lru_cache(maxsize=128):
             cache._manual_cache[cache_key] = result
             return result
 
-        def invalidate(form_name, stage_name):
-            # Invalidate specific cache entries based on form_name and stage_name
-            cache_key = (form_name, stage_name)
+        def invalidate(*args, **kwargs):
+            # Convert unhashable types to hashable types for invalidation
+            hashable_args = tuple(make_hashable(arg) for arg in args)
+            hashable_kwargs = tuple(sorted((k, make_hashable(v)) for k, v in kwargs.items()))
+            cache_key = (hashable_args, hashable_kwargs)
+
             if cache_key in cache._manual_cache:
                 del cache._manual_cache[cache_key]
 
         wrapped_func.invalidate = invalidate
         return wrapped_func
     return decorator
+
+
+def make_hashable(obj):
+    """Converts unhashable types (like dict) into hashable types (like tuple)."""
+    if isinstance(obj, dict):
+        return tuple(sorted((k, make_hashable(v)) for k, v in obj.items()))
+    if isinstance(obj, list):
+        return tuple(make_hashable(e) for e in obj)
+    if isinstance(obj, set):
+        return frozenset(make_hashable(e) for e in obj)
+    # Add other unhashable types as needed
+    return obj
+

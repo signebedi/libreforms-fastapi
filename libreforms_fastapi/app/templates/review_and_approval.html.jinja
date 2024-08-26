@@ -10,9 +10,7 @@
 
 {% block content %}
 <h4>Review & Approval</h4>
-<p>
-    There are no submissions that require your review or approval at this time.
-</p>
+
 
 
 <div class="container table-responsive">
@@ -33,7 +31,7 @@
         </tbody>
     </table>
 </div>
-
+<div id="noDataMessage" style="display: none;">There are no submissions that require your review or approval at this time.</div>
 
 {% endblock %}
 
@@ -46,6 +44,7 @@ $(document).ready(function () {
 
     const spinner = document.querySelector('.loading-circle');
     const readAllTable = document.getElementById('readAllTable');
+    const noDataMessage = document.getElementById('noDataMessage');
     const apiKey = "{{ request.user.api_key }}";
     const formNames = {{ form_names | tojson }};
     let allFormData = [];
@@ -96,7 +95,13 @@ $(document).ready(function () {
         // Now process allFormData
         allFormData.forEach(form => {
             let row = `<tr>
-                            <td><a href="/ui/form/read_one/${form['metadata']['form_name']}/${form['metadata']['document_id']}">${form['metadata']['document_id']}</a></td>
+                            <td title="View submission actions" class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">${form['metadata']['document_id']}</a>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="/ui/form/review_and_approval/${form['metadata']['form_name']}/${form['metadata']['document_id']}">Go to Review and Approval</a>
+                                    <a class="dropdown-item" href="/ui/form/read_one/${form['metadata']['form_name']}/${form['metadata']['document_id']}">View this Submission</a>
+                                </div>
+                            </td>
                             <td>${form['metadata']['form_name'].replace(/_/g, ' ')}</td>
                             {# <td>${GFG(JSON.stringify(form['data']), 60)}</td> #}
                             <td>${formatObject(form['data'])}</td>
@@ -139,6 +144,9 @@ $(document).ready(function () {
         console.error("Error fetching data:", error);
         flashMessage("There was an issue fetching results. There may be none to display.", AlertCategories.WARNING);
         spinner.style.display = 'none'; // Hide the spinner
+        readAllTable.style.display = 'none'; 
+        noDataMessage.style.display = ''; 
+
     });
 });
 

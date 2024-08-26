@@ -782,9 +782,11 @@ class ManageTinyDB(ManageDocumentDB):
 
 
 
-        # Here we update only a few metadata fields ... fields like approval and signature should be
-        # handled through separate API calls.
+        # Here we update only a few metadata fields ... 
         document['metadata'][self.last_modified_field] = current_timestamp.isoformat()
+        # Set the form stage stored in the document's metadata to the 
+        # next_form_stage passed in params
+        document['metadata'][self.form_stage_field] = next_form_stage
         document['metadata'][self.last_editor_field] = metadata.get(self.last_editor_field, None)
         document['metadata'][self.ip_address_field] = metadata.get(self.ip_address_field, None)
         document['metadata'][self.journal_field] = journal

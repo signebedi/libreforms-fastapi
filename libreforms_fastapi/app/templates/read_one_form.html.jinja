@@ -80,7 +80,7 @@ var documentId = "{{ document_id }}";
 var currentUser = "{{ request.user.username }}";
 var userPermissions = {{ request.user.permissions[form_name] | default({}) | tojson }};
 
-{# function signForm() {
+function signForm() {
     $.ajax({
         url: `/api/form/sign/${formName}/${documentId}`,
         type: 'PATCH',
@@ -102,7 +102,7 @@ var userPermissions = {{ request.user.permissions[form_name] | default({}) | toj
             flashMessage(xhr.responseText, 'danger'); 
         }
     });
-} #}
+}
 
 function deleteForm() {
     $.ajax({
@@ -127,6 +127,8 @@ function deleteForm() {
         }
     });
 }
+
+
 
 
 // Not using Jquery for the file export 
@@ -464,12 +466,6 @@ $(document).ready(function() {
                         flashMessage(xhr.responseText, 'danger'); 
                     }
                 });
-
-
-
-
-
-
 
             },
             error: function(xhr) {

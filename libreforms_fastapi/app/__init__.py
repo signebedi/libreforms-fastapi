@@ -2488,7 +2488,7 @@ async def api_form_sign(
     # We start by verifying that the form is in the list of forms needing the user's approval
     list_of_documents_this_user_can_approve = cache_form_stage_data_for_specified_user(
         form_name=form_name,
-        form_stage=make_immutable_map(FormModel.form_stages),
+        form_stages=make_immutable_map(FormModel.form_stages),
         current_user=user,
         doc_db=doc_db,
     )
@@ -2604,6 +2604,10 @@ async def api_form_sign(
         session=session,
         user=user,
     )
+
+    # Clear the caches for the action_needed functions
+    cache_form_stage_data.invalidate(form_name)
+    cache_form_stage_data_for_specified_user.cache_clear()
 
 
     return {

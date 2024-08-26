@@ -9,5 +9,19 @@
 {% endblock %}
 
 {% block approval_interface %}
-<p>This is a placeholder for the approval interface</p>
+<p>You are currently in the Review & Approval interface for this submission. You can see its details below. If you would like to go back to the general Review & Approval page, click <a href="/ui/form/review_and_approval">here</a>. If you would like to view this submission outside the Review & Approval interface, click <a href="/ui/form/read_one/{{ form_name }}/{{ document_id }}">here</a>.</p>
+{# <p>The current stage for this submission is <span id="currentFormStage"></span>.</p> #}
+<ul>
+    <li><a onclick="signForm();" href="#">I approve this submission</a></li>
+    <li><a  href="#">I disapprove this submission</a></li>
+</ul>
+        
+
+
+<pre><code>
+
+</code></pre>
+
+{# Add some logic here that redirects if the current user is not an authorized approver... #}
+
 {% endblock %}
