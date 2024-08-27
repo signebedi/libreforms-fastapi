@@ -703,10 +703,12 @@ class ManageTinyDB(ManageDocumentDB):
                 self.logger.warning(f"Document for {form_name} with document_id {document_id} is deleted and was not updated")
             raise DocumentIsDeleted(form_name, document_id)
 
-        if username != document['metadata'][self.created_by_field]:
-            if self.use_logger:
-                self.logger.warning(f"Insufficient permissions to {'unsign' if unsign else 'sign'} document for {form_name} with document_id {document_id}")
-            raise InsufficientPermissions(form_name, document_id, username)
+        # Deprecated following changed assumptions about who will be able to sign documents. Previous assumption
+        # was that only creators sign documents... since, we've moved to a broader conception of the signing operation.
+        # if username != document['metadata'][self.created_by_field]:
+        #     if self.use_logger:
+        #         self.logger.warning(f"Insufficient permissions to {'unsign' if unsign else 'sign'} document for {form_name} with document_id {document_id}")
+        #     raise InsufficientPermissions(form_name, document_id, username)
 
         # If we are trying to unsign the document, then we remove the signature, update the document, and return.
         if unsign:
