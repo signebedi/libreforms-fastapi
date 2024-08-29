@@ -109,6 +109,12 @@ class ImproperExcelFilenameFormat(Exception):
             f"File format `{file_name}` is incorrect. Does your file end in `.xlsx`?"
         super().__init__(message)
 
+class UnsupportedActionError(Exception):
+    """Exception raised when attempting to complete an approval action that is not supported."""
+    def __init__(self, action, permitted_actions):
+        message = f"Failed to complete action '{action}' on submission. Must be one of the the following: {permitted_actions}."
+        super().__init__(message)
+
 
 # Pulled from https://github.com/signebedi/gita-api
 def fuzzy_search_normalized(text_string, search_term, segment_length=None):
@@ -270,18 +276,14 @@ class ManageDocumentDB(ABC):
 
     @abstractmethod
     def update_document(self, form_name:str, json_data, metadata={}):
-        """Updates existing form in specified form's database."""
+        """Updates existing submission in specified form's database."""
         pass
 
     @abstractmethod
-    def sign_document(self, form_name:str, json_data, metadata={}, form_stage:str=None):
-        """Manage signatures existing form in specified form's database."""
+    def advance_document_stage(self, form_name:str, json_data, metadata={}, form_stage:str=None):
+        """Manage approval stages for existing submission in specified form's database."""
         pass
 
-    @abstractmethod
-    def approve_document(self, form_name:str, json_data, metadata={}):
-        """Manage approval for existing form in specified form's database."""
-        pass
 
     @abstractmethod
     def fuzzy_search_documents(self, form_name:str, search_query, exclude_deleted:bool=True):
@@ -538,7 +540,7 @@ class ManageTinyDB(ManageDocumentDB):
         sanitize_data:bool=True,
         allow_unchanged_data:bool=False
     ):
-        """Updates existing form in specified form's database."""
+        """Updates existing submission in specified form's database."""
 
         self._check_form_exists(form_name)
         # if self.use_logger:
@@ -663,7 +665,7 @@ class ManageTinyDB(ManageDocumentDB):
 
         return document
 
-    def sign_document(
+    def advance_document_stage(
         self, 
         form_name:str, 
         document_id:str, 
@@ -674,21 +676,27 @@ class ManageTinyDB(ManageDocumentDB):
         # all form lifecycles.
         form_stage:str,
         next_form_stage:str,
+        action:str,
         public_key=None, 
         private_key_path=None, 
         metadata={}, 
         exclude_deleted=True,
         verify_on_sign=True,
-        unsign=False,
+        unsign:bool=False,
     ):
         """
-        Manage signatures existing form in specified form's database.
+        Manage approval stages for existing submission in specified form's database.
 
         This is a metadata-only method. The actual form data should not be touched.
         
         """
 
         self._check_form_exists(form_name)
+
+        permitted_actions = ['approve', 'deny', 'pushback', 'confirm']
+
+        if not action in permitted_actions:
+            raise UnsupportedActionError(action, permitted_actions)
 
         # Ensure the document exists
         document = self.databases[form_name].get(doc_id=document_id)
@@ -710,20 +718,46 @@ class ManageTinyDB(ManageDocumentDB):
         #         self.logger.warning(f"Insufficient permissions to {'unsign' if unsign else 'sign'} document for {form_name} with document_id {document_id}")
         #     raise InsufficientPermissions(form_name, document_id, username)
 
+        # Now, we verify that the document is in the correct stage. It may make sense 
+        # to move this earlier... or to just have the API take care of this check to 
+        # reduce unhelpful redundancies that cut against separation of concerns.
+        if not document['metadata'].get(self.form_stage_field) == form_stage:
+            raise ImproperFormStage(form_name, document_id, username)
+
+        current_timestamp = datetime.now(self.timezone)
+
+        # We create an update to add to the journal object later on
+        updated_journal_snippet = {
+            "metadata": {
+                self.last_modified_field: current_timestamp.isoformat(),
+                self.last_editor_field: metadata.get(self.last_editor_field, None),
+                self.ip_address_field: metadata.get(self.ip_address_field, None),
+            },
+        }
+
         # If we are trying to unsign the document, then we remove the signature, update the document, and return.
         if unsign:
             
+            reconstructed_signature_dict = document['metadata'].get(self.signature_field)
+
             # If the document is not signed, raise a no changes exception
-            if username not in document['metadata'][self.signature_field].keys() \
-                or not document['metadata'][self.signature_field][username][0]: 
+            if username not in reconstructed_signature_dict.keys() \
+                or not reconstructed_signature_dict[username][0]: 
                 # Note: the structure of the signature field is:
                 # { username: (key, timestamp, form_stage), ...}
                 
                 raise NoChangesProvided(form_name, document_id)
 
-            signature = None
+            removed_signature = reconstructed_signature_dict.pop(username, None)
 
-        else:
+            if removed_signature is None:
+                raise KeyError(f"Username '{username}' not found in the signature field.")
+
+        # This used to be a blanket `else` statement, which we modified to only afix a 
+        # signature if the action==approval. In all other action types will not attach 
+        # a signature, but will still move the form to a new stage. For more discussion,
+        # see https://github.com/signebedi/libreforms-fastapi/issues/336.
+        elif action=="approve":
 
             # Before we even begin, we verify whether a signature exists and only proceed if it doesn't. Otherwise, 
             # we raise a DocumentAlreadyHasValidSignature exception. The idea here is to avoid spamming signatures if
@@ -743,8 +777,6 @@ class ManageTinyDB(ManageDocumentDB):
             try:
                 signature = sign_record(record=document.get("data"), username=username, env=self.env, private_key_path=private_key_path)
 
-                print()
-
                 if verify_on_sign:
                     verify = verify_record_signature(record=document.get("data"), signature=signature, username=username, env=self.env, public_key=public_key, private_key_path=private_key_path)
                     print("\n\n\n", verify)
@@ -753,46 +785,34 @@ class ManageTinyDB(ManageDocumentDB):
             except:
                 raise SignatureError(form_name, document_id, username)
 
-        current_timestamp = datetime.now(self.timezone)
+            # Build the signature data structure
+            signature_tuple = (signature, current_timestamp, form_stage)
+            reconstructed_signature_dict = document['metadata'].get(self.signature_field)
+            reconstructed_signature_dict[username] = signature_tuple
 
-        # Now, we verify that the document is in the correct stage. It may make sense 
-        # to move this earlier... or to just have the API take care of this check to 
-        # reduce unhelpful redundancies that cut against separation of concerns.
-        if not document['metadata'].get(self.form_stage_field) == form_stage:
-            raise ImproperFormStage(form_name, document_id, username)
+            # Add the signature to the document metadata
+            document['metadata'][self.signature_field] = reconstructed_signature_dict
 
-        # Build the signature data structure
-        signature_tuple = (signature, current_timestamp, form_stage)
-        reconstructed_signature_dict = document['metadata'].get(self.signature_field)
-        reconstructed_signature_dict[username] = signature_tuple
+            # Add the signature to the journal snippet
+            updated_journal_snippet['metadata'][self.signature_field] = reconstructed_signature_dict
 
-        # Build the journal
-        journal = document['metadata'].get(self.journal_field)
-        journal.append (
-            {
-                "metadata": {
-                    self.signature_field: reconstructed_signature_dict,
-                    # Set the form stage stored in the document's metadata to the 
-                    # next_form_stage passed in params
-                    self.form_stage_field: next_form_stage,
-                    self.last_modified_field: current_timestamp.isoformat(),
-                    self.last_editor_field: metadata.get(self.last_editor_field, None),
-                    self.ip_address_field: metadata.get(self.ip_address_field, None),
-                },
-            }
-        )
-
-
-
-        # Here we update only a few metadata fields ... 
-        document['metadata'][self.last_modified_field] = current_timestamp.isoformat()
         # Set the form stage stored in the document's metadata to the 
-        # next_form_stage passed in params
-        document['metadata'][self.form_stage_field] = next_form_stage
+        # next_form_stage passed in params once all the other checks above pass
+        updated_journal_snippet['metadata'][self.form_stage_field] = next_form_stage
+
+        # Build the journal with the new snippet
+        journal = document['metadata'].get(self.journal_field)
+        journal.append (updated_journal_snippet)
+
+        # Here we update only a few remaining metadata fields ...  including the journal
+        document['metadata'][self.last_modified_field] = current_timestamp.isoformat()
         document['metadata'][self.last_editor_field] = metadata.get(self.last_editor_field, None)
         document['metadata'][self.ip_address_field] = metadata.get(self.ip_address_field, None)
         document['metadata'][self.journal_field] = journal
-        document['metadata'][self.signature_field] = reconstructed_signature_dict
+
+        # Set the form stage stored in the document's metadata to the 
+        # next_form_stage passed in params once all the other checks above pass
+        document['metadata'][self.form_stage_field] = next_form_stage
 
 
         # Update only the fields that are provided in  metadata, not replacing the entire 
@@ -803,14 +823,6 @@ class ManageTinyDB(ManageDocumentDB):
             self.logger.info(f"User {username} signed document for {form_name} with document_id {document_id}")
 
         return document
-
-
-    def approve_document(self, form_name:str, json_data, metadata={}):
-        """Manage approval for existing form in specified form's database."""
-
-        # Placeholder for logger
-
-        pass
 
 
     def fuzzy_search_documents(self, search_term:str, limit_users:Union[bool, dict]=False, form_name:Union[bool, str]=False, threshold=80, exclude_deleted:bool=True):
@@ -1155,9 +1167,12 @@ class ManageTinyDB(ManageDocumentDB):
         # Construct a list of Document IDs ... this is better for caching because 
         # other form data might change without needing to trigger cache invalidation...
         # So, storing the full document is alluring, but will lead to unwise assumptions.
-        document_ids = [x.doc_id for x in documents]  
+        document_ids = [x.doc_id for x in documents]
 
-        return document_ids
+        # Sometimes we will need to access the created by data
+        created_by_list = [x['metadata'][self.created_by_field] for x in documents]
+
+        return document_ids, created_by_list
 
     def get_one_document(
         self, 

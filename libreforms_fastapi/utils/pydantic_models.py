@@ -591,7 +591,11 @@ def get_form_model(
             "on_update", 
             "on_duplicate", 
             "on_read", 
-            "on_sign", 
+            # "on_sign", 
+            'on_approve', 
+            'on_deny', 
+            'on_pushback', 
+            'on_confirm',
         ]}
 
 

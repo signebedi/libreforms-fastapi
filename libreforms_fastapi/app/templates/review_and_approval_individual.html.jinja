@@ -21,9 +21,23 @@
 
 <h4>Individual Form Review & Approval</h4>
 <p>You are currently in the Review & Approval interface for this submission. You can see its details below. If you would like to go back to the general Review & Approval page, click <a href="/ui/form/review_and_approval">here</a>. If you would like to view this submission outside the Review & Approval interface, click <a href="/ui/form/read_one/{{ form_name }}/{{ document_id }}">here</a>.</p>
-{# <p>The current stage for this submission is <span id="currentFormStage"></span>.</p> #}
-<button onclick="signForm();" id="form_approval" class="btn btn-primary" disabled>I approve this submission</button>
-<button onclick="disapproveForm();" id="form_disapproval" class="btn btn-secondary" disabled>I disapprove this submission</button>
+<p>The current stage for this submission is <code><span id="currentFormStage">{{stage_conf["label"] if "label" in stage_conf.keys() else form_stage}}</span></code>.</p>
+
+{% if "on_approve" in stage_conf.keys()%}
+<button onclick="signForm('approve');" id="form_approval" class="btn btn-primary" disabled>I approve this submission</button>
+{% endif %}
+
+{% if "on_deny" in stage_conf.keys()%}
+<button onclick="signForm('deny');" id="form_disapproval" class="btn btn-secondary" disabled>I disapprove this submission</button>
+{% endif %}
+
+{% if "on_pushback" in stage_conf.keys()%}
+<button onclick="signForm('pushback');" id="form_pushback" class="btn btn-secondary" disabled>I want to push this submission back for revision</button>
+{% endif %}
+
+{% if "on_confirm" in stage_conf.keys()%}
+<button onclick="signForm('confirm');" id="form_confirm" class="btn btn-secondary" disabled>I want to confirm this submission</button>
+{% endif %}
 
 <hr>
 
@@ -37,15 +51,29 @@
 {# Add some logic here that redirects if the current user is not an authorized approver... #}
 <script>
 
-
+    {% if "on_approve" in stage_conf.keys()%}
     const approveButton = document.getElementById('form_approval')
-    const disapproveButton = document.getElementById('form_disapproval')
     approveButton.disabled=true; 
+    {% endif %}
+
+    {% if "on_deny" in stage_conf.keys()%}
+    const disapproveButton = document.getElementById('form_disapproval')
     disapproveButton.disabled=true; 
+    {% endif %}
 
-    function signForm() {
+    {% if "on_pushback" in stage_conf.keys()%}
+    const pushbackButton = document.getElementById('form_pushback')
+    pushbackButton.disabled=true; 
+    {% endif %}
+
+    {% if "on_confirm" in stage_conf.keys()%}
+    const confirmButton = document.getElementById('form_confirm')
+    confirmButton.disabled=true; 
+    {% endif %}
+
+    function signForm(action) {
         $.ajax({
-            url: `/api/form/sign/${formName}/${documentId}`,
+            url: `/api/form/sign/${formName}/${documentId}/${action}`,
             type: 'PATCH',
             headers: {
                 'X-API-KEY': apiKey,
@@ -53,39 +81,14 @@
             dataType: 'json',
 
             success: function(response) {
-                setFlashMessage("Successfully signed form", AlertCategories.SUCCESS);
+                setFlashMessage(`Successfully completed ${action} action for submission`, AlertCategories.SUCCESS);
                 window.location.href = '/ui/form/review_and_approval';
 
             },
 
             error: function(xhr) {
                 // Handle errors
-                console.error('Failed to sign form', xhr.responseText);
-                // Display error message to the user
-                // flashMessage(xhr.responseText, 'danger'); 
-            }
-        });
-    }
-
-
-    function disapproveForm() {
-        $.ajax({
-            url: `/api/form/sign/${formName}/${documentId}`,
-            type: 'PATCH',
-            headers: {
-                'X-API-KEY': apiKey,
-            },
-            dataType: 'json',
-
-            success: function(response) {
-                setFlashMessage("Successfully signed form", AlertCategories.SUCCESS);
-                window.location.href = '/ui/form/review_and_approval';
-
-            },
-
-            error: function(xhr) {
-                // Handle errors
-                console.error('Failed to sign form', xhr.responseText);
+                console.error(`Failed to complete ${action} action for submission`, xhr.responseText);
                 // Display error message to the user
                 // flashMessage(xhr.responseText, 'danger'); 
             }
@@ -131,15 +134,29 @@
 
                 // Check if the documentId exists in the formName array
                 if (!documents[formName].includes(documentId)) {
-                    console.error(`Document ID ${documentId} not found in form ${formName}`);
+                    console.error(`Document ID ${documentId} is not up for review for form ${formName}`);
                     setFlashMessage(`Error validating document for review`, AlertCategories.WARNING);
                     window.location.href = '/ui/form/review_and_approval';
                     return;
                 }
 
                 // If everything is correct, enable the buttons
+                {% if "on_approve" in stage_conf.keys()%}
                 approveButton.disabled = false;
+                {% endif %}
+
+                {% if "on_deny" in stage_conf.keys()%}
                 disapproveButton.disabled = false;
+                {% endif %}
+
+                {% if "on_pushback" in stage_conf.keys()%}
+                pushbackButton.disabled=false; 
+                {% endif %}
+
+                {% if "on_confirm" in stage_conf.keys()%}
+                confirmButton.disabled=false; 
+                {% endif %}
+
 
             }
         });

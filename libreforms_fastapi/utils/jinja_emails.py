@@ -86,12 +86,12 @@ form_restored:
       <p>This email serves to notify you that a deleted form was restored at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a> by the user registered at this email address. The form's document ID is <b>{{ document_id }}</b>. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
     </body>
     </html>
-form_signed:
-  subj: "Form Signed"
+form_stage_changed:
+  subj: "Form Stage has Changed"
   cont: |
     <html>
     <body>
-      <p>This email serves to notify you that a form was signed at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a> by the user registered at this email address. The form's document ID is <b>{{ document_id }}</b>. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+      <p>This email serves to notify you that a form's stage was changed at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. The form's document ID is <b>{{ document_id }}</b>. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
     </body>
     </html>
 form_unsigned:
@@ -213,10 +213,10 @@ form_restored:
   subj: "Form Restored"
   cont: |
     This email serves to notify you that a deleted form was restored at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-form_signed:
-  subj: "Form Signed"
+form_stage_changed:
+  subj: "Form Stage has Changed"
   cont: |
-    This email serves to notify you that a form was signed at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
+    This email serves to notify you that a form's stage was changed at {{ config.DOMAIN }}. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
 form_unsigned:
   subj: "Form Unsigned"
   cont: |

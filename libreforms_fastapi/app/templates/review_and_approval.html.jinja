@@ -75,7 +75,7 @@ $(document).ready(function () {
                 beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
                 success: function(formData) {
                     resolve(formData.documents);
-                    console.log(formData.documents);
+                    // console.log(formData.documents);
                 },
                 error: function(xhr, status, error) {
                     reject(error);
@@ -90,7 +90,7 @@ $(document).ready(function () {
     fetchData().then(formData => {
         allFormData = allFormData.concat(formData);
 
-        console.log(allFormData);
+        //console.log(allFormData);
 
         // Now process allFormData
         allFormData.forEach(form => {

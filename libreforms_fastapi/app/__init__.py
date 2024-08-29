@@ -188,10 +188,14 @@ def cache_form_stage_data(
     for stage_name, _stage_conf in form_stages.items(): # _stage_conf is not important in this function
 
         document_ids = [] # Reset this variable... perhaps redundant
-        document_ids = doc_db.get_all_documents_by_stage(form_name, stage_name) # Get all values with the current stage
+        document_ids, created_by_list = doc_db.get_all_documents_by_stage(form_name, stage_name) # Get all values with the current stage
 
         # Add these values to stage_dict
         stage_dict[stage_name] = document_ids
+
+        # We create a somewhat hackish list of created_by data as it will be needed later, but highly redundant... that said, 
+        # we cannot afford to modify this interface too much...
+        stage_dict[f"__created_by__{stage_name}"] = created_by_list
 
     return stage_dict
 
@@ -218,20 +222,29 @@ def cache_form_stage_data_for_specified_user(
     for stage_name, stage_conf in form_stages.items():
 
         stage_specific_data = all_stage_data[stage_name]
-
+        stage_method = stage_conf.get('method', None)
         # Start with the static form approval method
-        if stage_conf.get('method', None) == "static":
+        if stage_method == "static":
             # If this user is the specified approver, then append all the stage-
             # specific data to the user's list of documents needing their action
             if current_user.email == stage_conf.target:
                 user_specific_data.extend(stage_specific_data)
 
         # Then do group based approval
-        if stage_conf.get('method', None) == "group":
+        elif stage_method == "group":
             # If the user is a member of the approving group, then add all the stage-
             # specific data to the user's list of docs needing their action
             if stage_conf.get('target', None) in current_user.to_dict(just_the_basics=True)['groups']:
                 user_specific_data.extend(stage_specific_data)
+
+        elif stage_method == "self":
+            # If the user is the creator of the submission, then add all the stage-
+            # specific data to the user's list of docs needing their action
+
+            for index,item in enumerate(stage_specific_data):
+
+                if current_user.username == all_stage_data[f"__created_by__{stage_name}"][index]:
+                    user_specific_data.append(item)
 
         # Relationship-based approval is... complex, to say the least. This will remain unimplemented
         # for now, see https://github.com/signebedi/libreforms-fastapi/issues/332
@@ -2445,13 +2458,16 @@ async def api_form_search_all(
         "documents": documents, 
     }
 
-# Sign form
+# Sign/Approve form
 # This is a metadata-only field. It should not impact the data, just the metadata - namely, to afix 
 # a digital signature to the form. See https://github.com/signebedi/libreforms-fastapi/issues/59.
-@app.patch("/api/form/sign/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+# We have since modified this API route to be the "approve" route, not just a general "sign" route, 
+# see https://github.com/signebedi/libreforms-fastapi/issues/335.
+@app.patch("/api/form/sign/{form_name}/{document_id}/{action}", dependencies=[Depends(api_key_auth)])
 async def api_form_sign(
     form_name:str,
     document_id:str,
+    action:str,
     background_tasks: BackgroundTasks,
     request: Request, 
     config = Depends(get_config_depends),
@@ -2461,15 +2477,17 @@ async def api_form_sign(
     key: str = Depends(X_API_KEY),
 ):
     """
-    Digitally signs a specific document in a form, verifying user permissions 
-    and form existence. Logs the signing action.
+    Digitally signs a specific document in a form that requires approval and routes 
+    to the next form stage. Logs the signing action. 
     """
-
-    # The underlying principle is that the user can only sign their own form. The question is what 
-    # part of the application decides: the API, or the document database?
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    permitted_actions = ['approve', 'deny', 'pushback', 'confirm']
+
+    if action not in permitted_actions:
+        raise HTTPException(status_code=404, detail=f"Form '{action}' not permitted")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
@@ -2496,7 +2514,6 @@ async def api_form_sign(
     if not document_id in list_of_documents_this_user_can_approve:
         raise HTTPException(status_code=403, detail=f"This user is not eligible to approve this document")
 
-
     # Now we need to read the form data (ugh, RIP efficiency) and get the current stage
     __temp_get_doc = doc_db.get_one_document(
         form_name=form_name, 
@@ -2505,13 +2522,12 @@ async def api_form_sign(
 
     form_stage = __temp_get_doc["metadata"]["form_stage"]
 
-
     # And then pull the next stage... there MUST be a better way to do this, mais helas
     # that we must proceed with this approach for now. If there is not a next_stage, then 
     # we must treat this as a terminal stage.
-    next_form_stage = FormModel.form_stages[form_stage].get('on_approve', None)
+    next_form_stage = FormModel.form_stages[form_stage].get(f'on_{action}', None)
     if not next_form_stage:
-        raise HTTPException(status_code=404, detail=f"This form lacks an eligible next stage designated under the 'on_approve' key. Are you sure this isn't a terminal stage?")
+        raise HTTPException(status_code=404, detail=f"This form lacks an eligible next stage designated under the 'on_{action}' key. Are you sure this isn't a terminal stage?")
 
     # Build the metadata field
     metadata={
@@ -2524,13 +2540,14 @@ async def api_form_sign(
 
     try:
         # Process the request as needed
-        success = doc_db.sign_document(
+        success = doc_db.advance_document_stage(
             form_name=form_name, 
             document_id=document_id,
             metadata=metadata,
             username=user.username,
             form_stage=form_stage,
             next_form_stage=next_form_stage,
+            action=action, # Here we specify which action to perform on the form
             public_key=user.public_key,
             private_key_path=user.private_key_ref,
         )
@@ -2559,7 +2576,7 @@ async def api_form_sign(
     if config.SMTP_ENABLED:
 
         subject, content = render_email_message_from_jinja(
-            'form_signed', 
+            'form_stage_changed', 
             config.EMAIL_CONFIG_PATH,
             config=config, 
             form_name=form_name,
@@ -2597,7 +2614,7 @@ async def api_form_sign(
         run_event_hooks,
         document_id=document_id, 
         form_name=form_name,
-        event_hooks=FormModel.event_hooks['on_sign'],
+        event_hooks=FormModel.event_hooks.get(f'on_{action}', []),
         config=config,
         doc_db=doc_db,
         mailer=mailer,
@@ -2657,7 +2674,7 @@ async def api_form_sign(
 
 #     try:
 #         # Process the request as needed
-#         success = doc_db.sign_document(
+#         success = doc_db.advance_document_stage(
 #             form_name=form_name, 
 #             document_id=document_id,
 #             metadata=metadata,
@@ -6226,7 +6243,28 @@ async def ui_form_review_and_approval_individual(form_name:str, document_id:str,
     this_form = form_config[form_name]
     form_field_mask = {x: y.get("field_label", x.replace("_", " ").title()) for x, y in this_form.items()}
 
+    #### UGH! Tons of server/client coupling with the logic below but, alas, that there is not right now a more 
+    # straightforward way without an API route that yields key configuration data between server and client. This 
+    # could be an admin route and executed within the scope of this view function... future thought.
 
+    # Yield the pydantic form model, for form stages and event hooks
+    FormModel = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
+
+    # Now we need to read the form data (ugh, RIP efficiency) and get the current stage
+    __temp_get_doc = doc_db.get_one_document(
+        form_name=form_name, 
+        document_id=document_id, 
+    )
+
+    form_stage = __temp_get_doc["metadata"]["form_stage"]
+    stage_conf = FormModel.form_stages.get(form_stage, {})
 
     return templates.TemplateResponse(
         request=request, 
@@ -6236,6 +6274,8 @@ async def ui_form_review_and_approval_individual(form_name:str, document_id:str,
             "document_id": document_id,
             "metadata_field_mask": metadata_field_mask,
             "form_field_mask": form_field_mask,
+            "form_stage": form_stage,
+            "stage_conf": stage_conf,
             **build_ui_context(),
         }
     )
