@@ -26,6 +26,7 @@ from pydantic import (
     ValidationError, 
     constr,
     EmailStr,
+    AnyUrl,
 )
 from pydantic.networks import MongoDsn
 from pydantic.functional_validators import field_validator
@@ -299,6 +300,12 @@ def get_config(env):
         SAML_NAME_ID_FORMAT: str = os.getenv('SAML_NAME_ID_FORMAT:', "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified")
         SAML_SP_X509_CERT: str = os.getenv('SAML_SP_X509_CERT:', "")
         SAML_SP_PRIVATE_KEY: str = os.getenv('SAML_SP_PRIVATE_KEY:', "")
+
+        # These configurations govern over the bifurcation of server and client instances, along with UI_ENABLED above.
+        # For more on decoupling server and client, see https://github.com/signebedi/libreforms-fastapi/issues/329
+        API_ENABLED: bool = os.getenv('API_ENABLED:', 'False') == 'True'
+        REMOTE_API_ADDR: AnyUrl | None = os.getenv('REMOTE_API_ADDR:', None)
+        REMOTE_API_KEY: str | None = os.getenv('REMOTE_API_KEY:', None)
 
 
     class ProductionConfig(Config):
