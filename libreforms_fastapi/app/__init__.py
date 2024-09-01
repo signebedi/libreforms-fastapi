@@ -1239,6 +1239,9 @@ async def api_form_create(
     form's existence, validates user permissions, writes it to db, and logs the submission.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
@@ -1395,6 +1398,10 @@ async def api_form_read_all_needing_action(
     list of documents. Pass the `return_count_only` option to return an int count of actions needed.
     """
 
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
     user = session.query(User).filter_by(api_key=key).first()
@@ -1496,6 +1503,9 @@ async def api_form_read_one(
     from the database, and logs the access.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
@@ -1595,6 +1605,9 @@ async def api_form_read_history(
     from the database, and logs the access.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
@@ -1667,6 +1680,9 @@ async def api_form_export(
     It checks for the form's existence, validates user permissions, fetches the document 
     from the database, and returns the form as a file after logging the access.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if not format in available_formats:
         raise HTTPException(status_code=404, detail=f"Invalid format. Must choose from {str(available_formats)}")
@@ -1766,6 +1782,9 @@ async def api_form_read_all(
     {"data":{"age": {"operator": ">=", "value": 21},"name": {"operator": "==","value": "John"}}}.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
@@ -1864,6 +1883,9 @@ async def api_form_export_excel(
     database, and returns the form as an excel file before logging the query.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if not config.EXCEL_EXPORT_ENABLED:
         raise HTTPException(status_code=404)
 
@@ -1941,6 +1963,8 @@ async def api_form_update(
     updates the document with provided changes, and logs the operation.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -2093,6 +2117,9 @@ async def api_form_delete(
     Validates the existence of the document, user permissions, and logs the deletion.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
@@ -2229,6 +2256,9 @@ async def api_form_restore(
     Checks document existence, validates user permissions, and logs the restoration.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
@@ -2338,6 +2368,9 @@ async def api_form_search(
     search term. Validates form existence and user permissions.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
 
@@ -2409,6 +2442,8 @@ async def api_form_search_all(
     Validates user permissions for each form.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if search_term is None or len(search_term) < 1:
         return HTTPException(status_code=420, detail="No search term provided")
@@ -2480,6 +2515,9 @@ async def api_form_sign(
     Digitally signs a specific document in a form that requires approval and routes 
     to the next form stage. Logs the signing action. 
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -2650,6 +2688,9 @@ async def api_form_sign(
 #     and form validation. Logs the unsigning action.
 #     """
 
+#    if not config.API_ENABLED:
+#        raise HTTPException(status_code=404, detail="This page does not exist")
+
 
 #     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
 #         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -2745,9 +2786,6 @@ async def api_form_sign(
 ### API Routes - Validators
 ##########################
 
-# Validate form field
-    # @app.get("/api/validate/field/{form_name}")
-    # async def api_validate_field():
 
 # Validate form signature, see https://github.com/signebedi/libreforms-fastapi/issues/72
 @app.get("/api/validate/signatures/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
@@ -2768,9 +2806,8 @@ async def api_validate_signatures(
     Logs the validation attempt.
     """
 
-
-    # The underlying principle is that the user can only sign their own form. The question is what 
-    # part of the application decides: the API, or the document database?
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -2937,6 +2974,8 @@ async def api_auth_create(
     Sends email confirmation when SMTP is enabled and configured.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if config.DISABLE_NEW_USERS:
         raise HTTPException(status_code=404)
@@ -3088,6 +3127,8 @@ async def api_auth_change_password(
     Sends email confirmation when SMTP is enabled and configured.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -3234,6 +3275,9 @@ async def api_auth_get(
     more information is provided.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # We have already validated the API key, so if they have come this far, they have system access. As
     # such, if no user comes back (eh, that might happen if an admin hacks together an API key without a 
     # user account attached to it .. for system purposes) or if there is a user, but they are not a site
@@ -3311,24 +3355,6 @@ async def api_auth_get(
     return profile_data
 
 
-# Update User - change user password / usermod
-# @app.patch("/api/auth/update")
-# async def api_auth_update(
-#     user_request: CreateUserRequest, 
-#     background_tasks: BackgroundTasks, 
-#     request: Request, 
-#     config = Depends(get_config_depends),
-#     mailer = Depends(get_mailer), 
-#     session: SessionLocal = Depends(get_db)
-# ):
-#     pass
-
-# Rotate user API key
-    # @app.patch("/api/auth/rotate_key")
-    # async def api_auth_rotate_key():
-
-
-
 @app.post("/api/auth/forgot_password", include_in_schema=schema_params["DISABLE_FORGOT_PASSWORD"]==False)
 async def api_auth_forgot_password(
     email: EmailStr,
@@ -3343,6 +3369,9 @@ async def api_auth_forgot_password(
     writing optional user statistics to log. Requires SMTP to be enabled and configured. User
     must pass an email parameter to link the request to a given account.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if not config.SMTP_ENABLED or config.DISABLE_FORGOT_PASSWORD:
         raise HTTPException(status_code=404, detail="Your system administrator has not enabled this feature")
@@ -3423,6 +3452,9 @@ async def api_auth_forgot_password_confirm(
     with provided details, writing optional user statistics to log. Sends email confirmation 
     when SMTP is enabled and configured.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if not config.SMTP_ENABLED or config.DISABLE_FORGOT_PASSWORD:
         raise HTTPException(status_code=404, detail="Your system administrator has not enabled this feature")
@@ -3576,6 +3608,8 @@ async def api_auth_login(
     Tracks and limits failed attempts.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     user = session.query(User).filter_by(username=form_data.username.lower()).first()
 
@@ -3711,6 +3745,9 @@ async def api_auth_refresh(
     Tracks and limits failed attempts.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     try:
 
         cookie = SimpleCookie()
@@ -3805,6 +3842,8 @@ async def api_auth_help(
     and the message content.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if not config.HELP_PAGE_ENABLED or not config.SMTP_ENABLED:
         raise HTTPException(status_code=404)
@@ -3939,6 +3978,9 @@ async def prepare_saml_request(request: Request, config):
 @app.post('/api/auth/sso', include_in_schema=False)
 async def api_auth_sso(background_tasks: BackgroundTasks, request: Request, config = Depends(get_config_depends), session: SessionLocal = Depends(get_db)):
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if not config.SAML_ENABLED:
         raise HTTPException(status_code=404)
 
@@ -3954,6 +3996,10 @@ async def api_auth_sso(background_tasks: BackgroundTasks, request: Request, conf
 
 @app.post('/api/auth/acs', include_in_schema=False)
 async def api_auth_acs(background_tasks: BackgroundTasks, request: Request, config = Depends(get_config_depends), session: SessionLocal = Depends(get_db)):
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if not config.SAML_ENABLED:
         raise HTTPException(status_code=404)
 
@@ -4039,6 +4085,9 @@ async def api_auth_acs(background_tasks: BackgroundTasks, request: Request, conf
 @app.get('/api/auth/metadata', include_in_schema=False)
 async def api_auth_metadata(background_tasks: BackgroundTasks, request: Request, config = Depends(get_config_depends), session: SessionLocal = Depends(get_db)):
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     if not config.SAML_ENABLED:
         raise HTTPException(status_code=404)
 
@@ -4058,6 +4107,9 @@ async def api_auth_metadata(background_tasks: BackgroundTasks, request: Request,
 
 @app.post('/api/auth/sls', include_in_schema=False)
 async def api_auth_sls(background_tasks: BackgroundTasks, request: Request, response: Response, config = Depends(get_config_depends), session: SessionLocal = Depends(get_db)):
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if not config.SAML_ENABLED:
         raise HTTPException(status_code=404)
@@ -4112,6 +4164,9 @@ async def api_admin_get_users(
     Logs the action for audit purposes.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -4158,6 +4213,9 @@ async def api_admin_create_user(
     """
     Create a user, as an admin. Logs the action for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -4283,6 +4341,9 @@ async def api_admin_update_user(
     Update a user, as an admin. Mainly for modifying groups. Logs the action for audit purposes.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -4337,6 +4398,9 @@ async def api_admin_modify_user(
     Toggles a user field by ID. In the case of passwords, it resets them. Requires site admin permissions. 
     Logs the action for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if field not in ["active", "site_admin", "no_login", "password", "api_key"]:
         raise HTTPException(status_code=404)
@@ -4436,6 +4500,9 @@ async def api_admin_get_group(
     Logs the action for audit purposes.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -4486,6 +4553,9 @@ async def api_admin_get_groups(
     Logs the action for audit purposes.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -4535,6 +4605,9 @@ async def api_admin_get_submissions(
     Lists all documents in the system for administrative purposes. Requires site admin permissions. 
     Logs the action for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -4591,6 +4664,9 @@ async def api_form_delete(
     Deletes a specific document from a form based on the form name and document ID in the URL.
     Validates the existence of the document, user permissions, and logs the deletion.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -4686,6 +4762,9 @@ async def api_form_restore(
     Restores a previously deleted document in a form, identified by form name and document ID in the URL.
     Checks document existence, validates user permissions, and logs the restoration.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
         raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
@@ -4785,6 +4864,9 @@ async def api_admin_create_group(
     model as middleware between the data and the ORM. 
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -4848,6 +4930,9 @@ async def api_admin_update_group(
     model as middleware between the data and the ORM. 
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -4908,11 +4993,13 @@ async def api_admin_delete_group(
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
-
     """
     Deletes single group by ID. Requires site admin permissions. 
     Logs the action for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -4962,11 +5049,13 @@ async def api_admin_relationship_type(
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
-
     """
     Creates a new relationship type with provided details, handling payload validation using a predefined pydantic
     model as middleware between the data and the ORM. See https://github.com/signebedi/libreforms-fastapi/issues/173.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -5040,11 +5129,13 @@ async def api_admin_get_relationship_types(
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
-
     """
     Lists all relationship types in the system for administrative purposes. Requires site admin permissions. 
     Logs the action for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -5093,6 +5184,9 @@ async def api_admin_update_relationship_type(
     Updates existing relationship type with provided details, handling payload validation using a predefined pydantic
     model as middleware between the data and the ORM. See https://github.com/signebedi/libreforms-fastapi/issues/173.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -5164,11 +5258,13 @@ async def api_admin_delete_relationship_type(
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
-
     """
     Deletes single relationship type by ID. Requires site admin permissions. 
     Logs the action for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -5224,6 +5320,9 @@ async def api_admin_create_user_relationship(
     Creates a new relationship with provided details, handling payload validation using a predefined pydantic
     model as middleware between the data and the ORM. See https://github.com/signebedi/libreforms-fastapi/issues/173.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -5313,6 +5412,9 @@ async def api_admin_get_user_relationships(
     Logs the action for audit purposes.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -5358,11 +5460,13 @@ async def api_admin_delete_user_relationship(
     session: SessionLocal = Depends(get_db), 
     key: str = Depends(X_API_KEY)
 ):
-
     """
     Deletes single relationship type by ID. Requires site admin permissions. 
     Logs the action for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -5432,13 +5536,14 @@ async def api_admin_upload_favicon(
     key: str = Depends(X_API_KEY)
 ):
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     user = session.query(User).filter_by(api_key=key).first()
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
 
     file_path = f"instance/{config.ENVIRONMENT}_favicon.ico"
-
 
     try:
         contents = favicon.file.read()
@@ -5503,12 +5608,14 @@ async def api_admin_get_form_config(
     Allows site administrators to view the site form config as yaml. This operation is logged for audit purposes.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
     if not user or not user.site_admin:
         raise HTTPException(status_code=404)
-
 
     _form_config = get_form_config_yaml(config_path=config.FORM_CONFIG_PATH)
 
@@ -5550,6 +5657,9 @@ async def api_admin_write_form_config(
     """
     Allows site administrators to update the site form config as yaml. This operation is logged for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -5612,6 +5722,9 @@ async def api_admin_get_email_config(
     `return_as_yaml_str` to True to receive back a string of the yaml config file.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
 
@@ -5658,6 +5771,9 @@ async def api_admin_write_email_config(
     """
     Allows site administrators to update the site email config as yaml. This operation is logged for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -5719,6 +5835,9 @@ async def api_admin_update_site_config(
     """
     Allows site administrators to update the site config. This operation is logged for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Get the requesting user details
     user = session.query(User).filter_by(api_key=key).first()
@@ -5783,6 +5902,9 @@ async def api_admin_test_smtp(
     Requires site admin permissions and logs the action for audit purposes.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Authenticate the requesting user
     user = session.query(User).filter_by(api_key=key).first()
     if not user or not user.site_admin:
@@ -5840,6 +5962,9 @@ async def api_admin_test_relational_database(
     Requires site admin permissions and logs the action for audit purposes.
     """
 
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Authenticate the requesting user
     user = session.query(User).filter_by(api_key=key).first()
     if not user or not user.site_admin:
@@ -5891,6 +6016,9 @@ async def api_admin_test_document_database(
     Tests document database connectivity and authentication to ensure that services can operate correctly.
     Requires site admin permissions and logs the action for audit purposes.
     """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
 
     # Authenticate the requesting user
     user = session.query(User).filter_by(api_key=key).first()
