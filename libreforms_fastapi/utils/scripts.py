@@ -161,11 +161,11 @@ def validate_mongodb_configuration(config):
         raise ConfigurationError("MongoDB URI cannot be an empty string ('MONGODB_URI') when MongoDB is enabled ('MONGODB_ENABLED' = True).")
 
 def validate_api_configuration(config):
-    if config.API_ENABLED:
+    if not config.API_ENABLED:
         if not config.REMOTE_API_ADDR:
-            raise ConfigurationError("The 'REMOTE_API_ADDR' configuration must be set when 'API_ENABLED' is True. Please check your configuration.")
+            raise ConfigurationError("The 'REMOTE_API_ADDR' configuration must be set when 'API_ENABLED' is False. Please check your configuration.")
         if not config.REMOTE_API_KEY:
-            raise ConfigurationError("The 'REMOTE_API_KEY' configuration must be set when 'API_ENABLED' is True. Please check your configuration.")
+            raise ConfigurationError("The 'REMOTE_API_KEY' configuration must be set when 'API_ENABLED' is False. Please check your configuration.")
 
 # Main function to check all configurations
 def check_configuration_assumptions(config):

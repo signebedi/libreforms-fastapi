@@ -303,7 +303,7 @@ def get_config(env):
 
         # These configurations govern over the bifurcation of server and client instances, along with UI_ENABLED above.
         # For more on decoupling server and client, see https://github.com/signebedi/libreforms-fastapi/issues/329
-        API_ENABLED: bool = os.getenv('API_ENABLED:', 'False') == 'True'
+        API_ENABLED: bool = os.getenv('API_ENABLED:', 'True') == 'True'
         REMOTE_API_ADDR: AnyUrl | None = os.getenv('REMOTE_API_ADDR:', None)
         REMOTE_API_KEY: str | None = os.getenv('REMOTE_API_KEY:', None)
 
