@@ -1165,6 +1165,57 @@ def run_event_hooks(
 
 
 
+        elif event['type'] == "create_submission":
+
+
+            # This value is distinguishable from the regular form_name, which
+            # corresponds to the source form. This is the target form.
+            target_form_name = event.get('form_name', None)
+            values = event.get('values', {})
+
+            if not target_form_name or not values:
+                continue
+
+            document = doc_db.get_one_document(
+                form_name=form_name,
+                document_id=document_id, 
+            )
+
+            if not document:
+                continue
+
+            # Prepare data for the new submission
+            data = {}
+            metadata = {
+                doc_db.created_by_field: user.username,  # Set the creator as the current user
+            }
+
+            for field_name, field_config in values.items():
+                method = field_config.get('method', None)
+                value = field_config.get('value', None)
+
+                if not method or not value:
+                    continue
+
+                # Handle static value
+                if method == 'static':
+                    data[field_name] = value
+
+                # Handle value from another field
+                elif method == 'from_field':
+                    # Check if it's a metadata field
+                    if value.startswith("__metadata__"):
+                        data[field_name] = document['metadata'].get(value[12:], None)
+                    else:
+                        data[field_name] = document['data'].get(value, None)
+
+            # Insert the new document into the target form
+            new_document = doc_db.create_document(
+                form_name=target_form_name,
+                json_data=json.dumps(data),
+                metadata=metadata
+            )
+
 """
 EXAMPLES:
 on_create:
@@ -1216,6 +1267,20 @@ on_create:
     target_field_name: approver
     target_document_id: 664eab5c46c99199a7b22ab7
     value: __metadata__created_by
+
+    # Here we create new example_form with both static and from_field values, which include __metadata__ fields
+  - type: create_submission
+    form_name: example_form
+    values:
+      field_name_1:
+        method: static
+        value: "This is a static value"
+      field_name_2:
+        method: from_field
+        value: some_field_name
+      field_name_3:
+        method: from_field
+        value: __metadata__created_by
 
 """
 
