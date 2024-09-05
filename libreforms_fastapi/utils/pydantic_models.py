@@ -666,7 +666,7 @@ def get_form_model(
     #     return user_fields, form_fields
 
     # Attach the method to the dynamic model
-    dynamic_model.get_additional_metadata = get_additional_metadata
+    # dynamic_model.get_additional_metadata = get_additional_metadata
 
     # Attach event hook attr to the dynamic model, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/210

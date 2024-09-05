@@ -524,13 +524,14 @@ with get_config_context() as config:
     logger = set_logger(
         environment=config.ENVIRONMENT, 
         log_file_name='uvicorn.log', 
-        namespace='uvicorn.error'
+        namespace='uvicorn.error',
     )
 
     sqlalchemy_logger = set_logger(
         environment=config.ENVIRONMENT, 
         log_file_name='sqlalchemy.log', 
-        namespace='sqlalchemy.engine'
+        namespace='sqlalchemy.engine',
+        log_level=logging.ERROR,
     )
 
     # document_database_logger = set_logger(

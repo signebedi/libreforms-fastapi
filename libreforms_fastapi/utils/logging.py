@@ -1,9 +1,9 @@
 import os, logging
 
 
-def set_logger(environment, log_file_name, namespace, log_directory=os.path.join(os.getcwd(), 'instance', 'log'), write_to_file:bool=True):
+def set_logger(environment, log_file_name, namespace, log_directory=os.path.join(os.getcwd(), 'instance', 'log'), write_to_file:bool=True, log_level=logging.INFO):
     logger = logging.getLogger(namespace)
-    logger.setLevel(logging.INFO)
+    logger.setLevel(log_level)
 
     # if environment == "production":
     if write_to_file and environment != "testing":
