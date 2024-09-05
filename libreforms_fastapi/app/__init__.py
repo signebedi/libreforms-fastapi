@@ -1188,6 +1188,7 @@ def run_event_hooks(
             data = {}
             metadata = {
                 doc_db.created_by_field: user.username,  # Set the creator as the current user
+                doc_db.last_editor_field: user.username,  # Set the last editor as the current user
             }
 
             for field_name, field_config in values.items():
