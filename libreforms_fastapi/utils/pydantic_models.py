@@ -656,14 +656,14 @@ def get_form_model(
     # Create dynamic model
     dynamic_model = create_model(form_name, __config__=Config, **field_definitions)
 
-    def get_additional_metadata(self):
-        """
-        Return additional metadata for the form based on the form config. Added based on
-        the discussion in https://github.com/signebedi/libreforms-fastapi/issues/280
-        and https://github.com/signebedi/libreforms-fastapi/issues/281.
-        """
+    # def get_additional_metadata(self):
+    #     """
+    #     Return additional metadata for the form based on the form config. Added based on
+    #     the discussion in https://github.com/signebedi/libreforms-fastapi/issues/280
+    #     and https://github.com/signebedi/libreforms-fastapi/issues/281.
+    #     """
 
-        return user_fields, form_fields
+    #     return user_fields, form_fields
 
     # Attach the method to the dynamic model
     dynamic_model.get_additional_metadata = get_additional_metadata
@@ -671,6 +671,8 @@ def get_form_model(
     # Attach event hook attr to the dynamic model, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/210
     dynamic_model.event_hooks = event_hooks
+    dynamic_model.user_fields = user_fields
+    dynamic_model.form_fields = form_fields
 
     # Attach event hook attr to the dynamic model, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/62

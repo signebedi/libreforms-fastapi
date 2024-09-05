@@ -1151,7 +1151,7 @@ def run_event_hooks(
                 continue
 
 
-            print("\n\n\n\n", _target_document_id, "\n\n\n", _value)
+            # print("\n\n\n\n", _target_document_id, "\n\n\n", _value)
 
             # Write to the target
             d = doc_db.update_document(
@@ -1184,11 +1184,24 @@ def run_event_hooks(
             if not document:
                 continue
 
+            # Yield the pydantic form model
+            FormModel = get_form_model(
+                form_name=target_form_name, 
+                config_path=config.FORM_CONFIG_PATH,
+                session=session,
+                User=User,
+                Group=Group,
+                doc_db=doc_db,
+            )
+
             # Prepare data for the new submission
             data = {}
             metadata = {
                 doc_db.created_by_field: user.username,  # Set the creator as the current user
                 doc_db.last_editor_field: user.username,  # Set the last editor as the current user
+                doc_db.linked_to_user_field: FormModel.user_fields, # We need to pass this info to link fields to external users
+                doc_db.linked_to_form_field: FormModel.form_fields, # We need to pass this info to link fields to external submission
+
             }
 
             for field_name, field_config in values.items():
@@ -1330,7 +1343,7 @@ async def api_form_create(
 
     # Here we pull metadata on how to handle fields that link to
     # users and other forms.
-    user_fields, form_fields = form_data.get_additional_metadata()
+    # user_fields, form_fields = form_data.get_additional_metadata()
 
 
     json_data = form_data.model_dump_json()
@@ -1356,8 +1369,12 @@ async def api_form_create(
         doc_db.document_id_field: document_id,
         doc_db.created_by_field: user.username,
         doc_db.last_editor_field: user.username,
-        doc_db.linked_to_user_field: user_fields, 
-        doc_db.linked_to_form_field: form_fields,
+        # doc_db.linked_to_user_field: user_fields, 
+        # doc_db.linked_to_form_field: form_fields,
+        # Pull these directly from the model attrs:
+        doc_db.linked_to_user_field: FormModel.user_fields, 
+        doc_db.linked_to_form_field: FormModel.form_fields,
+
     }
 
     # print("\n\n\n\n\n\n", form_data.form_stages)
