@@ -1628,7 +1628,6 @@ async def api_form_get_linked_references(
 
     for _form_name, _linked_fields in dict_of_relevant_links.items():
 
-
         # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
         # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
         try:
@@ -1644,7 +1643,6 @@ async def api_form_get_linked_references(
                 raise HTTPException(status_code=403, detail=f"{e}")
 
 
-
         for _linked_field in _linked_fields:
             _documents = []
             # This query param will only return that matches the given document_id
@@ -1654,7 +1652,7 @@ async def api_form_get_linked_references(
                 form_name=_form_name, 
                 limit_users=limit_query_to,
                 exclude_journal=True,
-                collapse_data=True,
+                # collapse_data=True,
                 # sort_by_last_edited=True,
                 # newest_first=True,
                 query_params=query_params,
@@ -1665,7 +1663,7 @@ async def api_form_get_linked_references(
     # Drop duplicates and sort!
     unique_documents = {}
     for doc in documents:
-        doc_id = doc['__metadata__document_id']
+        doc_id = doc['metadata']['document_id']
 
         # Replace the document if this one is newer
         if doc_id not in unique_documents:
@@ -1674,7 +1672,7 @@ async def api_form_get_linked_references(
     # Now we have a dictionary of unique documents; we need to sort them by 'last_modified'
     sorted_documents = sorted(
         unique_documents.values(), 
-        key=lambda x: datetime.fromisoformat(x['__metadata__last_modified'].replace('Z', '+00:00')),
+        key=lambda x: datetime.fromisoformat(x['metadata']['last_modified'].replace('Z', '+00:00')),
         reverse=True
     )
 
@@ -3548,8 +3546,8 @@ async def api_auth_get(
         'related_user_id': x['user']['id'],
     } for x in _received_relationships]
 
-    print("\n\n\n", profile_data['relationships'])
-    print("\n\n\n", profile_data['received_relationships'])
+    # print("\n\n\n", profile_data['relationships'])
+    # print("\n\n\n", profile_data['received_relationships'])
 
 
     # Write this query to the TransactionLog
