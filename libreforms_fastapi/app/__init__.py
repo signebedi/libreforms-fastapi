@@ -1567,6 +1567,119 @@ async def api_form_read_all_needing_action(
     return {"documents": dict_of_return_values}
 
 
+# Read all forms that reference the given form_name and document_id
+@app.get("/api/form/get_linked_refs/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
+async def api_form_read_all_needing_action(
+    form_name: str, 
+    document_id: str, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY),
+
+):
+    """
+    This method returns a list of forms that reference the given form_name and document_id
+    in one of their fields. These are sometimes called linked references, or backrefs. It 
+    returns full records in a flat format by default.
+    """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+    # Here we build a full structure containing all the form field links for each form
+    dict_of_fields_linked_to_forms = {} # This might not be relevant ... We will see.
+
+    # Now we build a dict for linked fields _applicable_ to the given form_name
+    dict_of_relevant_links = {}
+
+    for _form_name in get_form_names(config_path=config.FORM_CONFIG_PATH):
+
+        dict_of_relevant_links[_form_name] = []
+
+        __form_model = get_form_model(
+            form_name=_form_name, 
+            config_path=config.FORM_CONFIG_PATH,
+            session=session,
+            User=User,
+            Group=Group,
+            doc_db=__doc_db,
+        )
+
+        dict_of_fields_linked_to_forms[_form_name] = __form_model.form_fields
+
+        for field_name, linked_form in __form_model.form_fields.items():
+            # If this field links to the form that this query is concerned with, then add it to the list
+            if linked_form == form_name:
+                dict_of_relevant_links[_form_name].append(field_name)
+
+
+    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
+    try:
+        user.validate_permission(form_name=form_name, required_permission="read_all")
+        limit_query_to = False
+    except Exception as e:
+
+        try:
+            user.validate_permission(form_name=form_name, required_permission="read_own")
+            limit_query_to = user.username
+
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
+
+
+    documents = []
+
+    for _form_name, _linked_fields in dict_of_relevant_links.items():
+        for _linked_field in _linked_fields:
+            _documents = []
+            # This query param will only return that matches the given document_id
+            query_params = {"data":{_linked_field: {"operator": "==","value": document_id}}}
+
+            _documents = doc_db.get_all_documents(
+                form_name=_form_name, 
+                limit_users=limit_query_to,
+                exclude_journal=True,
+                collapse_data=True,
+                # sort_by_last_edited=True,
+                # newest_first=True,
+                query_params=query_params,
+            )
+
+            documents.extend(_documents) 
+            
+            # Placeholder: drop duplicates and sort!
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return {"documents": documents}
+
+
+
+
 # Read one form
 @app.get("/api/form/read_one/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
 async def api_form_read_one(
