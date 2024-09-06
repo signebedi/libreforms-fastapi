@@ -1624,24 +1624,27 @@ async def api_form_get_linked_references(
                 dict_of_relevant_links[_form_name].append(field_name)
 
 
-    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
-    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
-    try:
-        user.validate_permission(form_name=form_name, required_permission="read_all")
-        limit_query_to = False
-    except Exception as e:
-
-        try:
-            user.validate_permission(form_name=form_name, required_permission="read_own")
-            limit_query_to = user.username
-
-        except Exception as e:
-            raise HTTPException(status_code=403, detail=f"{e}")
-
-
     documents = []
 
     for _form_name, _linked_fields in dict_of_relevant_links.items():
+
+
+        # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+        # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
+        try:
+            user.validate_permission(form_name=_form_name, required_permission="read_all")
+            limit_query_to = False
+        except Exception as e:
+
+            try:
+                user.validate_permission(form_name=_form_name, required_permission="read_own")
+                limit_query_to = user.username
+
+            except Exception as e:
+                raise HTTPException(status_code=403, detail=f"{e}")
+
+
+
         for _linked_field in _linked_fields:
             _documents = []
             # This query param will only return that matches the given document_id
