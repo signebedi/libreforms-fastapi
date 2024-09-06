@@ -106,13 +106,16 @@ def get_config(env):
 
         @field_validator('TIMEZONE')
         def validate_timezone(cls, v):
+            # If it's already a ZoneInfo object, no need to re-validate
+            if isinstance(v, ZoneInfo):
+                return v
+            # If it's a string, attempt to create a ZoneInfo object
             try:
-                # Attempt to create a ZoneInfo object to validate the timezone
                 tz = ZoneInfo(v)
             except ZoneInfoNotFoundError:
                 # If the timezone is not found, raise a ValueError
                 raise ValueError(f'Invalid timezone: {v}')
-            # Return the original string value, or you could return ZoneInfo(v) to store the object
+            # Return the ZoneInfo object to ensure proper timezone handling
             return tz
 
         # APP_STARTUP_TIME: datetime = datetime.now(ZoneInfo(os.getenv('TIMEZONE', 'America/New_York')))
