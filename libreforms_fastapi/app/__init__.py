@@ -1584,7 +1584,7 @@ async def api_form_get_linked_references(
     """
     This method returns a list of forms that reference the given form_name and document_id
     in one of their fields. These are sometimes called linked references, or backrefs. It 
-    returns full records in a flat format by default.
+    returns full records by default.
     """
 
     if not config.API_ENABLED:
@@ -3565,6 +3565,132 @@ async def api_auth_get(
         )
 
     return profile_data
+
+
+
+
+# Read all forms that reference the given form_name and document_id
+@app.get("/api/auth/get_linked_refs/{passed_username}", dependencies=[Depends(api_key_auth)])
+async def api_auth_get_linked_references(
+    passed_username: str, 
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db),
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY),
+
+):
+    """
+    This method returns a list of forms that reference the given `username` in the 
+    URL params in one of their fields. These are sometimes called linked references, 
+    or backrefs. It returns full records by default.
+    """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+    # the sqlalchemy-signing table is not optimized alongside the user model...
+    user = session.query(User).filter_by(api_key=key).first()
+
+
+    # Now that we've verified the current user, let's also verify the passed_username
+    passed_user = session.query(User).filter_by(username=passed_username).first()
+
+    # Return a 404 if the target user does not exist
+    if not passed_user:
+        raise HTTPException(status_code=404)
+
+    # Now we build a dict for linked fields _applicable_ to the given form_name
+    dict_of_relevant_links = {}
+
+    for _form_name in get_form_names(config_path=config.FORM_CONFIG_PATH):
+
+        __form_model = get_form_model(
+            form_name=_form_name, 
+            config_path=config.FORM_CONFIG_PATH,
+            session=session,
+            User=User,
+            Group=Group,
+            doc_db=__doc_db,
+        )
+
+        # Here we add the list of fields that point to users
+        dict_of_relevant_links[_form_name] = __form_model.user_fields
+
+
+
+    documents = []
+
+    for _form_name, _linked_fields in dict_of_relevant_links.items():
+
+        # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT 
+        # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307.
+        try:
+            user.validate_permission(form_name=_form_name, required_permission="read_all")
+            limit_query_to = False
+        except Exception as e:
+
+            try:
+                user.validate_permission(form_name=_form_name, required_permission="read_own")
+                limit_query_to = user.username
+
+            except Exception as e:
+                raise HTTPException(status_code=403, detail=f"{e}")
+
+
+        for _linked_field in _linked_fields:
+            _documents = []
+            # This query param will only return that matches the given username
+            query_params = {"data":{_linked_field: {"operator": "==","value": passed_username}}}
+
+            _documents = doc_db.get_all_documents(
+                form_name=_form_name, 
+                limit_users=limit_query_to,
+                exclude_journal=True,
+                # collapse_data=True,
+                # sort_by_last_edited=True,
+                # newest_first=True,
+                query_params=query_params,
+            )
+
+            documents.extend(_documents) 
+        
+    # Drop duplicates and sort!
+    unique_documents = {}
+    for doc in documents:
+        doc_id = doc['metadata']['document_id']
+
+        # Replace the document if this one is newer
+        if doc_id not in unique_documents:
+            unique_documents[doc_id] = doc
+
+    # Now we have a dictionary of unique documents; we need to sort them by 'last_modified'
+    sorted_documents = sorted(
+        unique_documents.values(), 
+        key=lambda x: datetime.fromisoformat(x['metadata']['last_modified'].replace('Z', '+00:00')),
+        reverse=True
+    )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={},
+        )
+
+    return sorted_documents
+
+
 
 
 @app.post("/api/auth/forgot_password", include_in_schema=schema_params["DISABLE_FORGOT_PASSWORD"]==False)
