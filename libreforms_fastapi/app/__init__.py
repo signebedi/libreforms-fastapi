@@ -1569,7 +1569,7 @@ async def api_form_read_all_needing_action(
 
 # Read all forms that reference the given form_name and document_id
 @app.get("/api/form/get_linked_refs/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
-async def api_form_read_all_needing_action(
+async def api_form_get_linked_references(
     form_name: str, 
     document_id: str, 
     background_tasks: BackgroundTasks, 
@@ -1658,8 +1658,22 @@ async def api_form_read_all_needing_action(
             )
 
             documents.extend(_documents) 
-            
-            # Placeholder: drop duplicates and sort!
+        
+    # Drop duplicates and sort!
+    unique_documents = {}
+    for doc in documents:
+        doc_id = doc['__metadata__document_id']
+
+        # Replace the document if this one is newer
+        if doc_id not in unique_documents:
+            unique_documents[doc_id] = doc
+
+    # Now we have a dictionary of unique documents; we need to sort them by 'last_modified'
+    sorted_documents = sorted(
+        unique_documents.values(), 
+        key=lambda x: datetime.fromisoformat(x['__metadata__last_modified'].replace('Z', '+00:00')),
+        reverse=True
+    )
 
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
@@ -1675,7 +1689,7 @@ async def api_form_read_all_needing_action(
             query_params={},
         )
 
-    return {"documents": documents}
+    return sorted_documents
 
 
 
