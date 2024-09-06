@@ -346,6 +346,9 @@ def get_config(env):
         
         SMTP_ENABLED:bool = False
 
+        # Hard code locale for testing
+        TIMEZONE: ZoneInfo = ZoneInfo('America/New_York')
+
         RATE_LIMITS_ENABLED:bool = False
         MAX_LOGIN_ATTEMPTS:int = 0
         REQUIRE_EMAIL_VERIFICATION:bool = False
