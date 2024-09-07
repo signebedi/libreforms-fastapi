@@ -23,11 +23,52 @@
         </tbody>
     </table>
 </div>
+
+
+
+<div id="linkedRefsSection" class="mt-4" style="display: none;">
+    <h5>Linked References</h5>
+    <p>The section below will display back references made to this user in form submissions, not including when the user is the creator, last editor, or approver of the form. Please note: you will only be able to see form submissions listed here that your user has the necessary group-based privileges to view.</p>
+    <div class="container table-responsive" style="opacity: .7;">
+        <table id="linkedRefsTable" class="table table-hover table-striped table-light" style="display: none;">
+            <thead>
+                <tr>
+                    <th>Document ID</th>
+                    <th>Form Name</th>
+                    <th>Details</th>
+                    <th>Last Editor</th>
+                    <th>Last Modified</th>
+                    <th>Created By</th>
+                    <th>Created At</th>
+                </tr>
+            </thead>
+            <tbody>
+            </tbody>
+        </table>
+        <div id="noLinkedRefsMessage" style="display: none;">No linked references found.</div>
+    </div>
+</div>
+
 {% endblock %}
 
 {% block scripts %}
 <script src="{{url_for('static', path='js/datatables.js')}}"></script>
 <script>
+
+    // https://www.geeksforgeeks.org/how-to-truncate-a-string-in-javascript/
+    function GFG(str, maxLength) {
+        if (str.length > maxLength) {
+            return str.substring(0, maxLength) + '...';
+        }
+        return str;
+    }
+
+    function formatObject(obj) {
+        return Object.entries(obj)
+            .map(([key, value]) => `<strong>${key}</strong>: ${value}`)
+            .join(', ');
+    }
+
     $(document).ready( function () {
 
         const spinner = document.querySelector('.loading-circle');
@@ -71,6 +112,70 @@
                     "paging": false,
                     "searching": false 
                 });
+
+
+
+                function fetchLinkedReferences() {
+                    $.ajax({
+                        url: `/api/auth/get_linked_refs/${profileData.username}`,
+                        type: 'GET',
+                        headers: {
+                            'X-API-KEY': apiKey,
+                        },
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.length > 0) {
+                                $('#linkedRefsSection').show();  // Show the section
+                                $('#linkedRefsTable').show();    // Show the table
+                                $('#noLinkedRefsMessage').hide(); // Hide the no data message
+                                response.forEach(doc => {
+                                    let row = `<tr>
+                                        <td>
+                                            <a href="/ui/form/read_one/${doc['metadata']['form_name']}/${doc['metadata']['document_id']}">${doc.metadata.document_id}</a>
+                                        </td>
+                                        <td>${doc.metadata.form_name.replace(/_/g, ' ')}</td>
+                                        <td>${GFG(formatObject(doc['data']), 150)}</td>
+                                        <td>
+                                            <a target="_blank" href="/ui/auth/p/${doc['metadata']['last_editor']}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${doc['metadata']['last_editor']}">
+                                                ${doc['metadata']['last_editor']}
+                                            </a>
+                                        </td>
+                                        <td><span title="${doc['metadata']['last_modified']}">${prettifyTimeDiff(doc['metadata']['last_modified'], "{{config['TIMEZONE']|string}}")}</span></td>
+                                        <td>
+                                            <a target="_blank" href="/ui/auth/p/${doc['metadata']['created_by']}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${doc['metadata']['created_by']}">
+                                                ${doc['metadata']['created_by']}
+                                            </a>
+                                        </td>
+                                        <td><span title="${doc['metadata']['created_at']}">${prettifyTimeDiff(doc['metadata']['created_at'], "{{config['TIMEZONE']|string}}")}</span></td>
+
+
+                                    </tr>`;
+                                    $('#linkedRefsTable tbody').append(row);
+                                });
+                                $('#linkedRefsTable').DataTable({
+                                    "ordering": true,
+                                    "order": [[4, "desc"]],
+                                    "lengthChange": false,
+                                    "info": false,
+                                    // "searching": false,
+                                    "paging": false
+                                });
+                            } else {
+                                $('#linkedRefsSection').hide();  // Hide the section
+                                $('#noLinkedRefsMessage').show(); // Show the no data message
+                            }
+                        },
+                        error: function(xhr) {
+                            console.error('Failed to fetch linked references', xhr.responseText);
+                            $('#linkedRefsSection').hide();  // Also hide on error
+                            $('#noLinkedRefsMessage').show(); // Show the no data message
+                        }
+                    });
+                }
+
+                fetchLinkedReferences();
+
+
             },
             error: function(error) {
                 console.error("Error fetching profile data:", error);
