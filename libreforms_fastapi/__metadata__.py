@@ -1,4 +1,4 @@
-__version__ = "1.0.8"
+__version__ = "1.0.9"
 __name__ = "libreforms_fastapi"
 __author__ = "Sig Janoska-Bedi"
 __credits__ = ["Sig Janoska-Bedi"]
