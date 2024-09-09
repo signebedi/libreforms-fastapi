@@ -106,7 +106,7 @@ def get_config(env):
 
         @field_validator('TIMEZONE')
         def validate_timezone(cls, v):
-            # If it's already a ZoneInfo object, no need to re-validate
+            # If already a ZoneInfo object, no need to re-validate
             if isinstance(v, ZoneInfo):
                 return v
             # If it's a string, attempt to create a ZoneInfo object
@@ -125,8 +125,13 @@ def get_config(env):
 
         USERNAME_REGEX: str = os.getenv('USERNAME_REGEX', r"^\w\w\w\w+$")
         USERNAME_HELPER_TEXT: str = os.getenv('USERNAME_HELPER_TEXT', "Username must be 4-36 alphanumeric characters and underscores")
-        PASSWORD_REGEX: str = os.getenv('PASSWORD_REGEX', r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+[\]{};\'\\:"|,.<>/?])[A-Za-z\d!@#$%^&*()_+[\]{};\'\\:"|,.<>/?]{8,}$')
-        PASSWORD_HELPER_TEXT: str = os.getenv('PASSWORD_HELPER_TEXT', "Password must be 8+ characters, must include uppercase, lowercase, digit, and special character")
+        # PASSWORD_REGEX: str = os.getenv('PASSWORD_REGEX', r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+[\]{};\'\\:"|,.<>/?])[A-Za-z\d!@#$%^&*()_+[\]{};\'\\:"|,.<>/?]{8,}$')
+        # PASSWORD_HELPER_TEXT: str = os.getenv('PASSWORD_HELPER_TEXT', "Password must be 8+ characters, must include at least one uppercase letter, at least one lowercase letter, at least one number, and at least one of the following symbols: ! @ $ % & * ?")
+
+        # Improved in https://github.com/signebedi/libreforms-fastapi/issues/349
+        PASSWORD_REGEX: str = os.getenv('PASSWORD_REGEX', r'^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[!@#$%^&*()_+\[\]{};:\'",.<>/?\\|~`\-])[A-Za-z\d!@#$%^&*()_+\[\]{};:\'",.<>/?\\|~`\-]{8,}$')
+        PASSWORD_HELPER_TEXT: str = os.getenv('PASSWORD_HELPER_TEXT', "Password must be 8+ characters, include at least one uppercase letter, one lowercase letter, one number, and one symbol")
+
 
         # Here we allow the application to be run headlessly, but default to an enabled UI,
         # see https://github.com/signebedi/libreforms-fastapi/issues/18.
