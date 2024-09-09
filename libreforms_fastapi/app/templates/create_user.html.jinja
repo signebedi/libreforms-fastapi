@@ -14,7 +14,7 @@
         | {{config['USERNAME_HELPER_TEXT']}}
         </span>
         <input type="text" id="username" name="username" class="form-control" 
-            onchange="validateField('username', /^[a-z0-9_]{5,15}$/, 'Invalid username. Username should be 5-15 characters long and contain only letters, numbers, and underscores.')" required>
+            onchange="validateField('username', 'Invalid username. {{ config['USERNAME_HELPER_TEXT'] }}')" required>
         {# Username should be 3-15 characters long and contain only lowercase letters, numbers, and underscores. #}
         <div class="valid-feedback" id="username-is-valid" style="display: none;">This field is valid!</div>
         <div class="invalid-feedback" id="username-is-invalid" style="display: none;"></div>
@@ -37,7 +37,7 @@
         | {{config['PASSWORD_HELPER_TEXT']}}
         </span>
         <input type="password" id="password" name="password" class="form-control" 
-            onchange="validateField('password', /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/, 'Invalid password. Password must be at least 8 characters long, and include at least one uppercase letter, one lowercase letter, one symbol, and one number.')" required>
+            onchange="validateField('password', 'Invalid password. {{ config['PASSWORD_HELPER_TEXT'] }}')" required>
         {# Password must be at least 8 characters long, and include at least one uppercase letter, one lowercase letter, and one number. #}
         <div class="valid-feedback" id="password-is-valid" style="display: none;">This field is valid!</div>
         <div class="invalid-feedback" id="password-is-invalid" style="display: none;"></div>
@@ -91,10 +91,21 @@ $(document).ready(function() {
     var submitBtn = $('#registrationForm button[type="submit"]');
     submitBtn.prop('disabled', true); // Initially disable the submit button
 
-    window.validateField = function(fieldId, regex, invalidMessage) {
+    const passwordRegex = new RegExp({{ config['PASSWORD_REGEX']|tojson }});
+    const usernameRegex = new RegExp({{ config['USERNAME_REGEX']|tojson }});
+
+
+    window.validateField = function(fieldId, invalidMessage) {
         var field = $('#' + fieldId);
         var value = field.val();
-        var isValid = regex.test(value);
+
+        if (fieldId === "password"){
+            var isValid = passwordRegex.test(value);
+        } else if (fieldId === "username") {
+            var isValid = usernameRegex.test(value);
+        } else {
+            console.error("Unimplemented field type");
+        }
 
         var feedbackId = fieldId + '-is-' + (isValid ? 'valid' : 'invalid');
         var oppositeFeedbackId = fieldId + '-is-' + (isValid ? 'invalid' : 'valid');

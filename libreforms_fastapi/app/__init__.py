@@ -6430,6 +6430,35 @@ def build_ui_context():
     kwargs["current_year"] = datetime.now().year
     kwargs["render_markdown_content"] = render_markdown_content
 
+
+    # def convert_python_regex_to_js(python_regex: str, embed_in_js_string=True):
+    #     js_regex = re.sub(r"\(\?P<([a-zA-Z_][a-zA-Z0-9_]*)>", r"(?<\1>", python_regex)
+    #     js_regex = re.sub(r'\\(?![dwsDSW])', r'\\\\', js_regex)  # Handle backslashes for JS
+    #     if embed_in_js_string:
+    #         js_regex = js_regex.replace('"', '\\"')  # Escape quotes for JS strings
+    #     return js_regex
+
+    def convert_python_regex_to_js(python_regex: str, embed_in_js_string=True):
+        # Replace Python-style named groups with JavaScript-style named groups
+        js_regex = re.sub(r"\(\?P<([a-zA-Z_][a-zA-Z0-9_]*)>", r"(?<\1>", python_regex)
+        
+        # Escape only necessary backslashes for JavaScript, ignoring \d, \w, \s, etc.
+        # Match a backslash that is not followed by special regex characters.
+        js_regex = re.sub(r'\\(?![dwsDSWbB])', r'\\\\', js_regex)
+
+        # Optionally escape double quotes if embedding inside a JS string delimited by double quotes
+        if embed_in_js_string:
+            js_regex = js_regex.replace('"', '\\"')
+
+        return js_regex
+
+
+    # We want to render these regexes in a way that javascript can handle them, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/349
+    kwargs["js_friendly_username_regex"] = convert_python_regex_to_js(_c.USERNAME_REGEX)
+    kwargs["js_friendly_password_regex"] = convert_python_regex_to_js(_c.PASSWORD_REGEX)
+
+
     return kwargs
 
 
