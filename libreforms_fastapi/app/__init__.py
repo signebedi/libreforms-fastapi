@@ -3437,7 +3437,7 @@ async def api_auth_change_password(
             'user_password_changed', 
             config.EMAIL_CONFIG_PATH,
             config=config,
-            username=user, 
+            user=user, 
         )
         # print(subject, content)
 
