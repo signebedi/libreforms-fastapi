@@ -5858,6 +5858,63 @@ def get_string_differences(str1, str2):
 
 
 
+# Edit docs
+@app.post(
+    "/api/admin/edit_docs", 
+    dependencies=[Depends(api_key_auth)], 
+    response_class=JSONResponse, 
+    include_in_schema=schema_params["DOCS_ENABLED"],
+)
+async def api_admin_edit_docs(
+    request: Request, 
+    background_tasks: BackgroundTasks,
+    docs: DocsEditRequest,
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    session: SessionLocal = Depends(get_db), 
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Allows site administrators to edit system documentation. This operation is logged for audit purposes.
+    """
+
+    if not config.DOCS_ENABLED:
+        raise HTTPException(status_code=404)
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    old_docs_markdown = get_docs(docs_path=config.DOCS_PATH, render_markdown=False)
+
+    background_tasks.add_task(
+        write_docs, 
+            docs_path=config.DOCS_PATH, 
+            content=docs.content, 
+            scrub_unsafe=True,
+    )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"changes": get_string_differences(old_docs_markdown, docs.content)},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success"},
+    )
+
 # Upload favicon
 @app.post(
     "/api/admin/upload_favicon",
