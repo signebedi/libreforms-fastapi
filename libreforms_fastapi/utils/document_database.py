@@ -229,6 +229,7 @@ class ManageDocumentDB(ABC):
         # [self.created_by_field, self.last_editor_field, field_name, field_name]
         self.linked_to_form_field = "linked_form_fields"
         # [(field_name, form_name, [display_field, display_field])]
+        self.reviewer_comments_field = "reviewer_comments"
 
         return [
             self.form_name_field, 
@@ -248,6 +249,7 @@ class ManageDocumentDB(ABC):
             self.journal_field, 
             self.linked_to_user_field,
             self.linked_to_form_field,
+            self.reviewer_comments_field,
         ]
     @abstractmethod
     def _initialize_database_collections(self):
@@ -732,6 +734,7 @@ class ManageTinyDB(ManageDocumentDB):
                 self.last_modified_field: current_timestamp.isoformat(),
                 self.last_editor_field: metadata.get(self.last_editor_field, None),
                 self.ip_address_field: metadata.get(self.ip_address_field, None),
+                self.reviewer_comments_field: metadata.get(self.reviewer_comments_field, ""),
             },
         }
 
@@ -808,6 +811,7 @@ class ManageTinyDB(ManageDocumentDB):
         document['metadata'][self.last_modified_field] = current_timestamp.isoformat()
         document['metadata'][self.last_editor_field] = metadata.get(self.last_editor_field, None)
         document['metadata'][self.ip_address_field] = metadata.get(self.ip_address_field, None)
+        document['metadata'][self.reviewer_comments_field] = metadata.get(self.reviewer_comments_field, "") 
         document['metadata'][self.journal_field] = journal
 
         # Set the form stage stored in the document's metadata to the 

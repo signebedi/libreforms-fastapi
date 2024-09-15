@@ -2722,10 +2722,13 @@ async def api_form_sign(
     doc_db = Depends(get_doc_db), 
     session: SessionLocal = Depends(get_db),
     key: str = Depends(X_API_KEY),
+    reviewer_comments: str = "",
 ):
     """
     Digitally signs a specific document in a form that requires approval and routes 
-    to the next form stage. Logs the signing action. 
+    to the next form stage. Logs the signing action. You can pass a `reviewer_comments`
+    query param to associate comments with the review action that is taking place. This
+    field has a max length of 300 characters.
     """
 
     if not config.API_ENABLED:
@@ -2738,6 +2741,10 @@ async def api_form_sign(
 
     if action not in permitted_actions:
         raise HTTPException(status_code=404, detail=f"Form '{action}' not permitted")
+
+   # Ensure reviewer_comments does not exceed 300 characters
+    if len(reviewer_comments) > 300:
+        raise HTTPException(status_code=400, detail="Reviewer comments cannot exceed 300 characters.")
 
     # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
     # the sqlalchemy-signing table is not optimized alongside the user model...
@@ -2782,6 +2789,7 @@ async def api_form_sign(
     # Build the metadata field
     metadata={
         doc_db.last_editor_field: user.username,
+        doc_db.reviewer_comments_field: reviewer_comments
     }
 
     # Add the remote addr host if enabled

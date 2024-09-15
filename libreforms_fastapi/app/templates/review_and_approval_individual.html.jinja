@@ -23,6 +23,19 @@
 <p>You are currently in the Review & Approval interface for this submission. You can see its details below. If you would like to go back to the general Review & Approval page, click <a href="/ui/form/review_and_approval">here</a>. If you would like to view this submission outside the Review & Approval interface, click <a href="/ui/form/read_one/{{ form_name }}/{{ document_id }}">here</a>.</p>
 <p>The current stage for this submission is <code><span id="currentFormStage">{{stage_conf["label"] if "label" in stage_conf.keys() else form_stage}}</span></code>.</p>
 
+
+{% if "on_approve" in stage_conf.keys() or 
+      "on_deny" in stage_conf.keys() or 
+      "on_pushback" in stage_conf.keys() or 
+      "on_confirm" in stage_conf.keys() %}
+<fieldset style="padding-bottom: 20px;">
+    <label aria-labelledby="reviewer_comments_help" for="reviewer_comments" class="form-check-label set-bold">Reviewer Comments</label>
+    <span id="reviewer_comments_help" class="form-text">Optional. Use this space to provide any reviewer comments you would like to attach along with your decision. These comments will be automatically added when you select an action below. Max length: 300 characters.</span>
+    <textarea maxlength="300" class="form-control" id="reviewer_comments" name="reviewer_comments" rows="3" placeholder="Add your comments here..."></textarea>
+</fieldset>
+
+{% endif %}
+
 {% if "on_approve" in stage_conf.keys()%}
 <button onclick="signForm('approve');" id="form_approval" class="btn btn-primary" disabled>I approve this submission</button>
 {% endif %}
@@ -72,8 +85,18 @@
     {% endif %}
 
     function signForm(action) {
+
+        // Get the value from the reviewer_comments textarea
+        const reviewerComments = document.getElementById('reviewer_comments').value;
+
+        // Construct the query parameter for reviewer_comments if it's not empty
+        let queryParams = "";
+        if (reviewerComments.trim() !== "") {
+            queryParams = `?reviewer_comments=${encodeURIComponent(reviewerComments.trim())}`;
+        }
+
         $.ajax({
-            url: `/api/form/sign/${formName}/${documentId}/${action}`,
+            url: `/api/form/sign/${formName}/${documentId}/${action}${queryParams}`,
             type: 'PATCH',
             headers: {
                 'X-API-KEY': apiKey,
