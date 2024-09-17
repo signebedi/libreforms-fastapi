@@ -52,14 +52,14 @@ function deleteForm(formName, documentId) {
         dataType: 'json',
 
         success: function(response) {
-            setFlashMessage("Successfully deleted form", AlertCategories.SUCCESS);
+            setFlashMessage("Successfully deleted submission", AlertCategories.SUCCESS);
             window.location.reload();
 
         },
 
         error: function(xhr) {
             // Handle errors
-            console.error('Failed to delete form', xhr.responseText);
+            console.error('Failed to delete submission', xhr.responseText);
             // Display error message to the user
             flashMessage(xhr.responseText, 'danger'); 
         }
@@ -78,14 +78,14 @@ function restoreForm(formName, documentId) {
         dataType: 'json',
 
         success: function(response) {
-            setFlashMessage("Successfully restored form", AlertCategories.SUCCESS);
+            setFlashMessage("Successfully restored submission", AlertCategories.SUCCESS);
             window.location.reload();
 
         },
 
         error: function(xhr) {
             // Handle errors
-            console.error('Failed to restore form', xhr.responseText);
+            console.error('Failed to restore submission', xhr.responseText);
             // Display error message to the user
             flashMessage(xhr.responseText, 'danger'); 
         }
@@ -114,7 +114,7 @@ function restoreForm(formName, documentId) {
                             <a style="opacity: 0.6;" class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">${submission['metadata']['document_id']}</a>
                             <div class="dropdown-menu">
                                 <a class="dropdown-item" href="/ui/form/read_one/${submission['metadata']['form_name']}/${submission['metadata']['document_id']}">View Submission</a> 
-                                <a class="dropdown-item" id="deleteLink" onclick="restoreForm('${submission['metadata']['form_name']}', '${submission['metadata']['document_id']}');" href="#">Restore Form</a>
+                                <a class="dropdown-item" id="deleteLink" onclick="restoreForm('${submission['metadata']['form_name']}', '${submission['metadata']['document_id']}');" href="#">Restore Submission</a>
 
                             </div>
                         </td>
@@ -132,7 +132,7 @@ function restoreForm(formName, documentId) {
                             <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">${submission['metadata']['document_id']}</a>
                             <div class="dropdown-menu">
                                 <a class="dropdown-item" href="/ui/form/read_one/${submission['metadata']['form_name']}/${submission['metadata']['document_id']}">View Submission</a> 
-                                <a class="dropdown-item" id="deleteLink" onclick="deleteForm('${submission['metadata']['form_name']}', '${submission['metadata']['document_id']}');" href="#">Delete Form</a>
+                                <a class="dropdown-item" id="deleteLink" onclick="deleteForm('${submission['metadata']['form_name']}', '${submission['metadata']['document_id']}');" href="#">Delete Submission</a>
 
                             </div>
                         </td>

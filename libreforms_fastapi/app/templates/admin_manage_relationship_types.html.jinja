@@ -58,7 +58,7 @@
 
             error: function(xhr) {
                 // Handle errors
-                console.error('Failed to delete form', xhr.responseText);
+                console.error('Failed to delete', xhr.responseText);
                 // Display error message to the user
                 flashMessage(xhr.responseText, 'danger'); 
             }
