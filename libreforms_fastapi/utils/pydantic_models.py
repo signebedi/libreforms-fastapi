@@ -732,11 +732,16 @@ def get_form_html(
         # Added from https://github.com/signebedi/libreforms-fastapi/issues/279
         form_display_fields: list = field_info.get("form_display_fields", ['__metadata__document_id'])
 
-        if isinstance(links_to_form, str) and links_to_form not in form_config:
-            raise ValueError(f"You are attempting to link the the {field_name} field of the {form_name} form to the {links_to_form} form, which does not exist.")
+        if isinstance(links_to_form, str):
+            if links_to_form not in form_config:
+                raise ValueError(f"You are attempting to link the the {field_name} field of the {form_name} form to the {links_to_form} form, which does not exist.")
 
             if not all(item in form_config[links_to_form].keys() or item.startswith("__metadata__") for item in form_display_fields):
                 raise ValueError(f"You have selected form_display_fields fields for the {field_name} field of the {links_to_form} form that are not in the form model. If you are trying to set metadata fields, be sure to prepend the field name with `__metadata__`. You have provided the following keys: {form_display_fields}.")
+
+            # This will allow admins to pass read_all query params, see 
+            # https://github.com/signebedi/libreforms-fastapi/issues/322.
+            links_to_form_query_params: str = field_info.get("query_params", "")
 
         required: bool = field_info.get("required", False)
 
@@ -962,7 +967,7 @@ def get_form_html(
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>'''
             if isinstance(links_to_form, str):
                 field_html += f'''
-                    <select class="form-control data-lookup" onChange="getLookup('{links_to_form}', '{field_name}', this);" id="{field_name}" name="{field_name}" data-link="{links_to_form}"{' required' if required else ''}>'''
+                    <select class="form-control data-lookup" onChange="getLookup('{links_to_form}', '{field_name}', this, '{links_to_form_query_params}');" id="{field_name}" name="{field_name}" data-link="{links_to_form}"{' required' if required else ''}>'''
             else:
                 field_html += f'''
                     <select class="form-control" id="{field_name}" name="{field_name}"{' required' if required else ''}>'''
@@ -984,8 +989,8 @@ def get_form_html(
         			<div><div id="content_{field_name}" style="width: 100%; height: 300px; overflow-y: auto; max-height: 700px; resize: vertical; margin-top: 10px; border: 2px solid var(--bs-secondary);"></div></div>
                     <script>
                     window.onload = function() {{
-                        generateLookup('{links_to_form}', '{field_name}', {form_display_fields});
-                        // getLookup('{links_to_form}', '{field_name}', document.getElementById('{field_name}'));
+                        generateLookup('{links_to_form}', '{field_name}', {form_display_fields}, '{links_to_form_query_params}');
+                        // getLookup('{links_to_form}', '{field_name}', document.getElementById('{field_name}', '{links_to_form_query_params}'));
                     }}
                     </script>'''
             field_html += '''
