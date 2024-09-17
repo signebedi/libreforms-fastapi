@@ -23,8 +23,8 @@ from libreforms_fastapi.utils.custom_tinydb import (
 # This import is used to afix digital signatures to records
 from libreforms_fastapi.utils.certificates import sign_record, verify_record_signature
 
-# This import is used to sanitize data on writes
-from libreforms_fastapi.utils.docs import sanitizer
+# This import is used to sanitize data
+from libreforms_fastapi.utils.docs import low_trust_sanitizer as sanitizer
 
 
 # Mapping of string operators to actual functions, used as query parameters

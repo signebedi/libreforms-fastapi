@@ -25,6 +25,7 @@ sanitizer_config = {
 
 sanitizer = Sanitizer(sanitizer_config)
 
+low_trust_sanitizer = Sanitizer()
 
 class UnsafeHtmlContentError(Exception):
     """Custom exception for unsafe HTML content."""
