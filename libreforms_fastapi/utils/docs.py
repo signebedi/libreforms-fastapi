@@ -25,7 +25,23 @@ sanitizer_config = {
 
 sanitizer = Sanitizer(sanitizer_config)
 
-low_trust_sanitizer = Sanitizer()
+
+strict_sanitizer_config = {
+    # 'tags': {'a', 'br', 'p', 'strong', 'em', 'ul', 'ol', 'li', 'b', 'i', 'u'},  # Basic formatting tags
+    'tags': {'br', 'p', 'strong', 'em', 'ul', 'ol', 'li', 'b', 'i', 'u'},  # No <a> allowed
+    # 'attributes': {
+    #     'a': ['href', 'title'],  # Allow only href and title for links, avoiding JavaScript URLs
+    # },
+    'attributes': {}, # No <a> allowed
+    'empty': {'br'},  # Only inherently empty tags
+    # 'separate': {'a', 'p', 'ul', 'ol', 'li', 'br'},  # Prevent nested misuse
+    'separate': {'p', 'ul', 'ol', 'li', 'br'},  # No <a> allowed
+    # 'protocols': {'a': ['http', 'https', 'mailto']},  # Allowed protocols to prevent JavaScript injections
+    'protocols': {},  # No <a> allowed
+    'unescape_special_chars': False  # Disable unescaping special chars to prevent XSS attacks
+}
+
+strict_trust_sanitizer = Sanitizer(strict_sanitizer_config)
 
 class UnsafeHtmlContentError(Exception):
     """Custom exception for unsafe HTML content."""
