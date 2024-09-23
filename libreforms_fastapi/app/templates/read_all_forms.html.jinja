@@ -112,6 +112,7 @@ $(document).ready(function () {
         readAllTable.style.display = ''; // Show the table
 
         $('#readAllTable').DataTable({
+            order: [[4, 'desc']],
             // This is a fix to properly sort prettified datetimes
             columnDefs: [
                 { 
