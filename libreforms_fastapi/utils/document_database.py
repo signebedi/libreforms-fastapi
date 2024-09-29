@@ -218,8 +218,8 @@ class ManageDocumentDB(ABC):
         self.last_modified_field = "last_modified"
         self.ip_address_field = "ip_address"
         self.created_by_field = "created_by"
-        self.signature_field = "signatures"        
-        self.form_stage_field = "form_stage"        
+        self.signature_field = "signatures"
+        self.form_stage_field = "form_stage"
         self.last_editor_field = "last_editor"
         # self.approved_field = "approved"
         # self.approved_by_field = "approved_by"
@@ -230,6 +230,7 @@ class ManageDocumentDB(ABC):
         self.linked_to_form_field = "linked_form_fields"
         # [(field_name, form_name, [display_field, display_field])]
         self.reviewer_comments_field = "reviewer_comments"
+        self.unregistered_form_field = "unregistered_form_submission"
 
         return [
             self.form_name_field, 
@@ -250,6 +251,7 @@ class ManageDocumentDB(ABC):
             self.linked_to_user_field,
             self.linked_to_form_field,
             self.reviewer_comments_field,
+            self.unregistered_form_field,
         ]
     @abstractmethod
     def _initialize_database_collections(self):
@@ -500,6 +502,9 @@ class ManageTinyDB(ManageDocumentDB):
                 self.last_editor_field: metadata.get(self.last_editor_field, None),
                 self.linked_to_user_field: metadata.get(self.linked_to_user_field, []),
                 self.linked_to_form_field: metadata.get(self.linked_to_form_field, {}),
+                # Below config added in https://github.com/signebedi/libreforms-fastapi/issues/357
+                self.unregistered_form_field: metadata.get(self.unregistered_form_field, False), 
+
                 # self.approved_field: metadata.get(self.approved_field, None),
                 # self.approved_by_field: metadata.get(self.approved_by_field, None),
                 # self.approval_signature_field: metadata.get(self.approval_signature_field, None),
