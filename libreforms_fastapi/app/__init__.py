@@ -806,10 +806,27 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
         )
 
     except ScopeMismatch:
-        raise HTTPException(
-            status_code=401,
-            detail="Invalid API key"
-        )
+
+        # Add this here as part of https://github.com/signebedi/libreforms-fastapi/issues/357. 
+        # The crux is that we may sometimes have single-use API keys under the `api_key_single_use`
+        # scope. These, we want to validate and expire immediately on the core assumption that, once 
+        # used, they cannot be used again. We add it here under an exception handler because we
+        # assume the majority of requests will NOT be single use API keys. This should work because
+        # ScopeMismatch is the last check that the sqlalchemy_signing library does, so all the other
+        # exceptions have precedence, and a ScopeMismatch will only occur if all other aspects of a
+        # signing key are already valid.
+
+        try: 
+            verify = signatures.verify_key(x_api_key, scope=['api_key_single_use'])
+            
+            # If it's valid, we expire the key immediately, outside the scope of the API route
+            _ = signatures.expire_key(x_api_key)
+
+        except:
+            raise HTTPException(
+                status_code=401,
+                detail="Invalid API key"
+            )
 
     except KeyExpired:
         raise HTTPException(
