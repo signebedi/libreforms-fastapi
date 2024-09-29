@@ -598,6 +598,9 @@ def get_form_model(
             'on_confirm',
         ]}
 
+    # Here, we determine whether and which default email templates ought to be sent, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/356. 
+    disable_default_emails: bool | list = _config.get("disable_default_emails", False) 
 
     # Here we provide for approval stages, see discussion in
     # https://github.com/signebedi/libreforms-fastapi/issues/62
@@ -673,6 +676,10 @@ def get_form_model(
     dynamic_model.event_hooks = event_hooks
     dynamic_model.user_fields = user_fields
     dynamic_model.form_fields = form_fields
+
+    # Attach the default email template poolice to the dynamic model, see 
+    # https://github.com/signebedi/libreforms-fastapi/issues/356
+    dynamic_model.disable_default_emails = disable_default_emails
 
     # Attach event hook attr to the dynamic model, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/62
