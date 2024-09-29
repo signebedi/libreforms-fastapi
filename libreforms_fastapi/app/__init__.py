@@ -780,7 +780,7 @@ def get_db():
         db.close()
         
 # Here we define an API key header for the api view functions.
-X_API_KEY = APIKeyHeader(name="X-API-Key")
+X_API_KEY = APIKeyHeader(name="X-API-KEY")
 
 # See https://stackoverflow.com/a/72829690/13301284 and
 # https://fastapi.tiangolo.com/reference/security/?h=apikeyheader
@@ -1424,8 +1424,14 @@ async def api_form_create(
         metadata=metadata,
     )
 
+
+    # Validate whether default background emails should be sent for this form. 
+    # See https://github.com/signebedi/libreforms-fastapi/issues/356
+    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_created' not in FormModel.disable_default_emails
+
     # Send email
-    if config.SMTP_ENABLED:
+    if config.SMTP_ENABLED and check_background_email:
+
         subject, content = render_email_message_from_jinja(
             'form_created', 
             config.EMAIL_CONFIG_PATH,
@@ -2272,8 +2278,14 @@ async def api_form_update(
     except NoChangesProvided as e:
         raise HTTPException(status_code=200, detail=f"{e}")
 
+
+    # Validate whether default background emails should be sent for this form. 
+    # See https://github.com/signebedi/libreforms-fastapi/issues/356
+    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_updated' not in FormModel.disable_default_emails
+
     # Send email
-    if config.SMTP_ENABLED:
+    if config.SMTP_ENABLED and check_background_email:
+
         subject, content = render_email_message_from_jinja(
             'form_updated', 
             config.EMAIL_CONFIG_PATH,
@@ -2371,6 +2383,16 @@ async def api_form_delete(
             raise HTTPException(status_code=403, detail=f"{e}")
 
 
+    # Yield the pydantic form model
+    FormModel = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
+
     metadata={
         doc_db.last_editor_field: user.username,
     }
@@ -2400,8 +2422,13 @@ async def api_form_delete(
         raise HTTPException(status_code=403, detail=f"{e}")
 
 
+    # Validate whether default background emails should be sent for this form. 
+    # See https://github.com/signebedi/libreforms-fastapi/issues/356
+    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_deleted' not in FormModel.disable_default_emails
+
     # Send email
-    if config.SMTP_ENABLED:
+    if config.SMTP_ENABLED and check_background_email:
+
 
         subject, content = render_email_message_from_jinja(
             'form_deleted', 
@@ -2418,7 +2445,6 @@ async def api_form_delete(
             content=content,
             to_address=user.email,
         )
-
 
 
     # Write this query to the TransactionLog
@@ -2510,6 +2536,16 @@ async def api_form_restore(
             raise HTTPException(status_code=403, detail=f"{e}")
 
 
+    # Yield the pydantic form model
+    FormModel = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
+
     metadata={
         doc_db.last_editor_field: user.username,
     }
@@ -2539,8 +2575,15 @@ async def api_form_restore(
         raise HTTPException(status_code=403, detail=f"{e}")
 
 
+
+    # Validate whether default background emails should be sent for this form. 
+    # See https://github.com/signebedi/libreforms-fastapi/issues/356
+    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_restored' not in FormModel.disable_default_emails
+
     # Send email
-    if config.SMTP_ENABLED:
+    if config.SMTP_ENABLED and check_background_email:
+
+
 
         subject, content = render_email_message_from_jinja(
             'form_restored', 
@@ -2847,8 +2890,16 @@ async def api_form_sign(
     except NoChangesProvided as e:
         raise HTTPException(status_code=200, detail=f"{e}")
 
+
+
+
+
+    # Validate whether default background emails should be sent for this form. 
+    # See https://github.com/signebedi/libreforms-fastapi/issues/356
+    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_stage_changed' not in FormModel.disable_default_emails
+
     # Send email
-    if config.SMTP_ENABLED:
+    if config.SMTP_ENABLED and check_background_email:
 
         subject, content = render_email_message_from_jinja(
             'form_stage_changed', 
@@ -2979,8 +3030,12 @@ async def api_form_sign(
 #     except NoChangesProvided as e:
 #         raise HTTPException(status_code=200, detail=f"{e}")
 
-#     # Send email
-#     if config.SMTP_ENABLED:
+#    # Validate whether default background emails should be sent for this form. 
+#    # See https://github.com/signebedi/libreforms-fastapi/issues/356
+#    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_unsigned' not in FormModel.disable_default_emails
+#
+#    # Send email
+#    if config.SMTP_ENABLED and check_background_email:
 
 #         subject, content = render_email_message_from_jinja(
 #             'form_unsigned', 
