@@ -579,7 +579,7 @@ def get_form_model(
 
     # Here we set defaults that will be overwritten by __config__ if it is passed,
     # see https://github.com/signebedi/libreforms-fastapi/issues/315.
-    _config = fields.get("__config__", {})
+    _config = fields.get("__config__", {}) or {}
 
     # Here we provide for event hooks, see discussion in
     # https://github.com/signebedi/libreforms-fastapi/issues/210
@@ -601,6 +601,19 @@ def get_form_model(
     # Here, we determine whether and which default email templates ought to be sent, see
     # https://github.com/signebedi/libreforms-fastapi/issues/356. 
     disable_default_emails: bool | list = _config.get("disable_default_emails", False) 
+
+    # Here, we determine whether to permit unregistered form submission and, if we do, which
+    # method will be used, see https://github.com/signebedi/libreforms-fastapi/issues/357
+    unregistered_submission_enabled: bool = _config.get("unregistered_submission_enabled", False) 
+
+    unregistered_submission_permitted_methods = [
+        'email_validated_create_user',
+        'email_validated',
+        # 'open', # This will be implemented by https://github.com/signebedi/libreforms-fastapi/issues/358
+    ]
+    unregistered_submission_method: str = _config.get("unregistered_submission_method", 'email_validated_create_user') 
+
+    assert unregistered_submission_method in unregistered_submission_permitted_methods, f"{unregistered_submission_method} not a permitted method for unregistered form submission. Must be one of: {unregistered_submission_permitted_methods}"
 
     # Here we provide for approval stages, see discussion in
     # https://github.com/signebedi/libreforms-fastapi/issues/62
@@ -680,6 +693,12 @@ def get_form_model(
     # Attach the default email template poolice to the dynamic model, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/356
     dynamic_model.disable_default_emails = disable_default_emails
+
+
+    # Attach the unregistered form submission rules to the dynamic model, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/357.
+    dynamic_model.unregistered_submission_enabled = unregistered_submission_enabled
+    dynamic_model.unregistered_submission_method = unregistered_submission_method
 
     # Attach event hook attr to the dynamic model, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/62
@@ -1101,3 +1120,7 @@ class SiteConfig(BaseModel):
     """This model will be used for validating site config changes through the admin API"""
     content: dict = Field(...)
 
+
+class RequestUnregisteredForm(BaseModel):
+    """The model will validate an email request body when users try request an unregistered form submission"""
+    email: EmailStr  

@@ -178,96 +178,29 @@ help_request:
       <p>You may reply directly to the user who submitted this request by replying to this email.</p>
     </body>
     </html>
-'''
+unregistered_submission_request_new_user:
+  subj: "Your account has been created for {{ config.SITE_NAME }}"
+  cont: |
+    <html>
+    <body>
+      <p>Hello {{ user.username }},</p>
+      <p>You have requested access to submit a form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. A new account has been created for you. Please use the following link to submit a {{form_name}} form:</p>
+      <p><a href="{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}">{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}</a></p>
+      <p>If you did not request this account, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
 
-OLD_EXAMPLE_EMAIL_CONFIG_YAML = '''
-transaction_log_error:
-  subj: "Transaction Log Error"
+unregistered_submission_request_single_use_key:
+  subj: "Your single-use submission key for {{ config.SITE_NAME }}"
   cont: |
-    You are receiving this message because you are the designated help email for {{ config.SITE_NAME }}. This message is to notify you that there was an error when writing the following transaction to the transaction log for {{ config.SITE_NAME }}:
-
-    ***
-
-    User: {{ user.username if not user.opt_out else 'N/A' }}
-    Timestamp: {{ current_time }}
-    Endpoint: {{ endpoint }}
-    Query Params: {{ query_params if query_params else 'N/A' }}
-    Remote Address: {{ remote_addr if not user.opt_out else 'N/A' }}
-api_key_rotation:
-  subj: "{{ config.SITE_NAME }} API Key Rotated"
-  cont: |
-    This email serves to notify you that an API key for user {{ user.username }} has just rotated at {{ config.DOMAIN }}. Please note that your past API key will no longer work if you are employing it in applications. Your new key will be active for 365 days. You can see your new key by visiting {{ config.DOMAIN }}/profile.
-form_created:
-  subj: "Form Created"
-  cont: |
-    This email serves to notify you that a form was submitted at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-form_updated:
-  subj: "Form Updated"
-  cont: |
-    This email serves to notify you that an existing form was updated at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-form_deleted:
-  subj: "Form Deleted"
-  cont: |
-    This email serves to notify you that a form was deleted at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-form_restored:
-  subj: "Form Restored"
-  cont: |
-    This email serves to notify you that a deleted form was restored at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not submit a form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-form_stage_changed:
-  subj: "Form Stage has Changed"
-  cont: |
-    This email serves to notify you that a form's stage was changed at {{ config.DOMAIN }}. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to sign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-form_unsigned:
-  subj: "Form Unsigned"
-  cont: |
-    This email serves to notify you that a form was unsigned at {{ config.DOMAIN }} by the user registered at this email address. The form's document ID is '{{ document_id }}'. If you believe this was a mistake, or did not intend to unsign this form, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-user_password_changed:
-  subj: "{{ config.SITE_NAME }} User Password Changed"
-  cont: |
-    This email serves to notify you that the user {{ user.username }} has just had their password changed at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-password_reset_instructions:
-  subj: "{{ config.SITE_NAME }} User Password Reset Instructions"
-  cont: |
-    This email serves to notify you that the user {{ user.username }} has just requested to reset their password at {{ config.DOMAIN }}. To do so, you may use the one-time password {{ otp }}. This one-time password will expire in three hours. If you have access to the user interface, you may reset your password at the following link: {{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}. If you believe this was a mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-password_reset_complete:
-  subj: "{{ config.SITE_NAME }} User Password Reset"
-  cont: |
-    This email serves to notify you that the user {{ user.username }} has just successfully reset their password at {{ config.DOMAIN }}. If you believe this was a mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.
-user_registered_admin:
-  subj: "{{ config.SITE_NAME }} User Registered"
-  cont: |
-    This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. Your user has been given the following temporary password:
-
-    {{ password }}
-
-    Please login to the system and update this password at your earliest convenience.
-user_registered:
-  subj: "{{ config.SITE_NAME }} User Registered"
-  cont: |
-    This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. 
-user_registered_verification:
-  subj: "{{ config.SITE_NAME }} User Registered"
-  cont: |
-    This email serves to notify you that the user {{ username }} has just been registered for this email address at {{ config.DOMAIN }}. Please verify your email by clicking the following link: {{ config.DOMAIN }}/verify/{{ key }}. Please note this link will expire after 48 hours.
-suspicious_activity:
-  subj: "{{ config.SITE_NAME }} Suspicious Activity"
-  cont: |
-    This email serves to notify you that there was an attempt to register a user with the same email as the account registered to you at {{ config.DOMAIN }}. If this was you, you may safely disregard this email. If it was not you, you should consider contacting your system administrator and changing your password.
-help_request:
-  subj: "Help Request from {{ user.username }}"
-  cont: |
-    You are receiving this message because a user has submitted a request for help at {{ config.DOMAIN }}. You can see the request details below.
-
-    ****
-    User: {{ user.username }}
-    Email: {{ user.email }}
-    Time of Submission: {{ time }}
-    Category: {{ category }}
-    Subject: {{ subject }}
-    Message: {{ message }}
-    ****
-
-    You may reply directly to the user who submitted this request by replying to this email.
+    <html>
+    <body>
+      <p>Hello,</p>
+      <p>You have requested access to submit a form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. Please use the following link to submit a {{form_name}} form:</p>
+      <p><a href="{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}">{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}</a></p>
+      <p>This key will expire in 4 hours. If you did not request this key, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+    </body>
+    </html>
 '''
 
 

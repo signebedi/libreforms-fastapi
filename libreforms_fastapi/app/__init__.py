@@ -124,6 +124,7 @@ from libreforms_fastapi.utils.pydantic_models import (
     UserRelationshipModel,
     FormConfigUpdateRequest,
     EmailConfigUpdateRequest,
+    RequestUnregisteredForm,
     SiteConfig,
     get_user_model,
     get_form_model,
@@ -814,7 +815,9 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
         # assume the majority of requests will NOT be single use API keys. This should work because
         # ScopeMismatch is the last check that the sqlalchemy_signing library does, so all the other
         # exceptions have precedence, and a ScopeMismatch will only occur if all other aspects of a
-        # signing key are already valid.
+        # signing key are already valid. ***THERE ARE RISKS TO THIS METHOD***: Consider that this
+        # approach allows api_key_single_use to have full site scope for a single use... We should
+        # assess the tradeoffs and adjust accordingly.
 
         try: 
             verify = signatures.verify_key(x_api_key, scope=['api_key_single_use'])
@@ -1317,6 +1320,139 @@ on_create:
 """
 
 
+# Request anonymous / unregistered form submission link
+@app.post("/api/form/request_unregistered/{form_name}")
+async def api_form_request_unregistered(
+    form_name: str, 
+    request_data: RequestUnregisteredForm,
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    doc_db = Depends(get_doc_db), 
+    session: SessionLocal = Depends(get_db), 
+):
+    """
+    This API route allows unregistered users (or existing users who are unauthenticated) 
+    to request single use links to submit a given form. This will be linked with their 
+    user accounts, if one exists or is created for them.
+    """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    # Yield the pydantic form model
+    FormModel = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
+
+    # If form submission is not enabled, raise an HTTP error
+    if not FormModel.unregistered_submission_enabled:
+        raise HTTPException(status_code=404)
+
+    # The 'open' method is not implemented yet but will be implemented 
+    # by https://github.com/signebedi/libreforms-fastapi/issues/358
+    if FormModel.unregistered_submission_method == "open":
+        raise HTTPException(status_code=501)
+
+    # If the method is not open, we can assume it will be either 
+    # 'email_validated_create_user' or 'email_validated'.
+
+
+    # If SMTP is not enabled, raise an HTTP exception because, other than
+    # 'open', all unregistered form submission methods require email.
+    if not config.SMTP_ENABLED:
+        raise HTTPException(status_code=404)
+
+    # Check if a user is associated with the email address given.
+    user = session.query(User).filter_by(email=request_data.email).first()
+
+    # If there is not an existing user but the unregistered form submission method 
+    # is 'email_validated_create_user', then create a new user.
+    if FormModel.unregistered_submission_method == 'email_validated_create_user':
+
+        # If we've gotten to this stage, then we will use the email template describing a newly created user 
+        # and submission link
+        email_template_name = "unregistered_submission_request_new_user"
+
+        if not user:
+
+            base_username = request_data.email.split('@')[0]
+            new_username = base_username
+            # I'm not sure how I feel about the whole "random number appended to the end" approach
+            # but it works for now.
+            while session.query(User).filter_by(username=new_username).first() is not None:
+                new_username = generate_unique_username(base_username)
+
+            user = User(
+                email=request_data.email, 
+                username=new_username,
+                password=generate_dummy_password_hash(),
+                active=True,
+                opt_out=False,
+            )
+
+            # Add to the default group
+            _group = session.query(Group).filter_by(id=1).first()
+            user.groups.append(_group)
+
+            # Create the users API key with a 365 day expiry
+            expiration = 8760
+            api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=request_data.email)
+            user.api_key = api_key
+
+            # Here we add user key pair information, namely, the path to the user private key, and the
+            # contents of the public key, see https://github.com/signebedi/libreforms-fastapi/issues/71.
+            ds_manager = DigitalSignatureManager(username=new_username, env=config.ENVIRONMENT)
+            ds_manager.generate_rsa_key_pair()
+            user.private_key_ref = ds_manager.get_private_key_file()
+            user.public_key = ds_manager.public_key_bytes
+
+            session.add(user)
+            session.commit()
+        
+        api_key = user.api_key
+
+    # Now, if there is a user, we send an email with their API key, not a single use key. 
+    # If not, we generate a single use key.
+    if not user:
+
+        # If we've gotten to this stage, then we will use the email template describing single use keys
+        email_template_name = "unregistered_submission_request_single_use_key"
+
+        # If the unregistered form submission method is not 'email_validated', then there has been a logic failure
+        if FormModel.unregistered_submission_method != "email_validated":
+            raise HTTPException(status_code=500)
+
+        api_key = signatures.write_key(scope=['api_key_single_use'], expiration=4, active=True, email=request_data.email)
+
+    # Send an email
+    subject, content = render_email_message_from_jinja(
+        email_template_name,
+        config.EMAIL_CONFIG_PATH,
+        config=config,
+        user=user,
+        api_key=api_key,
+        form_name=form_name, 
+    )
+
+    background_tasks.add_task(
+        mailer.send_mail,
+        subject=subject, 
+        content=content, 
+        to_address=request_data.email,
+    )
+
+    return {'status': "success"} # Simple return
+
 # Create form
 @app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth)])
 async def api_form_create(
@@ -1427,7 +1563,7 @@ async def api_form_create(
 
     # Validate whether default background emails should be sent for this form. 
     # See https://github.com/signebedi/libreforms-fastapi/issues/356
-    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_created' not in FormModel.disable_default_emails
+    check_background_email = not FormModel.disable_default_emails or (isinstance(FormModel.disable_default_emails, list) and 'form_created' not in FormModel.disable_default_emails)
 
     # Send email
     if config.SMTP_ENABLED and check_background_email:
@@ -1514,22 +1650,21 @@ async def api_form_read_all_needing_action(
     user = session.query(User).filter_by(api_key=key).first()
 
 
-    # Here we build our initial form_stage cache... see 
+    # Here we build our form_stage cache... see 
     # https://github.com/signebedi/libreforms-fastapi/issues/62
     __form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
-    __doc_db = get_doc_db()
 
     dict_of_return_values = {}
 
-    for form_name in __form_names:
+    for _form_name in __form_names:
 
         __form_model = get_form_model(
-            form_name=form_name, 
+            form_name=_form_name, 
             config_path=config.FORM_CONFIG_PATH,
             session=session,
             User=User,
             Group=Group,
-            doc_db=__doc_db,
+            doc_db=doc_db,
         )
 
 
@@ -1539,13 +1674,13 @@ async def api_form_read_all_needing_action(
         # print ('\n\n\n', __mapped_form_stages)
 
         __documents = cache_form_stage_data_for_specified_user(
-            form_name=form_name,
+            form_name=_form_name,
             form_stages=__mapped_form_stages, # Need this to be immutable so it can be hashed and cached
             current_user=user,
-            doc_db=__doc_db,
+            doc_db=doc_db,
         )
 
-        dict_of_return_values[form_name] = __documents
+        dict_of_return_values[_form_name] = __documents
 
 
     if return_count_only:
@@ -1636,7 +1771,7 @@ async def api_form_get_linked_references(
             session=session,
             User=User,
             Group=Group,
-            doc_db=__doc_db,
+            doc_db=doc_db,
         )
 
         dict_of_fields_linked_to_forms[_form_name] = __form_model.form_fields
@@ -2281,7 +2416,7 @@ async def api_form_update(
 
     # Validate whether default background emails should be sent for this form. 
     # See https://github.com/signebedi/libreforms-fastapi/issues/356
-    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_updated' not in FormModel.disable_default_emails
+    check_background_email = not FormModel.disable_default_emails or (isinstance(FormModel.disable_default_emails, list) and 'form_updated' not in FormModel.disable_default_emails)
 
     # Send email
     if config.SMTP_ENABLED and check_background_email:
@@ -2424,7 +2559,7 @@ async def api_form_delete(
 
     # Validate whether default background emails should be sent for this form. 
     # See https://github.com/signebedi/libreforms-fastapi/issues/356
-    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_deleted' not in FormModel.disable_default_emails
+    check_background_email = not FormModel.disable_default_emails or (isinstance(FormModel.disable_default_emails, list) and 'form_deleted' not in FormModel.disable_default_emails)
 
     # Send email
     if config.SMTP_ENABLED and check_background_email:
@@ -2578,12 +2713,10 @@ async def api_form_restore(
 
     # Validate whether default background emails should be sent for this form. 
     # See https://github.com/signebedi/libreforms-fastapi/issues/356
-    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_restored' not in FormModel.disable_default_emails
-
+    check_background_email = not FormModel.disable_default_emails or (isinstance(FormModel.disable_default_emails, list) and 'form_restored' not in FormModel.disable_default_emails
+)
     # Send email
     if config.SMTP_ENABLED and check_background_email:
-
-
 
         subject, content = render_email_message_from_jinja(
             'form_restored', 
@@ -2896,7 +3029,7 @@ async def api_form_sign(
 
     # Validate whether default background emails should be sent for this form. 
     # See https://github.com/signebedi/libreforms-fastapi/issues/356
-    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_stage_changed' not in FormModel.disable_default_emails
+    check_background_email = not FormModel.disable_default_emails or (isinstance(FormModel.disable_default_emails, list) and 'form_stage_changed' not in FormModel.disable_default_emails)
 
     # Send email
     if config.SMTP_ENABLED and check_background_email:
@@ -3032,7 +3165,7 @@ async def api_form_sign(
 
 #    # Validate whether default background emails should be sent for this form. 
 #    # See https://github.com/signebedi/libreforms-fastapi/issues/356
-#    check_background_email = not FormModel.disable_default_emails or isinstance(FormModel.disable_default_emails, list) and 'form_unsigned' not in FormModel.disable_default_emails
+#    check_background_email = not FormModel.disable_default_emails or (isinstance(FormModel.disable_default_emails, list) and 'form_unsigned' not in FormModel.disable_default_emails)
 #
 #    # Send email
 #    if config.SMTP_ENABLED and check_background_email:
@@ -3694,7 +3827,7 @@ async def api_auth_get_linked_references(
             session=session,
             User=User,
             Group=Group,
-            doc_db=__doc_db,
+            doc_db=doc_db,
         )
 
         # Here we add the list of fields that point to users
