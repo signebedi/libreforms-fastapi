@@ -1610,7 +1610,6 @@ async def api_form_create(
         doc_db.linked_to_user_field: FormModel.user_fields, 
         doc_db.linked_to_form_field: FormModel.form_fields,
         doc_db.unregistered_form_field: unregistered_submission,
-
     }
 
     # print("\n\n\n\n\n\n", form_data.form_stages)
@@ -6906,6 +6905,98 @@ async def ui_form_read_all(request: Request, config = Depends(get_config_depends
     )
 
 
+@app.get("/ui/form/request_unregistered/{form_name}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['unauthenticated'], status_code=404)
+async def ui_form_request_unregistered(form_name:str, request: Request, config = Depends(get_config_depends),):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not config.SMTP_ENABLED:
+        raise HTTPException(status_code=404)
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="request_unregistered.html.jinja", 
+        context={
+            'form_name': form_name,
+            **build_ui_context(),
+        }
+    )
+
+
+
+# Create form unregistered user, see https://github.com/signebedi/libreforms-fastapi/issues/357
+@app.get("/ui/form/create_unregistered/{form_name}/{api_key}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['unauthenticated'], redirect="ui_home")
+async def ui_form_create_unregistered(form_name:str, api_key:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db), session: SessionLocal = Depends(get_db)):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if form_name not in get_form_names(config_path=config.FORM_CONFIG_PATH):
+        raise HTTPException(status_code=404, detail=f"Form '{form_name}' not found")
+
+    verify = signatures.verify_key(api_key, scope=['api_key', 'api_key_single_use'])
+    if not verify:
+        raise HTTPException(status_code=401)
+
+    key_data = signatures.get_key(api_key)
+    key_scope = key_data['scope']
+    key_email = key_data['email']
+
+    FormModel = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
+
+    # If unregistered form submission not enabled for this form, then return an error
+    if not FormModel.unregistered_submission_enabled:
+        raise HTTPException(status_code=404)
+
+    # If there is not an associated user with the request, we need to render a pared down request...
+    # WARNING: this may break some form configs. Proceed with caution!
+    if key_scope == "api_key":
+        _user = session.query(User).filter_by(api_key=api_key).first()
+        user = _user.to_dict()
+    else:
+        user = {
+            "email": key_email,
+            "api_key": api_key, 
+        }
+
+    _context = {
+        'user': user,
+        'config': config.model_dump()
+    }
+
+    # generate_html_form
+    form_html = get_form_html(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+        context=_context,
+    )
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="create_form.html.jinja", 
+        context={
+            "form_name": form_name,
+            "form_html": form_html,
+            "unregistered_form": True,
+            "api_key": api_key,
+            **build_ui_context(),
+        }
+    )
+
+
 
 # Create form
 @app.get("/ui/form/create/{form_name}", response_class=HTMLResponse, include_in_schema=False)
@@ -6939,6 +7030,7 @@ async def ui_form_create(form_name:str, request: Request, config = Depends(get_c
         context={
             "form_name": form_name,
             "form_html": form_html,
+            "unregistered_form": False,
             **build_ui_context(),
         }
     )

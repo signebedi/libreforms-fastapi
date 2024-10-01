@@ -1123,4 +1123,4 @@ class SiteConfig(BaseModel):
 
 class RequestUnregisteredForm(BaseModel):
     """The model will validate an email request body when users try request an unregistered form submission"""
-    email: EmailStr  
+    email: EmailStr  = Field(...)

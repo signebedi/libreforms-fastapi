@@ -6,7 +6,7 @@
 
 {% block content %}
                             
-{% if form_name in request.user.permissions and "create" in request.user.permissions[form_name]  %}
+{% if (form_name in request.user.permissions and "create" in request.user.permissions[form_name]) or unregistered_form %}
 
 <div class="container">
 
@@ -35,11 +35,18 @@
 
 
 {% block scripts %}
-{% if form_name in request.user.permissions and "create" in request.user.permissions[form_name]  %}
+{% if form_name in request.user.permissions and "create" in request.user.permissions[form_name] or unregistered_form  %}
 
 <script>
 
+{%if unregistered_form%}
+var apiKey = "{{ api_key }}"; 
+
+{%else%}
 var apiKey = "{{ request.user.api_key }}"; 
+{%endif%}
+
+
 function getLookup(formName, fieldName, el) {
 
     // Access the selected option
@@ -254,7 +261,13 @@ $(document).ready(function() {
                     // setTimeout(function() {
                     //     window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
                     // }, 1000);
+
+                    {%if unregistered_form%}
+                    window.location.href = `/ui/home`;
+
+                    {%else%}
                     window.location.href = `/ui/form/read_one/${formName}/${response.document_id}`;
+                    {%endif%}
 
                 },
                 error: function(xhr) {

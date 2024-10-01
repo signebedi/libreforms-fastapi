@@ -179,24 +179,24 @@ help_request:
     </body>
     </html>
 unregistered_submission_request_new_user:
-  subj: "Your account has been created for {{ config.SITE_NAME }}"
+  subj: "Your submission link for {{ config.SITE_NAME }}"
   cont: |
     <html>
     <body>
       <p>Hello {{ user.username }},</p>
-      <p>You have requested access to submit a form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. A new account has been created for you. Please use the following link to submit a {{form_name}} form:</p>
+      <p>You have requested access to submit a {{form_name}} form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. If you didn't previously have an account, a new account has been created for you. Please use the following link to submit a {{form_name}} form:</p>
       <p><a href="{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}">{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}</a></p>
       <p>If you did not request this account, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
     </body>
     </html>
 
 unregistered_submission_request_single_use_key:
-  subj: "Your single-use submission key for {{ config.SITE_NAME }}"
+  subj: "Your single-use submission link for {{ config.SITE_NAME }}"
   cont: |
     <html>
     <body>
       <p>Hello,</p>
-      <p>You have requested access to submit a form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. Please use the following link to submit a {{form_name}} form:</p>
+      <p>You have requested access to submit a {{form_name}} form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. Please use the following link to submit a {{form_name}} form:</p>
       <p><a href="{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}">{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}</a></p>
       <p>This key will expire in 4 hours. If you did not request this key, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
     </body>
