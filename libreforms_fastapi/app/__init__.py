@@ -783,9 +783,11 @@ def get_db():
 # Here we define an API key header for the api view functions.
 X_API_KEY = APIKeyHeader(name="X-API-KEY")
 
+
+
 # See https://stackoverflow.com/a/72829690/13301284 and
 # https://fastapi.tiangolo.com/reference/security/?h=apikeyheader
-def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
+def api_key_auth_allow_single_use(x_api_key: str = Depends(X_API_KEY)):
     """ takes the X-API-Key header and validates it"""
 
     # Do we want to have account locking also disable key use, or just limit
@@ -815,9 +817,8 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
         # assume the majority of requests will NOT be single use API keys. This should work because
         # ScopeMismatch is the last check that the sqlalchemy_signing library does, so all the other
         # exceptions have precedence, and a ScopeMismatch will only occur if all other aspects of a
-        # signing key are already valid. ***THERE ARE RISKS TO THIS METHOD***: Consider that this
-        # approach allows api_key_single_use to have full site scope for a single use... We should
-        # assess the tradeoffs and adjust accordingly.
+        # signing key are already valid. ***THERE ARE RISKS TO THIS METHOD*** and, as a result of these
+        # risks, we've limited its use SOLELY to the api_form_create view function.
 
         try: 
             verify = signatures.verify_key(x_api_key, scope=['api_key_single_use'])
@@ -830,6 +831,56 @@ def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
                 status_code=401,
                 detail="Invalid API key"
             )
+
+    except KeyExpired:
+        raise HTTPException(
+            status_code=401,
+            detail="API key expired"
+        )
+
+    # This logic is implemented in most API routes. Adding it here would reduce
+    # boilerplate, but I am going to hold off on doing so for right now. However,
+    # we can also use this to update the last_login field ... if we want the API
+    # to count toward that, since we are adding auto-lock after inactive periods,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/231.
+    # with get_db() as session:
+    #     user = session.query(User).filter_by(api_key=x_api_key).first()
+    #     if not user:
+    #         raise Exception("User does not exist")
+    #     if not user.active:
+    #         raise Exception("User is not active")
+
+
+
+# See https://stackoverflow.com/a/72829690/13301284 and
+# https://fastapi.tiangolo.com/reference/security/?h=apikeyheader
+def api_key_auth(x_api_key: str = Depends(X_API_KEY)):
+    """ takes the X-API-Key header and validates it"""
+
+    # Do we want to have account locking also disable key use, or just limit
+    # access to the UI, see https://github.com/signebedi/libreforms-fastapi/issues/231.
+
+    try:
+        verify = signatures.verify_key(x_api_key, scope=['api_key'])
+
+    except RateLimitExceeded:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded"
+        )
+
+    except KeyDoesNotExist:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
+
+    except ScopeMismatch:
+
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key"
+        )
 
     except KeyExpired:
         raise HTTPException(
@@ -1454,7 +1505,7 @@ async def api_form_request_unregistered(
     return {'status': "success"} # Simple return
 
 # Create form
-@app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth)])
+@app.post("/api/form/create/{form_name}", dependencies=[Depends(api_key_auth_allow_single_use)])
 async def api_form_create(
     form_name: str, 
     background_tasks: BackgroundTasks, 
