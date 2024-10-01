@@ -785,8 +785,9 @@ X_API_KEY = APIKeyHeader(name="X-API-KEY")
 
 
 
-# See https://stackoverflow.com/a/72829690/13301284 and
-# https://fastapi.tiangolo.com/reference/security/?h=apikeyheader
+# This is a reimplementation of api_key_auth(), see below. This is implemented so 
+# we can selectively permit additional scopes, specifically an api_key_single_use
+# scope, see https://github.com/signebedi/libreforms-fastapi/issues/357.
 def api_key_auth_allow_single_use(x_api_key: str = Depends(X_API_KEY)):
     """ takes the X-API-Key header and validates it"""
 
@@ -1556,29 +1557,59 @@ async def api_form_create(
     data_dict = form_data.model_dump()
     # print("\n\n\n", data_dict)
 
-    # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
-    # the sqlalchemy-signing table is not optimized alongside the user model...
-    user = session.query(User).filter_by(api_key=key).first()
+    # If this form permits unregistered form submission, then we validate the API key scope
+    # and determine whether there is a user account linked to the request.
+    unregistered_submission = False
+    if FormModel.unregistered_submission_enabled:
+        
+        key_data = signatures.get_key(key)
+        key_scope = key_data['scope']
 
-    # Here we validate the user groups permit this level of access to the form
-    try:
-        user.validate_permission(form_name=form_name, required_permission="create")
-        # print("\n\n\nUser has valid permissions\n\n\n")
-    except Exception as e:
-        raise HTTPException(status_code=403, detail=f"{e}")
+        # When the unregistered form is submitted using an existing user, then
+        # that user's API key is used automatically, meaning that the scope
+        # of that key will simply be 'api_key'... as such, we can assume that,
+        # when a key scope is 'api_key_single_use', that there is no user 
+        # associated with the request and that the form is being submitted 
+        # unregistered. This approach is very useful but creates a phenomenon 
+        # where users can use their API key to directly submit a form without 
+        # logging in... this might not be any more or less secure than password
+        # based authentication, but can have security implications...
+        if key_scope == 'api_key_single_use':
+            unregistered_submission = True
+            key_email = key_data['email']
+
+
+    # See comments above. Only check the user permissions if the user exists. This COULD
+    # create a situation where a user is created during the unregistered form submission 
+    # process, but the default group they are added to does not have requisite permissions...
+    if not unregistered_submission:
+        # Ugh, I'd like to find a more efficient way to get the user data. But alas, that
+        # the sqlalchemy-signing table is not optimized alongside the user model...
+        user = session.query(User).filter_by(api_key=key).first()
+
+        # Here we validate the user groups permit this level of access to the form
+        try:
+            user.validate_permission(form_name=form_name, required_permission="create")
+            # print("\n\n\nUser has valid permissions\n\n\n")
+        except Exception as e:
+            raise HTTPException(status_code=403, detail=f"{e}")
 
     # Set the document_id here, and pass to the doc_db
     document_id = str(ObjectId())
 
     metadata={
         doc_db.document_id_field: document_id,
-        doc_db.created_by_field: user.username,
-        doc_db.last_editor_field: user.username,
+        # Because unregistered form submission that does not link to a user account will cause the
+        # created_by and last_editor field to become unreadable, admins should be careful about 
+        # enabling this when form approval processes are being carried out. 
+        doc_db.created_by_field: user.username if not unregistered_submission else key_email,
+        doc_db.last_editor_field: user.username if not unregistered_submission else key_email,
         # doc_db.linked_to_user_field: user_fields, 
         # doc_db.linked_to_form_field: form_fields,
         # Pull these directly from the model attrs:
         doc_db.linked_to_user_field: FormModel.user_fields, 
         doc_db.linked_to_form_field: FormModel.form_fields,
+        doc_db.unregistered_form_field: unregistered_submission,
 
     }
 
@@ -1633,7 +1664,7 @@ async def api_form_create(
             mailer.send_mail,
             subject=subject, 
             content=content,
-            to_address=user.email,
+            to_address=user.email if not unregistered_submission else key_email,
         )
 
 
@@ -1661,7 +1692,7 @@ async def api_form_create(
         doc_db=doc_db,
         mailer=mailer,
         session=session,
-        user=user,
+        user=user, # WARNING: This will probably break when forms are submitted unregistered
     )
 
     return {
