@@ -1061,6 +1061,19 @@ def run_event_hooks(
             if method == "static":
                 emails = [target]
 
+            if method == "from_user_field":
+
+                if target.startswith("__metadata__"):
+                        _username = document['metadata'].get(target[12:], None)
+                else:
+                    _username = document['data'].get(target, None)
+
+                _user = session.query(User).filter_by(username=_username).first()
+                if not _user:
+                    continue
+
+                emails = [_user.email]
+
             elif method == "group":
                 group = session.query(Group).filter(Group.name == target).one_or_none()
 
