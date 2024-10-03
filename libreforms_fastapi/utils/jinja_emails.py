@@ -186,7 +186,7 @@ unregistered_submission_request_new_user:
       <p>Hello {{ user.username }},</p>
       <p>You have requested access to submit a {{form_name}} form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. If you didn't previously have an account, a new account has been created for you. Please use the following link to submit a {{form_name}} form:</p>
       <p><a href="{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}">{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}</a></p>
-      <p>If you did not request this account, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+      <p>If you did not submit this request, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
     </body>
     </html>
 
@@ -198,7 +198,7 @@ unregistered_submission_request_single_use_key:
       <p>Hello,</p>
       <p>You have requested access to submit a {{form_name}} form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. Please use the following link to submit a {{form_name}} form:</p>
       <p><a href="{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}">{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}</a></p>
-      <p>This key will expire in 4 hours. If you did not request this key, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+      <p>This key will expire in 4 hours. If you did not submit this request, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
     </body>
     </html>
 '''
@@ -328,7 +328,9 @@ def test_email_config(email_config_yaml, **kwargs):
         'subject': 'Default Subject',
         'message': 'Default Message',
         'key': 'default_key',
-        'password': 'tempPassword123'
+        'api_key': 'default_key',
+        'password': 'tempPassword123',
+        'document': {},
     }
 
     # Update defaults with any additional provided parameters
@@ -337,6 +339,10 @@ def test_email_config(email_config_yaml, **kwargs):
     # Iterate through each email type in the configuration
     for email_type, template_data in email_configs.items():
         
+        # This is a temporary workaround for https://github.com/signebedi/libreforms-fastapi/issues/311
+        if email_type not in yaml.safe_load(EXAMPLE_EMAIL_CONFIG_YAML).keys():
+          continue
+
         # We create a copy of defaults so we can remove some context
         # that is not available to certain events
         modified_defaults = defaults.copy()

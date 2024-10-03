@@ -1032,6 +1032,7 @@ if config.DEBUG:
 
 def run_event_hooks(
     document_id:str,
+    document:dict,
     form_name:str,
     event_hooks: list[dict[str, Any]],
     config,
@@ -1126,7 +1127,8 @@ def run_event_hooks(
                 config.EMAIL_CONFIG_PATH,
                 config=config, 
                 form_name=form_name,
-                document_id=document_id
+                document_id=document_id,
+                document=document,
             )
 
             mailer.send_mail(
@@ -1169,10 +1171,11 @@ def run_event_hooks(
             if target_form_name not in doc_db._get_form_names():
                 continue
 
-            document = doc_db.get_one_document(
-                form_name=form_name,
-                document_id=document_id, 
-            )
+            # This has likely been rendered obsolete by https://github.com/signebedi/libreforms-fastapi/issues/311
+            # document = doc_db.get_one_document(
+            #     form_name=form_name,
+            #     document_id=document_id, 
+            # )
 
             if not document:
                 continue
@@ -1249,10 +1252,11 @@ def run_event_hooks(
             if not target_form_name or not values:
                 continue
 
-            document = doc_db.get_one_document(
-                form_name=form_name,
-                document_id=document_id, 
-            )
+            # This has likely been rendered obsolete by https://github.com/signebedi/libreforms-fastapi/issues/311
+            # document = doc_db.get_one_document(
+            #     form_name=form_name,
+            #     document_id=document_id, 
+            # )
 
             if not document:
                 continue
@@ -1685,6 +1689,7 @@ async def api_form_create(
     background_tasks.add_task(
         run_event_hooks,
         document_id=document_id, 
+        document=d,
         form_name=form_name,
         event_hooks=form_data.event_hooks['on_create'],
         config=config,
@@ -2019,6 +2024,7 @@ async def api_form_read_one(
     background_tasks.add_task(
         run_event_hooks,
         document_id=document_id, 
+        document=document,
         form_name=form_name,
         event_hooks=FormModel.event_hooks['on_read'],
         config=config,
@@ -2539,6 +2545,7 @@ async def api_form_update(
     background_tasks.add_task(
         run_event_hooks,
         document_id=document_id, 
+        document=d,
         form_name=form_name,
         event_hooks=form_data.event_hooks['on_update'],
         config=config,
@@ -2694,6 +2701,7 @@ async def api_form_delete(
     background_tasks.add_task(
         run_event_hooks,
         document_id=document_id, 
+        document=success,
         form_name=form_name,
         event_hooks=FormModel.event_hooks['on_delete'],
         config=config,
@@ -3153,6 +3161,7 @@ async def api_form_sign(
     background_tasks.add_task(
         run_event_hooks,
         document_id=document_id, 
+        document=success,
         form_name=form_name,
         event_hooks=FormModel.event_hooks.get(f'on_{action}', []),
         config=config,
