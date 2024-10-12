@@ -62,6 +62,18 @@ function getLookup(formName, fieldName, el) {
     // Clear previous contents
     contentField.innerHTML = '';
 
+    // Get the pushPopulate data from the data-pushpopulate attribute
+    let pushPopulateStr = el.getAttribute('data-pushpopulate');
+    
+    // Parse pushPopulateStr into an object, defaulting to an empty object if invalid
+    let pushPopulate = {};
+    try {
+        pushPopulate = JSON.parse(pushPopulateStr);
+    } catch (error) {
+        console.warn("Error parsing pushPopulateStr, defaulting to empty object:", error);
+        pushPopulate = {}; // Default to an empty object
+    }
+
     if (documentData) {
         let dataObj;
         try {
@@ -99,6 +111,22 @@ function getLookup(formName, fieldName, el) {
         link.id = 'lookup-link-'+fieldName; // Add this line to set the id
 
         contentField.parentNode.insertBefore(link, contentField);
+
+
+        // Now use pushPopulate to set field values
+        Object.keys(pushPopulate).forEach(function(currentField) {
+            let linkedField = pushPopulate[currentField];
+
+            // Get the corresponding value from dataObj based on linkedField
+            let valueFromDataObj = dataObj[linkedField];
+
+            // Find the current field element and set its value
+            let currentFieldEl = document.getElementById(currentField);
+
+            if (currentFieldEl && valueFromDataObj !== undefined) {
+                currentFieldEl.value = valueFromDataObj;
+            }
+        });
 
 
     }

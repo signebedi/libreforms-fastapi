@@ -1,4 +1,4 @@
-import re, os, yaml, shutil, difflib
+import re, os, yaml, shutil, difflib, json
 from pathlib import Path
 from zoneinfo import ZoneInfo
 from datetime import datetime, date, time, timedelta
@@ -755,6 +755,11 @@ def get_form_html(
         # Added from https://github.com/signebedi/libreforms-fastapi/issues/280
         links_to_form: str | None = field_info.get("links_to_form", False)
 
+        # This will be used to push values to other fields, if set. Defaults to 
+        # empty dict, see https://github.com/signebedi/libreforms-fastapi/issues/362.
+        push_populate: dict = field_info.get("push_populate", {})
+        push_populate_stringified = json.dumps(push_populate).replace('"', '&quot;')
+
         # Added from https://github.com/signebedi/libreforms-fastapi/issues/279
         form_display_fields: list = field_info.get("form_display_fields", ['__metadata__document_id'])
 
@@ -993,7 +998,7 @@ def get_form_html(
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>'''
             if isinstance(links_to_form, str):
                 field_html += f'''
-                    <select class="form-control data-lookup" onChange="getLookup('{links_to_form}', '{field_name}', this, '{links_to_form_query_params}');" id="{field_name}" name="{field_name}" data-link="{links_to_form}"{' required' if required else ''}>'''
+                    <select class="form-control data-lookup" data-pushpopulate=\'{push_populate_stringified}\' onChange="getLookup('{links_to_form}', '{field_name}', this, '{links_to_form_query_params}');" id="{field_name}" name="{field_name}" data-link="{links_to_form}"{' required' if required else ''}>'''
             else:
                 field_html += f'''
                     <select class="form-control" id="{field_name}" name="{field_name}"{' required' if required else ''}>'''
