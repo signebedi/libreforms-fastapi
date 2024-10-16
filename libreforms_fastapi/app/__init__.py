@@ -4535,7 +4535,7 @@ async def api_auth_help(
     background_tasks.add_task(
         mailer.send_mail,
         subject=full_safe_subject, 
-        content=full_safe_message, 
+        content=content, 
         to_address=config.HELP_EMAIL,
         reply_to_addr=user.email
     )
