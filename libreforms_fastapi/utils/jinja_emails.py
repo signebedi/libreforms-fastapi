@@ -115,7 +115,7 @@ password_reset_instructions:
   cont: |
     <html>
     <body>
-      <p>This email serves to notify you that the user <b>{{ user.username }}</b> has just requested to reset their password at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. To do so, you may use the one-time password <b>{{ otp }}</b>. This one-time password will expire in three hours. If you have access to the user interface, you may reset your password at the following link: <a href="{{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}">{{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}</a>. If you believe this was a mistake, please contact your system administrator {{ "at" + config.HELP_EMAIL + "'>" + config.HELP_EMAIL + "</a>" if config.HELP_EMAIL else "" }}.</p>
+      <p>This email serves to notify you that the user <b>{{ user.username }}</b> has just requested to reset their password at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. If you have access to the user interface, you may reset your password at the following link: <a href="{{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}">{{ config.DOMAIN }}/ui/auth/forgot_password/{{ otp }}</a>.  This link will expire in three hours. If you believe this was a mistake, please contact your system administrator {{ "at" + config.HELP_EMAIL + "'>" + config.HELP_EMAIL + "</a>" if config.HELP_EMAIL else "" }}.</p>
     </body>
     </html>
 password_reset_complete:
