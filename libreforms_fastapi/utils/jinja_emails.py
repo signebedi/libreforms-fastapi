@@ -184,9 +184,9 @@ unregistered_submission_request_new_user:
     <html>
     <body>
       <p>Hello {{ user.username }},</p>
-      <p>You have requested access to submit a {{form_name}} form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. If you didn't previously have an account, a new account has been created for you. Please use the following link to submit a {{form_name}} form:</p>
+      <p>You are invited to submit a {{form_name}} form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. If you didn't previously have an account, a new account has been created for you. Please use the following link to submit a {{form_name}} form:</p>
       <p><a href="{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}">{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}</a></p>
-      <p>If you did not submit this request, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+      <p>If you believe this request was submitted by mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
     </body>
     </html>
 
@@ -196,9 +196,9 @@ unregistered_submission_request_single_use_key:
     <html>
     <body>
       <p>Hello,</p>
-      <p>You have requested access to submit a {{form_name}} form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. Please use the following link to submit a {{form_name}} form:</p>
+      <p>You are invited to submit a {{form_name}} form at <a href="{{ config.DOMAIN }}">{{ config.DOMAIN }}</a>. Please use the following link to submit a {{form_name}} form:</p>
       <p><a href="{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}">{{ config.DOMAIN }}/ui/form/create_unregistered/{{form_name}}/{{api_key}}</a></p>
-      <p>This key will expire in 4 hours. If you did not submit this request, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
+      <p>This key will expire in 4 hours. If you believe this request was submitted by mistake, please contact your system administrator {{ "at " + config.HELP_EMAIL if config.HELP_EMAIL else "" }}.</p>
     </body>
     </html>
 '''

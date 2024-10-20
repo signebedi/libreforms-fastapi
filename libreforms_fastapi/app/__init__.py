@@ -6947,6 +6947,41 @@ async def ui_form_request_unregistered(form_name:str, request: Request, config =
     )
 
 
+# Added in https://github.com/signebedi/libreforms-fastapi/issues/365
+@app.get("/ui/form/invite_submission/{form_name}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], status_code=404)
+async def ui_form_invite_submission(form_name:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db), session: SessionLocal = Depends(get_db)):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404)
+
+    if not config.SMTP_ENABLED:
+        raise HTTPException(status_code=404)
+
+    # Since this is an authenticated-only route, we don't worry 
+    # about abuse of expensive processes too much
+    FormModel = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
+
+    if not FormModel.invitations_enabled:
+        raise HTTPException(status_code=404)
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="request_unregistered.html.jinja", 
+        context={
+            'form_name': form_name,
+            **build_ui_context(),
+        }
+    )
+
+
 
 # Create form unregistered user, see https://github.com/signebedi/libreforms-fastapi/issues/357
 @app.get("/ui/form/create_unregistered/{form_name}/{api_key}", response_class=HTMLResponse, include_in_schema=False)

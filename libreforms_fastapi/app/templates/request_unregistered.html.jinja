@@ -56,7 +56,7 @@ $(document).ready(function() {
                 console.log('Request submitted successfully', response);
                 
                 // Stash a flashed success message and redirect
-                setFlashMessage("Request submitted successfully, please check your email", "success");
+                setFlashMessage("Request submitted successfully", "success");
                 window.location.href = '/ui/home';
             },
             error: function(xhr) {
