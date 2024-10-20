@@ -613,7 +613,14 @@ def get_form_model(
     ]
     unregistered_submission_method: str = _config.get("unregistered_submission_method", 'email_validated_create_user') 
 
+    # Raise an error if the user has employed an impermissible unregistered form submission method
     assert unregistered_submission_method in unregistered_submission_permitted_methods, f"{unregistered_submission_method} not a permitted method for unregistered form submission. Must be one of: {unregistered_submission_permitted_methods}"
+
+    # If set to True, users can be invited to submit this form via the UI, see
+    # https://github.com/signebedi/libreforms-fastapi/issues/365. Only works if
+    # unregistered_submission_enabled is True.
+    invitations_enabled: bool = _config.get("invitations_enabled", False) 
+
 
     # Here we provide for approval stages, see discussion in
     # https://github.com/signebedi/libreforms-fastapi/issues/62
@@ -696,9 +703,11 @@ def get_form_model(
 
 
     # Attach the unregistered form submission rules to the dynamic model, see
-    # https://github.com/signebedi/libreforms-fastapi/issues/357.
+    # https://github.com/signebedi/libreforms-fastapi/issues/357. invitations_enabled 
+    # is defined by  https://github.com/signebedi/libreforms-fastapi/issues/365.
     dynamic_model.unregistered_submission_enabled = unregistered_submission_enabled
     dynamic_model.unregistered_submission_method = unregistered_submission_method
+    dynamic_model.invitations_enabled = invitations_enabled
 
     # Attach event hook attr to the dynamic model, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/62
