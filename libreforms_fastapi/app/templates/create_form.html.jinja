@@ -12,11 +12,6 @@
 
     <form id="dataForm" method="POST">
 
-        <fieldset class="form-check">
-            <h4>{{form_name | replace("_", " ") | title}}</h4>
-        </fieldset>
-
-
         {% for field in form_html %}
             {{ field | safe }}
         {% endfor %}

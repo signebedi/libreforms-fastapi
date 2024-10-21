@@ -6,7 +6,7 @@
 
 {% block content %}
 <h4>Submit Help Request</h4>
-<p>When you experience issues with the application or want to request features, you can use this form to submit these requests to the application administrators.</p>
+<p>When you experience issues with the application or want to request features, you can use this form to submit these requests to the application administrators. Select "General Inquiry" when you have a simple informational request; "Bug Report" when there is a server error or other major problem; "Feature Request" when you'd like administrators to consider adding a new feature; "Account Issue" when there is a permission or access issue with your account; "Form Submission Issue" when you are experiencing problems submitting forms; "Other" when you have some other issue, need, or concern.</p>
 
 <form id="helpRequestForm">
 
@@ -24,8 +24,10 @@
         | Choose the appropriate category for your request.
         </span>
         <select id="category" name="category" class="form-select" required>
+            <option value="General Inquiry">General Inquiry</option>
             <option value="Bug Report">Bug Report</option>
             <option value="Feature Request">Feature Request</option>
+            <option value="Form Submission Issue">Form Submission Issue</option>
             <option value="Account Issue">Account Issue</option>
             <option value="Other">Other</option>
         </select>

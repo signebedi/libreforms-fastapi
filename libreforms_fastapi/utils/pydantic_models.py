@@ -753,7 +753,52 @@ def get_form_html(
         raise Exception(f"Form '{form_name}' not found in config")
 
     form_html = []
-    
+
+    # Here we set the initial form HTML
+    _config = form_config[form_name].get("__config__", {}) or {}
+    visible_form_name: str = _config.get("form_label", form_name.replace("_", " ").title())
+
+
+    header_html = '''
+                <fieldset class="form-check text-end">
+    '''
+
+
+    # Append the help link
+    header_html += f'''
+                    <a href="/ui/help" class="ms-0" style="color: inherit; text-decoration: none; padding-right: 6px;" title="Get help for this form" target="_blank">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-question-circle" viewBox="0 0 16 16">
+                            <path d="M8 15A7 7 0 1 1 8 1a7 7 0 0 1 0 14m0 1A8 8 0 1 0 8 0a8 8 0 0 0 0 16"/>
+                            <path d="M5.255 5.786a.237.237 0 0 0 .241.247h.825c.138 0 .248-.113.266-.25.09-.656.54-1.134 1.342-1.134.686 0 1.314.343 1.314 1.168 0 .635-.374.927-.965 1.371-.673.489-1.206 1.06-1.168 1.987l.003.217a.25.25 0 0 0 .25.246h.811a.25.25 0 0 0 .25-.25v-.105c0-.718.273-.927 1.01-1.486.609-.463 1.244-.977 1.244-2.056 0-1.511-1.276-2.241-2.673-2.241-1.267 0-2.655.59-2.75 2.286m1.557 5.763c0 .533.425.927 1.01.927.609 0 1.028-.394 1.028-.927 0-.552-.42-.94-1.029-.94-.584 0-1.009.388-1.009.94"/>
+                        </svg>
+                    </a>
+    '''
+
+    # Append the share link
+    invitations_enabled: bool = _config.get("invitations_enabled", False) 
+    if invitations_enabled:
+        header_html += f'''
+                    <a href="/ui/form/invite_submission/{form_name}" class="ms-0" style="color: inherit; text-decoration: none; padding-right: 6px;" title="Invite someone to submit this form" target="_blank">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-send" viewBox="0 0 16 16">
+                            <path d="M15.854.146a.5.5 0 0 1 .11.54l-5.819 14.547a.75.75 0 0 1-1.329.124l-3.178-4.995L.643 7.184a.75.75 0 0 1 .124-1.33L15.314.037a.5.5 0 0 1 .54.11ZM6.636 10.07l2.761 4.338L14.13 2.576zm6.787-8.201L1.591 6.602l4.339 2.76z"/>
+                        </svg>
+                    </a>
+        '''
+
+
+    header_html += f'''
+                </fieldset>
+    '''
+
+    form_html.append(header_html)
+
+    # Add the form header
+    form_html.append(f'''
+        <fieldset class="form-check">
+            <h4>{visible_form_name}</h4>
+        </fieldset>
+    ''')
+
     # Structured this way so we can access the list position
     for list_index, (field_name, field_info) in enumerate(list(form_config[form_name].items())):
     
