@@ -48,7 +48,7 @@
                         <div class="dropdown-menu">
                             {% for form in available_forms %}
                             {% if form in request.user.permissions and "create" in request.user.permissions[form]  %}
-                            <a class="dropdown-item" href="{{ url_for( 'ui_form_create', form_name=form ) }}">Submit {{ form | replace("_", " ") | title }}</a>
+                            <a class="dropdown-item" href="{{ url_for( 'ui_form_create', form_name=form ) }}">Submit {{ visible_form_names[form] }}</a>
 
                             {# <div class="d-flex align-items-center">
                                 <a class="dropdown-item" href="{{ url_for( 'ui_form_create', form_name=form ) }}" title="Submit this form">
@@ -84,7 +84,7 @@
                                         {% for form in available_forms %}
                                         {% if form in request.user.permissions and ("read_own" in request.user.permissions[form] or "read_all" in request.user.permissions[form]) %}
 
-                                        <li><button class="btn-link dropdown-item" onclick="exportExcel('{{ form }}', '{{ request.user.api_key }}')">{{ form | replace("_", " ") | title }}</button></li>
+                                        <li><button class="btn-link dropdown-item" onclick="exportExcel('{{ form }}', '{{ request.user.api_key }}')">{{ visible_form_names[form] }}</button></li>
                                         {% endif %}
                                         {% endfor %}
                                     </ul>

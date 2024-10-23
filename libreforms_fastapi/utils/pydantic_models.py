@@ -523,13 +523,25 @@ def get_form_backups(config_path=None, env=None):
     return list(zip(file_list, time_string_list, date_list, content_list, additions, subtractions))
 
 
-def get_form_names(config_path=None):
+def get_form_names(config_path=None, prefer_label=False):
     """
     Given a form config path, return a list of available forms, defaulting to the example 
-    dictionary provided above.
+    dictionary provided above. If `prefer_label` is True, then we will use form labels from
+    the form `__config__` dict, if it's been set.
     """
 
     form_config = load_form_config(config_path=config_path)
+
+    # Eww, this really messes things up. Its return type and core assumptions are different
+    # from the base function... it maybe should have been a different function altogether...
+    if prefer_label:
+        form_names = {}
+        for form_name, fields in form_config.items():
+            _config = fields.get("__config__", {}) or {}
+            visible_form_name: str = _config.get("form_label", form_name.replace("_", " ").title())
+            form_names[form_name] = visible_form_name
+        return form_names
+
     return form_config.keys()
 
 

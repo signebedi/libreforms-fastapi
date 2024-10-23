@@ -6800,6 +6800,7 @@ def build_ui_context():
 
     kwargs["version"] = __version__
     kwargs["available_forms"] = get_form_names(config_path=config.FORM_CONFIG_PATH)
+    kwargs["visible_form_names"] = get_form_names(config_path=config.FORM_CONFIG_PATH, prefer_label=True)
     kwargs["current_year"] = datetime.now().year
     kwargs["render_markdown_content"] = render_markdown_content
 
