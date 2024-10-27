@@ -10,16 +10,17 @@ from libreforms_fastapi.utils.admonitions import GfmAdmonitionExtension
 from html_sanitizer import Sanitizer
 
 sanitizer_config = {
-    'tags': {'a', 'br', 'p', 'strong', 'em', 'ul', 'ol', 'li', 'b', 'i', 'u', 'span', 'div', 'img', 'h1', 'h2', 'h3', 'h4', 'h5'},
+    'tags': {'a', 'br', 'p', 'strong', 'em', 'ul', 'ol', 'li', 'b', 'i', 'u', 'span', 'div', 'img', 'h1', 'h2', 'h3', 'h4', 'h5', 'iframe'},
     'attributes': {
         'a': ['href', 'title'],
         'img': ['src', 'alt'], 
         'div': ['style', 'class'],  # Might make sense to sanitize style content separately
         'p': ['style', 'class'],  # Might make sense to sanitize style content separately
+        'iframe': ['src', 'width', 'height', 'frameborder', 'allowfullscreen'],
     },
     'empty': {'br', 'h1', 'h2', 'h3', 'h4', 'h5'},
-    'separate': {'a', 'p', 'ul', 'ol', 'li', 'br', 'img'}, 
-    'protocols': {'a': ['http', 'https', 'mailto'], 'img': ['http', 'https']},
+    'separate': {'a', 'p', 'ul', 'ol', 'li', 'br', 'img', 'iframe'}, 
+    'protocols': {'a': ['http', 'https', 'mailto'], 'img': ['http', 'https'], 'iframe': ['http', 'https']},
     'unescape_special_chars': True
 }
 
