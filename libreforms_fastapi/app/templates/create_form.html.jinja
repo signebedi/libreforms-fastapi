@@ -44,6 +44,13 @@ var apiKey = "{{ request.user.api_key }}";
 
 function getLookup(formName, fieldName, el) {
 
+    // Ensure 'el' and selected option are valid ... sometimes, this logic is called
+    // before the options are fully buffered. This is a get-out-of-jail-free card.
+    if (!el || el.selectedIndex < 0) {
+        // console.warn("Element or selected option is not available.");
+        return; // Stop execution if 'el' or the selected option is undefined
+    }
+
     // Access the selected option
     var selectedOption = el.options[el.selectedIndex];
 
@@ -333,36 +340,46 @@ function populateFormFromURL() {
 
     // Iterate through each parameter and match it to the corresponding form field by name
     urlParams.forEach((value, key) => {
-      // Find a form field with the matching name
-      const field = document.querySelector(`[name="${key}"]`);
+        // Find a form field with the matching name
+        const field = document.querySelector(`[name="${key}"]`);
 
-      // Log the current key and value being processed
-      //console.log(`Processing key: ${key}, value: ${value}`);
+        // Log the current key and value being processed
+        //console.log(`Processing key: ${key}, value: ${value}`);
 
-      // If the field is found
-      if (field) {
-        //console.log(`Found field with name: ${key}, tag: ${field.tagName}`);
+        // If the field is found
+        if (field) {
+            //console.log(`Found field with name: ${key}, tag: ${field.tagName}`);
 
-        if (field.tagName === 'SELECT') {
-          // If it's a select element, find the option with the matching value
-          const matchingOption = field.querySelector(`option[value="${value}"]`);
-          
-          if (matchingOption) {
-            field.value = value;
-            //console.log(`Selected option with value: ${value} in <select>`);
-          } else {
-            // If no matching option is found, list all available options
-            const availableOptions = Array.from(field.options).map(option => option.value);
-            //console.warn(`No matching <option> found for value: ${value} in <select>. Available options are:`, availableOptions);
-          }
+            if (field.tagName === 'SELECT') {
+                // If it's a select element, find the option with the matching value
+                const matchingOption = field.querySelector(`option[value="${value}"]`);
+                
+                if (matchingOption) {
+                field.value = value;
+                //console.log(`Selected option with value: ${value} in <select>`);
+                } else {
+                // If no matching option is found, list all available options
+                const availableOptions = Array.from(field.options).map(option => option.value);
+                //console.warn(`No matching <option> found for value: ${value} in <select>. Available options are:`, availableOptions);
+                }
+            } else {
+                // For other input types, just set the value
+                field.value = value;
+                //console.log(`Set value: ${value} for field with name: ${key}`);
+            }
+
+            // Handle lookup fields
+            if (field.classList.contains('data-lookup')) {
+                // console.log("The element has the class 'data-lookup'");
+                // Execute the onchange function if it exists
+                if (typeof field.onchange === 'function') {
+                    field.onchange();
+                }
+            } 
         } else {
-          // For other input types, just set the value
-          field.value = value;
-          //console.log(`Set value: ${value} for field with name: ${key}`);
+            console.warn(`No field found with name: ${key}`);
         }
-      } else {
-        console.warn(`No field found with name: ${key}`);
-      }
+
     });
 }
 
