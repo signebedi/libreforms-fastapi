@@ -6918,6 +6918,10 @@ async def ui_form_read_all(request: Request, config = Depends(get_config_depends
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
+    if not config.VIEW_ALL_PAGE_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+
     return templates.TemplateResponse(
         request=request, 
         name="read_all_forms.html.jinja", 

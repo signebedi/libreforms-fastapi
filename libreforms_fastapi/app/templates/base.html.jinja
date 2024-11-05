@@ -72,7 +72,11 @@
                             Manage Submissions
                         </button>
                         <ul class="dropdown-menu" aria-labelledby="AdminMenu">
+
+                            {% if config["VIEW_ALL_PAGE_ENABLED"] %}
                             <li><a class="dropdown-item" href="{{ url_for('ui_form_read_all') }}">View All</a></li>
+                            {% endif %}
+
                             <!-- Users Menu -->
                             {% if config["EXCEL_EXPORT_ENABLED"] %}
                             <li>

@@ -152,6 +152,11 @@ def get_config(env):
         # https://github.com/signebedi/libreforms-fastapi/issues/164.
         SEARCH_BAR_ENABLED:bool = os.getenv('SEARCH_BAR_ENABLED', 'True') == 'True'
 
+
+        # Here we allow admins to decide whether users should be able to see the View All
+        # page of the UI, see https://github.com/signebedi/libreforms-fastapi/issues/375.
+        VIEW_ALL_PAGE_ENABLED:bool = os.getenv('VIEW_ALL_PAGE_ENABLED', 'True') == 'True'
+
         # Here we determine whether the footer will show in the UI, see 
         # https://github.com/signebedi/libreforms-fastapi/issues/188.
         DISABLE_FOOTER:bool = os.getenv('DISABLE_FOOTER', 'False') == 'True'
