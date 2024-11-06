@@ -1024,8 +1024,10 @@ class ManageTinyDB(ManageDocumentDB):
         collapse_data:bool=False,
         exclude_journal:bool=False,
         stringify_output:bool=False,
-        sort_by_last_edited:bool=False,
-        newest_first:bool=False,
+        # sort_by_last_edited:bool=False,
+        # newest_first:bool=False,
+        sort_by="__metadata__created_date",
+        sort_method="ascending",
         query_params=None,
     ):
 
@@ -1070,15 +1072,26 @@ class ManageTinyDB(ManageDocumentDB):
 
         ### Now we move on to sorting and cleanup
 
+        # Deprecated by https://github.com/signebedi/libreforms-fastapi/issues/374
         # Conditionally sort documents by `last_modified` date, see 
         # https://github.com/signebedi/libreforms-fastapi/issues/265.
-        if sort_by_last_edited:
-            documents.sort(key=lambda doc: doc['metadata']['last_modified'], reverse=newest_first)
+        # if sort_by_last_edited:
+        #     documents.sort(key=lambda doc: doc['metadata']['last_modified'], reverse=newest_first)
 
+        # Deprecated by https://github.com/signebedi/libreforms-fastapi/issues/374
         # Reverse the order if newest_first=True param is passed, see
         # https://github.com/signebedi/libreforms-fastapi/issues/266.
-        elif newest_first:
-            documents = documents[::-1]
+        # elif newest_first:
+        #     documents = documents[::-1]
+
+        # Sort documents based on the criteria passed with the method params, see
+        # https://github.com/signebedi/libreforms-fastapi/issues/374.
+        documents = sorted(
+            documents,
+            key=lambda doc: doc['metadata'].get(sort_by.lstrip("__metadata__"), "")
+            if sort_by.startswith("__metadata__") else doc['data'].get(sort_by, ""),
+            reverse=(sort_method == "descending")
+        )
 
         # If we've opted to stringify each field...
         if stringify_output:

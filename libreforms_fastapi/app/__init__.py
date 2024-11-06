@@ -11,7 +11,7 @@ from markupsafe import escape
 from bson import ObjectId
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-
+from enum import Enum
 
 from pydantic import ValidationError, EmailStr
 from fastapi import (
@@ -2209,7 +2209,9 @@ async def api_form_export(
     return FileResponse(path=document_path, filename=file_name, media_type='application/octet-stream')
 
 
-
+class SortMethod(str, Enum):
+    ascending = "ascending"
+    descending = "descending"
 
 # Read all forms
 @app.get("/api/form/read_all/{form_name}", dependencies=[Depends(api_key_auth)])
@@ -2227,29 +2229,54 @@ async def api_form_read_all(
     simple_response: bool = False,
     exclude_journal: bool = False,
     stringify_output: bool = False,
-    sort_by_last_edited: bool = False,
     set_length: int = 0,
-    newest_first: bool = False,
     return_when_empty: bool = False,
     query_params: Optional[str] = Query(None),
+    sort_by: str = "__metadata__created_date",
+    sort_method: SortMethod = SortMethod.ascending, # Make this an enum of options
+    # Deprecated in https://github.com/signebedi/libreforms-fastapi/issues/374
+    sort_by_last_edited: bool = False, # Deprecated
+    newest_first: bool = False, # Deprecated
 ):
     """
     Retrieves all documents of a specified form type, identified by the form name in the URL.
     It verifies the form's existence, checks user permissions, retrieves documents from the 
-    database, and logs the query. You can pass flatten=true to return data in a flat format.
-    You can pass escape=true to escape output. You can pass simple_response=true to receive 
-    just the data as a response. You can pass exclude_journal=true to exclude the document
-    journal, which can sometimes complicate data handling because of its nested nature. You
-    can pass stringify_output=true if you would like output types coerced into string format.
-    You can pass sort_by_last_edited=True if you want to sort by most recent changes. You can
-    pass set_length=some_int if you would like to limit the response to a certain number of
-    documents. You can pass newest_first=True if you want the newest results at the top of
-    the results. This applies to the created_at field, you can pair this option with the
-    sort_by_last_edited=True param to get the most recently modified forms at the top. If
-    you want the endpoint to return empty lists instead of raising an error, then pass
-    return_when_empty=true. You can pass query_params as a url-encoded dict to filter
-    data using the ==, !=, >, >=, <, <=, in, and nin operators. Example usage of this param: 
-    {"data":{"age": {"operator": ">=", "value": 21},"name": {"operator": "==","value": "John"}}}.
+    database, and logs the query. 
+    
+    You can pass `flatten`=true to return data in a flat format.
+
+    You can pass `escape`=true to escape output. 
+    
+    You can pass `simple_response`=true to receive just the data as a response. 
+    
+    You can pass `exclude_journal`=true to exclude the document journal, which can sometimes 
+    complicate data handling because of its nested nature. 
+    
+    You can pass `stringify_output`=true if you would like output types coerced into string 
+    format.
+    
+    You can pass `set_length`=some_int if you want to limit the response to a certain number of 
+    documents. 
+    
+    If you want the endpoint to return empty lists instead of raising an error, then pass 
+    `return_when_empty`=true. 
+    
+    You can pass `query_params` as a url-encoded dict to filter data using the ==, !=, >, >=, 
+    <, <=, in, and nin operators. Example usage of this param: {"data":{"age": {"operator": 
+    ">=", "value": 21},"name": {"operator": "==","value": "John"}}}.
+
+    You can pass `sort_by` to specify the field to sort by. The default is __metadata__created_date. 
+    Valid options include any sortable field in the document.
+
+    You can pass `sort_method` to determine the sort order. Use "ascending" to order from 
+    oldest to newest, or "descending" for the reverse. The default is "ascending".
+
+    Deprecated params:
+        You can pass `sort_by_last_edited`=True if you want to sort by most recent changes. You can 
+        pass `newest_first`=True if you want the newest results at the top of the results. This 
+        applies to the created_at field, you can pair this option with the `sort_by_last_edited`=True 
+        param to get the most recently modified forms at the top.
+        
     """
 
     if not config.API_ENABLED:
@@ -2293,8 +2320,10 @@ async def api_form_read_all(
         collapse_data=flatten,
         exclude_journal=exclude_journal,
         stringify_output=stringify_output,
-        sort_by_last_edited=sort_by_last_edited,
-        newest_first=newest_first,
+        sort_by=sort_by,
+        sort_method=sort_method,
+        # sort_by_last_edited=sort_by_last_edited,
+        # newest_first=newest_first,
         query_params=query_params,
     )
 
