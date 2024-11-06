@@ -12,6 +12,7 @@ from bson import ObjectId
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 from enum import Enum
+import requests
 
 from pydantic import ValidationError, EmailStr
 from fastapi import (
@@ -154,6 +155,8 @@ from libreforms_fastapi.utils.jinja_emails import (
     test_email_config,
     get_email_yaml,
 )
+from jinja2 import Environment, select_autoescape
+
 
 # Here we set the application config using the get_config
 # factory pattern defined in libreforms_fastapi.utis.config.
@@ -1045,6 +1048,160 @@ def run_event_hooks(
     # print("\n\n\n", event_hooks)
 
     for event in event_hooks:
+
+        # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/373
+        if event['type'] == "http_request":
+            """
+            This will submit an http request to the designated target and include 
+            the relevant headers and body passed by the system. You also need to 
+            specify the HTTP method (get, post, patch, put, delete) for the request. 
+            There are three ways to pass data: static, from_form, and jinja2. Jinja2 
+            will allow you to embed values from within the form itself into a jinja2 
+            string.
+            """
+
+
+            class HTTPMethod(str, Enum):
+                """An Enum encapsulating the set of supported HTTP methods"""
+                get = "get"
+                post = "post"
+                put = "put"
+                patch = "patch"
+                delete = "delete"
+
+            url = event.get('target', None)
+            if not url:
+                continue
+            method: HTTPMethod = event.get('method', HTTPMethod.post).lower() # Put this in lowercase, assess against an Enum
+
+            """
+            Supported options:
+                params – (optional) Dictionary, list of tuples or bytes to send in the query string for the Request.
+                data – (optional) Dictionary, list of tuples, bytes, or file-like object to send in the body of the Request.
+                json – (optional) A JSON serializable Python object to send in the body of the Request.
+                headers – (optional) Dictionary of HTTP Headers to send with the Request.
+            """
+
+            headers = event.get('headers', {})
+            data = event.get('data', {})
+            _json = event.get('json', {})
+            params = event.get('params', {})
+
+
+            # Here we create a jinja env
+            env = Environment(
+                autoescape=select_autoescape(['html', 'xml']),
+            )
+
+            processed_headers = {} 
+            for key,data_conf in headers.items():
+                value_method = data_conf.get('value_method', "static")
+                value_placeholder = data_conf.get('value', "")
+                
+                if value_method == "static":
+                    value = value_placeholder
+                elif value_method == "from_form":
+                    if value_placeholder.startswith("__metadata__"):
+                        value = document["metadata"].get(value_placeholder[12:], "")
+                    else:
+                        value = document["data"].get(value_placeholder, "")
+                elif value_method == "jinja2":
+                    template_str = env.from_string(value_placeholder)
+                    value = template_str.render(**document)
+                else:
+                    value = ""
+
+                processed_headers[key] = value
+
+            processed_data = {} 
+            for key,data_conf in data.items():
+                value_method = data_conf.get('value_method', "static")
+                value_placeholder = data_conf.get('value', "")
+                
+                if value_method == "static":
+                    value = value_placeholder
+                elif value_method == "from_form":
+                    if value_placeholder.startswith("__metadata__"):
+                        value = document["metadata"].get(value_placeholder[12:], "")
+                    else:
+                        value = document["data"].get(value_placeholder, "")
+                elif value_method == "jinja2":
+                    template_str = env.from_string(value_placeholder)
+                    value = template_str.render(**document)
+                else:
+                    value = ""
+
+                processed_data[key] = value
+
+            processed_json = {} 
+            for key,data_conf in _json.items():
+                value_method = data_conf.get('value_method', "static")
+                value_placeholder = data_conf.get('value', "")
+                
+                if value_method == "static":
+                    value = value_placeholder
+                elif value_method == "from_form":
+                    if value_placeholder.startswith("__metadata__"):
+                        value = document["metadata"].get(value_placeholder[12:], "")
+                    else:
+                        value = document["data"].get(value_placeholder, "")
+                elif value_method == "jinja2":
+                    template_str = env.from_string(value_placeholder)
+                    value = template_str.render(**document)
+                else:
+                    value = ""
+
+                processed_json[key] = value
+
+            processed_params = {} 
+            for key,data_conf in params.items():
+                value_method = data_conf.get('value_method', "static")
+                value_placeholder = data_conf.get('value', "")
+                
+                if value_method == "static":
+                    value = value_placeholder
+                elif value_method == "from_form":
+                    if value_placeholder.startswith("__metadata__"):
+                        value = document["metadata"].get(value_placeholder[12:], "")
+                    else:
+                        value = document["data"].get(value_placeholder, "")
+                elif value_method == "jinja2":
+                    template_str = env.from_string(value_placeholder)
+                    value = template_str.render(**document)
+                else:
+                    value = ""
+
+                processed_params[key] = value
+
+
+            # Now we build our request... should we check the response code?
+            requests.request(
+                method=method,
+                url=url,
+                headers=processed_headers,
+                data=processed_data,
+                json=processed_json,
+                params=processed_params,    
+            )
+
+            
+            """
+            - type: http_request
+            target: https://api.jira.com/api/v1/create/
+            method: post
+            headers:
+                X-API-KEY:
+                value_method: static
+                value: laksjdfhkjasdhfwj2317-sas-d
+            data:
+                request_type:
+                value_method: from_form
+                value: request_type
+                description:
+                value_method: jinja2
+                value: "This is the description of a {{request_type}} submitted by {{__metadata__created_by}}"
+            """
+
         # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/313
         if event['type'] == "send_mail":
 

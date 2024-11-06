@@ -12,6 +12,7 @@ pymongo<5.0.0
 python-Levenshtein<1.0.0
 python-multipart<1.0.0
 PyYAML<7.0.0
+requests<3.0.0
 SQLAlchemy<3.0.0
 sqlalchemy-signing<2.0.0
 tinydb<5.0.0

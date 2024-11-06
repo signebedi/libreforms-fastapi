@@ -2,9 +2,9 @@ cryptography
 email_validator
 fastapi
 fuzzywuzzy
+html-sanitizer
 immutables
 Jinja2
-html-sanitizer
 Markdown
 pydantic-settings
 PyJWT
@@ -12,6 +12,7 @@ pymongo
 python-Levenshtein
 python-multipart
 PyYAML
+requests
 SQLAlchemy
 sqlalchemy-signing
 tinydb
