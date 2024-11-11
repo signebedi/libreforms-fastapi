@@ -139,7 +139,7 @@ function generateLookup(formName, fieldName, displayFields, queryParams) {
     function fetchData(formName) {
         return new Promise((resolve, reject) => {
             $.ajax({
-                url: `/api/form/read_all/${formName}?flatten=true&exclude_journal=true&stringify_output=true&sort_by=%__metadata__last_edited&newest_first=true&return_when_empty=true&${queryParams}`,
+                url: `/api/form/read_all/${formName}?flatten=true&exclude_journal=true&stringify_output=true&sort_by=%__metadata__last_edited&return_when_empty=true&${queryParams}`,
                 type: "GET",
                 dataType: 'json',
                 beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
