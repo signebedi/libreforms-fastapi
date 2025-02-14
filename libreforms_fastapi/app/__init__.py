@@ -1108,6 +1108,12 @@ def run_event_hooks(
                 elif value_method == "jinja2":
                     template_str = env.from_string(value_placeholder)
                     value = template_str.render(**document)
+                elif value_method == "jinja2_dict":
+                    template_str = env.from_string(value_placeholder)
+                    try:
+                        value = json.loads(template_str.render(**document))
+                    except json.JSONDecodeError:
+                        value = {}  # Default to empty dict if parsing fails
                 else:
                     value = ""
 
@@ -1128,6 +1134,12 @@ def run_event_hooks(
                 elif value_method == "jinja2":
                     template_str = env.from_string(value_placeholder)
                     value = template_str.render(**document)
+                elif value_method == "jinja2_dict":
+                    template_str = env.from_string(value_placeholder)
+                    try:
+                        value = json.loads(template_str.render(**document))
+                    except json.JSONDecodeError:
+                        value = {}  # Default to empty dict if parsing fails
                 else:
                     value = ""
 
@@ -1148,6 +1160,12 @@ def run_event_hooks(
                 elif value_method == "jinja2":
                     template_str = env.from_string(value_placeholder)
                     value = template_str.render(**document)
+                elif value_method == "jinja2_dict":
+                    template_str = env.from_string(value_placeholder)
+                    try:
+                        value = json.loads(template_str.render(**document))
+                    except json.JSONDecodeError:
+                        value = {}  # Default to empty dict if parsing fails
                 else:
                     value = ""
 
@@ -1168,6 +1186,12 @@ def run_event_hooks(
                 elif value_method == "jinja2":
                     template_str = env.from_string(value_placeholder)
                     value = template_str.render(**document)
+                elif value_method == "jinja2_dict":
+                    template_str = env.from_string(value_placeholder)
+                    try:
+                        value = json.loads(template_str.render(**document))
+                    except json.JSONDecodeError:
+                        value = {}  # Default to empty dict if parsing fails
                 else:
                     value = ""
 
