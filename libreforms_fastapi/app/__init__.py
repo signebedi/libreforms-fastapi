@@ -1215,10 +1215,10 @@ def run_event_hooks(
             response = requests.request(**request_dict)
 
 
-            print(document)
-            print(request_dict)
-            print(repr(response))
-            print(response.status_code)
+            # print(document)
+            # print(request_dict)
+            # print(repr(response))
+            # print(response.status_code)
 
             
             """
@@ -1235,7 +1235,7 @@ def run_event_hooks(
                     value: request_type
                 description:
                     value_method: jinja2
-                    value: "This is the description of a {{request_type}} submitted by {{__metadata__created_by}}"
+                    value: "This is the description of a {{data.request_type}} submitted by {{metadata.created_by}}"
             """
 
         # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/313
