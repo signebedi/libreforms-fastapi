@@ -1212,7 +1212,13 @@ def run_event_hooks(
                 request_dict['params'] = processed_params
 
             # And submit it. Should we check the response code?
-            requests.request(**request_dict)
+            response = requests.request(**request_dict)
+
+
+            print(document)
+            print(request_dict)
+            print(repr(response))
+            print(response.status_code)
 
             
             """
