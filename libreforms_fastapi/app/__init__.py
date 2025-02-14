@@ -1076,10 +1076,10 @@ def run_event_hooks(
 
             """
             Supported options:
-                params – (optional) Dictionary, list of tuples or bytes to send in the query string for the Request.
-                data – (optional) Dictionary, list of tuples, bytes, or file-like object to send in the body of the Request.
-                json – (optional) A JSON serializable Python object to send in the body of the Request.
-                headers – (optional) Dictionary of HTTP Headers to send with the Request.
+                params - (optional) Dictionary, list of tuples or bytes to send in the query string for the Request.
+                data - (optional) Dictionary, list of tuples, bytes, or file-like object to send in the body of the Request.
+                json - (optional) A JSON serializable Python object to send in the body of the Request.
+                headers - (optional) Dictionary of HTTP Headers to send with the Request.
             """
 
             headers = event.get('headers', {})
@@ -1174,15 +1174,21 @@ def run_event_hooks(
                 processed_params[key] = value
 
 
-            # Now we build our request... should we check the response code?
-            requests.request(
-                method=method,
-                url=url,
-                headers=processed_headers,
-                data=processed_data,
-                json=processed_json,
-                params=processed_params,    
-            )
+            # Now we build our request... only including a field if it is not blank
+
+            request_dict = {"method": method, "url":url,}
+
+            if processed_headers:
+                request_dict['headers'] = processed_headers
+            if processed_data:
+                request_dict['data'] = processed_data
+            if processed_json:
+                request_dict['json'] = processed_json
+            if processed_params:
+                request_dict['params'] = processed_params
+
+            # And submit it. Should we check the response code?
+            requests.request(**request_dict)
 
             
             """
@@ -1195,11 +1201,11 @@ def run_event_hooks(
                 value: laksjdfhkjasdhfwj2317-sas-d
             data:
                 request_type:
-                value_method: from_form
-                value: request_type
+                    value_method: from_form
+                    value: request_type
                 description:
-                value_method: jinja2
-                value: "This is the description of a {{request_type}} submitted by {{__metadata__created_by}}"
+                    value_method: jinja2
+                    value: "This is the description of a {{request_type}} submitted by {{__metadata__created_by}}"
             """
 
         # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/313
