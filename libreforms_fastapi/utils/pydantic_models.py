@@ -766,11 +766,14 @@ def get_form_html(
 
     form_html = []
 
-    # Here we set the initial form HTML
     _config = form_config[form_name].get("__config__", {}) or {}
     visible_form_name: str = _config.get("form_label", form_name.replace("_", " ").title())
 
+    # Added from https://github.com/signebedi/libreforms-fastapi/issues/379
+    conditional_display_logic=[]
 
+
+    # Here we set the initial form HTML
     header_html = '''
                 <fieldset class="form-check text-end">
     '''
@@ -842,6 +845,34 @@ def get_form_html(
 
         required: bool = field_info.get("required", False)
 
+
+        # Added from https://github.com/signebedi/libreforms-fastapi/issues/379. Introduces conditional display logic.
+        conditional_display_enabled: bool = field_info.get("conditional_display_enabled", False)
+        conditional_display_field: str | None = field_info.get("conditional_display_field", None)
+        conditional_display_value = field_info.get("conditional_display_value", None) # Might change default values for these in future
+
+        # Initialize the conditional display class and attributes
+        conditional_class = ""
+        conditional_attrs = ""
+
+        if conditional_display_enabled:
+            assert conditional_display_field != None and conditional_display_value != None, f"If conditional_display_enabled is set to true, then both conditional_display_field and conditional_display_value must be set."
+            
+            # Determine initial visibility state
+            initial_hidden = True  # Default to hidden
+            
+            # Check if we have the current document, viz. edits, and can determine initial state
+            if current_document and conditional_display_field in current_document['data']:
+                # Only show if condition is met
+                if str(current_document['data'][conditional_display_field]) == str(conditional_display_value):
+                    initial_hidden = False
+            
+            # Set CSS class for visibility
+            conditional_class = "d-none" if initial_hidden else ""
+            
+            # Set data attributes for conditional logic
+            conditional_attrs = f'data-conditional-field="{conditional_display_field}" data-conditional-value="{conditional_display_value}"'
+
         validators: dict = field_info.get("validators", {})
         if not isinstance(validators, dict):
             raise ValueError(f"Form config validators option is malformed. Form name: {form_name}. Field name: {field_name}.")
@@ -896,13 +927,13 @@ def get_form_html(
             if not visible_field_name or visible_field_name == "":
 
                 field_html += f'''
-                    <fieldset class="form-check" style="padding-top: {'0' if list_index == 0 else '10'}px;">
+                    <fieldset class="form-check {conditional_class}" {conditional_attrs} style="padding-top: {'0' if list_index == 0 else '10'}px;">
                         <span id="{description_id}" class="form-text">{description_text} {tooltip_text}</span>
                     </fieldset>'''
 
             else:
                 field_html += f'''
-                    <fieldset class="form-check" style=" padding-top: 20px;">
+                    <fieldset class="form-check {conditional_class}" {conditional_attrs} style=" padding-top: 20px;">
                         <h5 aria-labelledby="{description_id}" for="{field_name}" class="form-check-label">{visible_field_name}</h5>
                         <span id="{description_id}" class="form-text">{description_text} {tooltip_text}</span>
                     </fieldset>'''
@@ -937,7 +968,7 @@ def get_form_html(
             is_true = False if not default else True
 
             field_html += f'''
-                <fieldset class="form-check" style="padding-top: 20px;">
+                <fieldset class="form-check {conditional_class}" {conditional_attrs} style="padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label set-bold">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <div class="form-check form-switch bool-switch">
@@ -977,7 +1008,7 @@ def get_form_html(
 
             else:
                 field_html += f'''
-                    <fieldset class="form-check" style="padding-top: 20px;">
+                    <fieldset class="form-check {conditional_class}" {conditional_attrs} style="padding-top: 20px;">
                         <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label set-bold">{visible_field_name}</label>
                         <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                         <input type="text" readonly class="form-control" id="{field_name}" {mutable_attr}
@@ -988,7 +1019,7 @@ def get_form_html(
 
         elif field_info['input_type'] in ['text', 'number', 'email', 'date']:
             field_html += f'''
-                <fieldset class="form-check" style="padding-top: 20px;">
+                <fieldset class="form-check {conditional_class}" {conditional_attrs} style="padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label set-bold">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params}'''
@@ -1007,7 +1038,7 @@ def get_form_html(
 
         elif field_info['input_type'] == "date":
             field_html += f'''
-                <fieldset class="form-check" style="padding-top: 20px;">
+                <fieldset class="form-check {conditional_class}" {conditional_attrs} style="padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label set-bold">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params} 
@@ -1019,7 +1050,7 @@ def get_form_html(
 
         elif field_info['input_type'] == 'textarea':
             field_html += f'''
-                <fieldset class="form-check" style="padding-top: 20px;">
+                <fieldset class="form-check {conditional_class}" {conditional_attrs} style="padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label set-bold"{' data-required="true"' if required else ''}>{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <textarea class="form-control" id="{field_name}" name="{field_name}" {field_params} rows="4"'''
@@ -1041,7 +1072,7 @@ def get_form_html(
 
         elif field_info['input_type'] in ['checkbox', 'radio']:
             field_html += f'''
-                <fieldset class="form-check{' required-checkbox-group' if required else ''}" style="padding-top: 20px;"{' data-required="true"' if required else ''}>
+                <fieldset class="form-check{' required-checkbox-group' if required else ''} {conditional_class}" {conditional_attrs} style="padding-top: 20px;"{' data-required="true"' if required else ''}>
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label set-bold">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
             '''
@@ -1059,7 +1090,7 @@ def get_form_html(
 
         elif field_info['input_type'] == 'select':
             field_html += f'''
-                <fieldset class="form-check" style="padding-top: 20px;">
+                <fieldset class="form-check {conditional_class}" {conditional_attrs} style="padding-top: 20px;">
                     <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label set-bold">{visible_field_name}</label>
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>'''
             if isinstance(links_to_form, str):

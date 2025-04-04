@@ -320,6 +320,70 @@ $(document).ready(function() {
             });
         }
     });
+
+
+    // Function to update conditional fields visibility
+    function updateConditionalFields() {
+        // Process all fields with conditional display attributes
+        $('[data-conditional-field]').each(function() {
+            const $field = $(this);
+            const dependentFieldName = $field.data('conditional-field');
+            const dependentFieldValue = $field.data('conditional-value');
+            let $dependentField = $('#' + dependentFieldName);
+            
+            if ($dependentField.length) {
+                let currentValue;
+                
+                // Handle different input types correctly
+                if ($dependentField.is(':checkbox')) {
+                    // For checkboxes, get checked state
+                    currentValue = $dependentField.is(':checked').toString();
+                } else if ($dependentField.attr('type') === 'radio') {
+                    // For radio buttons, get the selected value in the group
+                    currentValue = $('input[name="' + dependentFieldName + '"]:checked').val() || '';
+                } else {
+                    // For other input types (text, select, etc.)
+                    currentValue = $dependentField.val();
+                }
+                
+                // Show/hide based on condition (convert to strings for comparison)
+                if (String(currentValue) === String(dependentFieldValue)) {
+                    $field.removeClass('d-none');
+                    
+                    // Re-enable required attribute on visible fields
+                    $field.find('input, select, textarea').each(function() {
+                        if ($(this).attr('data-required') === 'true') {
+                            $(this).prop('required', true);
+                        }
+                    });
+                } else {
+                    $field.addClass('d-none');
+                    
+                    // Remove required attribute from hidden fields
+                    $field.find('input, select, textarea').each(function() {
+                        if ($(this).attr('data-required') === 'true') {
+                            $(this).prop('required', false);
+                        }
+                    });
+                }
+            }
+        });
+    }
+    
+    // Set initial visibility on page load
+    updateConditionalFields();
+    
+    // Update visibility when any form field changes
+    $('input, select, textarea').on('change', function() {
+        updateConditionalFields();
+    });
+    
+    // Special handling for fields that don't trigger change events naturally
+    $('input[type="text"], input[type="number"], textarea').on('input', function() {
+        updateConditionalFields();
+    });
+
+
 });
 
 
@@ -382,7 +446,6 @@ function populateFormFromURL() {
 
     });
 }
-
 
 </script>
 {% endif %}
