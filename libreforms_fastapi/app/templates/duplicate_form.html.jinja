@@ -364,6 +364,9 @@ $(document).ready(function() {
                     currentValue = $dependentField.val();
                 }
                 
+                // Store previous visibility state
+                const wasVisible = !$field.hasClass('d-none');
+                
                 // Show/hide based on condition (convert to strings for comparison)
                 if (String(currentValue) === String(dependentFieldValue)) {
                     $field.removeClass('d-none');
@@ -375,6 +378,41 @@ $(document).ready(function() {
                         }
                     });
                 } else {
+                    // If the field was previously visible but now should be hidden
+                    if (wasVisible) {
+                        // Reset text inputs and textareas to empty
+                        $field.find('input[type="text"], input[type="email"], input[type="number"], input[type="date"], textarea').val('');
+                        
+                        // Reset all checkboxes to unchecked (default assumption)
+                        $field.find('input[type="checkbox"]').prop('checked', false);
+                        
+                        // For bool_switch inputs, reset and update label
+                        $field.find('.bool-switch-checkbox').each(function() {
+                            $(this).prop('checked', false);
+                            // Find the associated label and update it
+                            const $label = $field.find('.bool-switch-label[for="' + $(this).attr('id') + '"]');
+                            if ($label.length) {
+                                // Extract false_label from onchange attribute 
+                                const onchangeAttr = $(this).attr('onchange') || '';
+                                const match = onchangeAttr.match(/updateLabel\(this,\s*['"](.+?)['"]\s*,\s*['"](.+?)['"]\s*\)/);
+                                if (match && match[2]) {
+                                    $label.text(match[2]); // Set to false_label
+                                }
+                            }
+                        });
+                        
+                        // Reset radio buttons - select first option in each group
+                        $field.find('input[type="radio"]:first').prop('checked', true);
+                        
+                        // Reset select elements to first option
+                        $field.find('select').each(function() {
+                            const $firstOption = $(this).find('option:first');
+                            if ($firstOption.length) {
+                                $(this).val($firstOption.val());
+                            }
+                        });
+                    }
+                    
                     $field.addClass('d-none');
                     
                     // Remove required attribute from hidden fields
