@@ -716,8 +716,8 @@ def cli_id(username, environment):
 @click.argument('username', required=False)
 @click.option('--environment', type=click.Choice(['development', 'production'], case_sensitive=False), default='production', help='Set the environment.')
 @click.option('--all', 'reset_all', is_flag=True, help='Reset API keys for all users')
-@click.option('--disable-old-keys', is_flag=True, help='Disable old keys after resetting')
-def cli_reset_apikey(username, environment, reset_all, disable_old_keys):
+@click.option('--expire-old-keys', is_flag=True, help='Expire old keys after resetting')
+def cli_reset_apikey(username, environment, reset_all, expire_old_keys):
     """Clear and re-assign API key(s) for a user or all users."""
 
     if not username and not reset_all:
@@ -739,6 +739,7 @@ def cli_reset_apikey(username, environment, reset_all, disable_old_keys):
     User = models['User']
     Base.metadata.create_all(bind=engine)
 
+    # Signature manager
     signatures = Signatures(
         config.SQLALCHEMY_DATABASE_URI,
         byte_len=32,
@@ -763,12 +764,12 @@ def cli_reset_apikey(username, environment, reset_all, disable_old_keys):
             new_key = signatures.write_key(scope=['api_key'], expiration=365*24, active=True, email=user.email)
             user.api_key = new_key
 
-            if disable_old_keys:
+            if expire_old_keys and old_key:
                 try:
-                    signatures.disable_key(old_key)
-                    click.echo(f"Old key for {user.username} disabled.")
+                    signatures.expire_key(old_key)
+                    click.echo(f"Expired old key for {user.username}.")
                 except KeyDoesNotExist:
-                    click.echo(f"Old key for {user.username} not found in signature store.")
+                    click.echo(f"Old key for {user.username} not found.")
 
             click.echo(f"Reset API key for {user.username}:")
             click.echo(f"  New Key: {new_key}")
