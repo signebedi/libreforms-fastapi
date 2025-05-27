@@ -711,3 +711,67 @@ def cli_id(username, environment):
 
         click.echo(user_details)
 
+
+@cli.command('reset-apikey')
+@click.argument('username', required=False)
+@click.option('--environment', type=click.Choice(['development', 'production'], case_sensitive=False), default='production', help='Set the environment.')
+@click.option('--all', 'reset_all', is_flag=True, help='Reset API keys for all users')
+@click.option('--disable-old-keys', is_flag=True, help='Disable old keys after resetting')
+def cli_reset_apikey(username, environment, reset_all, disable_old_keys):
+    """Clear and re-assign API key(s) for a user or all users."""
+
+    if not username and not reset_all:
+        click.echo("You must provide either a username or use the --all option.")
+        return
+
+    config = get_config(environment)
+    assert check_configuration_assumptions(config=config)
+
+    models, SessionLocal, signatures, engine = get_sqlalchemy_models(
+        sqlalchemy_database_uri=config.SQLALCHEMY_DATABASE_URI,
+        set_timezone=config.TIMEZONE,
+        create_all=True,
+        rate_limiting=config.RATE_LIMITS_ENABLED,
+        rate_limiting_period=config.RATE_LIMITS_PERIOD,
+        rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
+    )
+
+    User = models['User']
+    Base.metadata.create_all(bind=engine)
+
+    signatures = Signatures(
+        config.SQLALCHEMY_DATABASE_URI,
+        byte_len=32,
+        rate_limiting=config.RATE_LIMITS_ENABLED,
+        rate_limiting_period=config.RATE_LIMITS_PERIOD,
+        rate_limiting_max_requests=config.RATE_LIMITS_MAX_REQUESTS,
+    )
+
+    with SessionLocal() as session:
+        users = []
+        if reset_all:
+            users = session.query(User).all()
+        else:
+            user = session.query(User).filter(User.username.ilike(username)).first()
+            if not user:
+                click.echo(f"User '{username}' not found.")
+                return
+            users = [user]
+
+        for user in users:
+            old_key = user.api_key
+            new_key = signatures.write_key(scope=['api_key'], expiration=365*24, active=True, email=user.email)
+            user.api_key = new_key
+
+            if disable_old_keys:
+                try:
+                    signatures.disable_key(old_key)
+                    click.echo(f"Old key for {user.username} disabled.")
+                except KeyDoesNotExist:
+                    click.echo(f"Old key for {user.username} not found in signature store.")
+
+            click.echo(f"Reset API key for {user.username}:")
+            click.echo(f"  New Key: {new_key}")
+
+        session.commit()
+        click.echo("API key(s) successfully reset.")
