@@ -994,7 +994,7 @@ async def check_key_rotation(
                     continue
 
                 user.api_key = new_key
-                db.session.commit()
+                session.commit()
 
                 if config.SMTP_ENABLED:
 
