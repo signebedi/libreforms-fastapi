@@ -968,15 +968,29 @@ def write_api_call_to_transaction_log(
                     )
 
 async def check_key_rotation(
-    period: int, 
-    config=get_config(_env),
-    mailer=get_mailer(),
+    period: int = 21600, 
+    time_until: int = 24,
+    config = get_config(_env),
+    mailer = get_mailer(),
 ):
+
     while True:
         await asyncio.sleep(period)
 
-        # Query for signatures with scope 'api_key' that expire in the next hour
-        keypairs = signatures.rotate_keys(time_until=1, scope="api_key")
+        # Generally, the behavior we are looking for when the expiration date has been reached 
+        # for each given scope for this applicataion conforms to the following logic:
+        # api_key < rotate
+        # api_key_single_use < disable
+        # email_verification < disable
+        # forgot_password < disable
+
+        with SessionLocal() as session:
+
+            # all_keys_debug = signatures.query_keys()
+            # logger.info(f'Key rotation started. {all_keys_debug}')
+
+            # Query for signatures of all scopes that expire in the next hour
+            keypairs = signatures.rotate_keys(time_until=time_until, scope=['api_key'])
 
         if len(keypairs) == 0:
             logger.info(f'Ran key rotation - 0 key/s rotated')
@@ -1012,7 +1026,10 @@ async def check_key_rotation(
 
 @app.on_event("startup")
 async def start_check_key_rotation():
-    task = asyncio.create_task(check_key_rotation(3600))
+    # We've increased the overall period associated with this cycle to 
+    # six hours, while the function itself rotates keys that will expire 
+    # in the next 24 hours. Because
+    task = asyncio.create_task(check_key_rotation())
 
 if config.DEBUG:
 

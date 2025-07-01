@@ -490,7 +490,7 @@ def cli_useradd(username, password, email, opt_out, site_admin, environment):
         )
 
         # Create the user's API key
-        expiration = 365*24
+        expiration = 8760
         api_key = signatures.write_key(scope=['api_key'], expiration=expiration, active=True, email=email)
         new_user.api_key = api_key
 
@@ -761,7 +761,7 @@ def cli_reset_apikey(username, environment, reset_all, expire_old_keys):
 
         for user in users:
             old_key = user.api_key
-            new_key = signatures.write_key(scope=['api_key'], expiration=365*24, active=True, email=user.email)
+            new_key = signatures.write_key(scope=['api_key'], expiration=8760, active=True, email=user.email)
             user.api_key = new_key
 
             if expire_old_keys and old_key:
