@@ -639,6 +639,7 @@ with get_config_context() as config:
         "DISABLE_FORGOT_PASSWORD": config.DISABLE_FORGOT_PASSWORD,
         "HELP_PAGE_ENABLED": config.HELP_PAGE_ENABLED,
         "DOCS_ENABLED": config.DOCS_ENABLED,
+        "API_KEY_SELF_ROTATION_ENABLED": config.API_KEY_SELF_ROTATION_ENABLED,
     }
 
     # Here we build our relational database model using a sqlalchemy factory, 
@@ -3878,6 +3879,98 @@ async def api_auth_create(
 
 
 
+
+# Rotate own API key, implemented in https://github.com/signebedi/libreforms-fastapi/issues/386.
+@app.post("/api/auth/rotate_api_key", include_in_schema=schema_params["API_KEY_SELF_ROTATION_ENABLED"])
+async def api_auth_rotate_api_key(
+    background_tasks: BackgroundTasks, 
+    request: Request, 
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer), 
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Rotates an existing user's API key, writing optional user statistics to log. 
+    Sends email confirmation when SMTP is enabled and configured. 
+
+    *** Warning! When user uses this endpoint, their API calls will become unusable
+    using their old API key. They MUST (a) capture the new API key in the response,
+    (b) check their email for their new API key if SMTP is enabled & admins have modified 
+    the default jinja2 email template to include the API key in plaintext, or (c) check
+    their user profile in the UI for the new API key if the UI is enabled.
+    """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    if not config.API_KEY_SELF_ROTATION_ENABLED:
+        raise HTTPException(status_code=400, detail="Users are not permitted to rotate their own API keys")
+
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user:
+        raise HTTPException(status_code=400, detail="User does not exist")
+
+    if not user.active:
+        raise HTTPException(status_code=400, detail="User account is inactive")
+
+    # Validate that user has not exceeded the max failed login attempts,
+    # see https://github.com/signebedi/libreforms-fastapi/issues/78
+    if user.failed_login_attempts >= config.MAX_LOGIN_ATTEMPTS and config.MAX_LOGIN_ATTEMPTS != 0:
+        raise HTTPException(status_code=400, detail="User account is inactive")
+
+    # Rotate the user's API key 
+    new_value = signatures.rotate_key(user.api_key)
+    user.api_key = new_value
+
+    # Commit n flush
+    session.add(user)
+    session.commit()
+
+
+    # Email notification
+    if config.SMTP_ENABLED:
+
+        subject, content = render_email_message_from_jinja(
+            'api_key_rotation', 
+            config.EMAIL_CONFIG_PATH,
+            config=config,
+            user=user, 
+        )
+        # print(subject, content)
+
+        background_tasks.add_task(
+            mailer.send_mail,
+            subject=subject, 
+            content=content, 
+            to_address=user.email,
+        )
+
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+
+        endpoint = request.url.path
+        remote_addr = request.client.host
+
+        background_tasks.add_task(
+            write_api_call_to_transaction_log, 
+            api_key=user.api_key, 
+            endpoint=endpoint, 
+            remote_addr=remote_addr, 
+            query_params={"user": user.username},
+        )
+
+    return {
+        "status": "success", 
+        "api_key": new_value,
+        "message": f"Successfully rotated API key for user {user.username}"
+    }
+
+
+
+
 # Change password
 @app.post("/api/auth/change_password")
 async def api_auth_change_password(
@@ -5359,7 +5452,7 @@ async def api_admin_modify_user(
 
     return JSONResponse(
         status_code=200,
-        content={"status": "success", "message": f"{field} set to {new_value} for user id {id}"},
+        content={"status": "success", "message": f"Updated {field} for user id {id}"},
     )
 
 

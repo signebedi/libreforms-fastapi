@@ -320,6 +320,9 @@ def get_config(env):
         REMOTE_API_ADDR: AnyUrl | None = os.getenv('REMOTE_API_ADDR:', None)
         REMOTE_API_KEY: str | None = os.getenv('REMOTE_API_KEY:', None)
 
+        # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/386.
+        API_KEY_SELF_ROTATION_ENABLED: bool = os.getenv('API_KEY_SELF_ROTATION_ENABLED:', 'True') == 'True'
+
 
     class ProductionConfig(Config):
         # The DOMAIN is meant to fail in production if you have not set it
@@ -344,6 +347,12 @@ def get_config(env):
 
         # Adding health check endpoints, see https://github.com/signebedi/libreforms-fastapi/issues/274
         HEALTH_CHECKS_ENABLED:bool = os.getenv('HEALTH_CHECKS_ENABLED:', 'False') == 'True'
+
+        # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/386. Disabled by
+        # default in production.
+        API_KEY_SELF_ROTATION_ENABLED: bool = os.getenv('API_KEY_SELF_ROTATION_ENABLED:', 'False') == 'True'
+
+
 
     class DevelopmentConfig(Config):
         DEBUG:bool = True
