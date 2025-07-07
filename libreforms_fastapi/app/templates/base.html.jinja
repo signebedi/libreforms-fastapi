@@ -22,6 +22,48 @@
 
     {% block header %}{% endblock %}
 
+<style>
+
+/* Bootstrap Darkly transparent select fields */
+[data-theme="dark"] select.form-select,
+[data-theme="dark"] select.form-control {
+    background-color: rgba(55, 58, 63, 0.85) !important; /* Semi-transparent version of Darkly's input bg */
+    backdrop-filter: blur(10px); /* Adds glassmorphism effect */
+    -webkit-backdrop-filter: blur(10px); /* Safari support */
+    border: 1px solid rgba(108, 117, 125, 0.3) !important; /* Subtle border using Darkly's border color */
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2) !important; /* Subtle shadow */
+}
+
+/* Style the select options when dropdown is open */
+[data-theme="dark"] select.form-select option,
+[data-theme="dark"] select.form-control option {
+    background-color: rgba(55, 58, 63, 0.95) !important; /* Slightly more opaque for readability */
+    color: #fff !important; /* Ensure text is visible */
+    backdrop-filter: blur(5px);
+    -webkit-backdrop-filter: blur(5px);
+}
+
+/* Hover/focus states for select fields */
+[data-theme="dark"] select.form-select:hover,
+[data-theme="dark"] select.form-control:hover,
+[data-theme="dark"] select.form-select:focus,
+[data-theme="dark"] select.form-control:focus {
+    background-color: rgba(55, 58, 63, 0.9) !important; /* Slightly more opaque on interaction */
+    border-color: rgba(0, 123, 255, 0.5) !important; /* Darkly's primary color with transparency */
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.15) !important; /* Focus ring */
+}
+
+/* Optional: Style the dropdown arrow for select fields */
+[data-theme="dark"] select.form-select {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='m1 6 6 6 6-6'/%3e%3c/svg%3e") !important;
+    background-size: 16px 12px;
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+}
+
+</style>
+
+
 </head>
 <body>
 
