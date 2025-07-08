@@ -1125,13 +1125,36 @@ def run_event_hooks(
                         value = document["data"].get(value_placeholder, "")
                 elif value_method == "jinja2":
                     template_str = env.from_string(value_placeholder)
-                    value = template_str.render(**document)
+                    try:
+                        value = template_str.render(**document)
+                    except (UndefinedError, TemplateError) as e:
+                        # Log the error and either use a default value or skip
+                        value = ""  #  Eg, this seems like a good enough default for now
+
                 elif value_method == "jinja2_dict":
                     template_str = env.from_string(value_placeholder)
+                    on_error = data_conf.get('on_error', 'skip_field')
+                    default_value = data_conf.get('default', {})
+                    
                     try:
-                        value = json.loads(template_str.render(**document))
-                    except json.JSONDecodeError:
-                        value = {}  # Default to empty dict if parsing fails
+                        rendered = template_str.render(**document)
+                        value = json.loads(rendered)
+                        if not isinstance(value, dict):
+                            # Handle case where JSON is valid but result is not a dict
+                            raise ValueError("Rendered template did not produce a dictionary")
+                    except (UndefinedError, TemplateError, json.JSONDecodeError, ValueError) as e:
+                        if on_error == "skip_field":
+                            continue  # Skip to next field in the loop
+                        elif on_error == "empty_dict":
+                            value = {}
+                        elif on_error == "use_default":
+                            value = default_value
+                        elif on_error == "fail":
+                            raise  # Re-raise the original exception
+                        else:
+                            # Default fallback if on_error value is invalid
+                            continue  # Skip field as default behavior
+
                 else:
                     value = ""
 
