@@ -1133,14 +1133,27 @@ def run_event_hooks(
 
                 elif value_method == "jinja2_dict":
                     template_str = env.from_string(value_placeholder)
+                    on_error = data_conf.get('on_error', 'skip_field')
+                    default_value = data_conf.get('default', {})
+                    
                     try:
-                        value = json.loads(template_str.render(**document))
-                    except json.JSONDecodeError:
-                        value = {}  # Default to empty dict if parsing fails
-
-
-
-
+                        rendered = template_str.render(**document)
+                        value = json.loads(rendered)
+                        if not isinstance(value, dict):
+                            # Handle case where JSON is valid but result is not a dict
+                            raise ValueError("Rendered template did not produce a dictionary")
+                    except (UndefinedError, TemplateError, json.JSONDecodeError, ValueError) as e:
+                        if on_error == "skip_field":
+                            continue  # Skip to next field in the loop
+                        elif on_error == "empty_dict":
+                            value = {}
+                        elif on_error == "use_default":
+                            value = default_value
+                        elif on_error == "fail":
+                            raise  # Re-raise the original exception
+                        else:
+                            # Default fallback if on_error value is invalid
+                            continue  # Skip field as default behavior
 
                 else:
                     value = ""
@@ -1239,8 +1252,63 @@ def run_event_hooks(
             if processed_params:
                 request_dict['params'] = processed_params
 
-            # And submit it. Should we check the response code?
+            # And submit it. Should we check the response info?>>>> Yes, I think so. This will help serve a logging function, if nothing else.
             response = requests.request(**request_dict)
+
+
+            # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/392
+            # Record response to metadata if configured
+            if event.get('record_response', True):
+                from datetime import datetime
+                
+                # Capture response data
+                response_data = {
+                    "timestamp": datetime.utcnow().isoformat() + "Z",
+                    "url": url,
+                    "method": method.upper(),
+                    "status_code": response.status_code,
+                    "headers": dict(response.headers),
+                    "success": 200 <= response.status_code < 300,
+                }
+                
+                # Optionally capture response body for small text/JSON responses
+                try:
+                    content_type = response.headers.get('content-type', '').lower()
+                    if ('json' in content_type or 'text' in content_type) and len(response.content) < 10000:
+                        if 'json' in content_type:
+                            try:
+                                response_data["body"] = response.json()
+                            except json.JSONDecodeError:
+                                response_data["body"] = response.text
+                        else:
+                            response_data["body"] = response.text
+                    else:
+                        response_data["body_truncated"] = True
+                        response_data["content_length"] = len(response.content)
+                except Exception:
+                    response_data["body_error"] = True
+                
+                # Get current http_responses or initialize empty list
+                current_responses = document.get("metadata", {}).get("http_responses", [])
+                current_responses.append(response_data)
+                
+                # Limit to most recent 50 responses
+                if len(current_responses) > 50:
+                    current_responses = current_responses[-50:]
+                
+                # Update document metadata using doc_db
+                metadata_update = {
+                    "http_responses": current_responses,
+                }
+                
+                doc_db.update_document(
+                    form_name=form_name,
+                    document_id=document_id,
+                    json_data="{}",  # Empty JSON data since we're only updating metadata
+                    metadata=metadata_update,
+                    exclude_deleted=False,
+                    allow_unchanged_data=True,
+                )
 
 
             # print(document)
