@@ -1252,7 +1252,8 @@ def run_event_hooks(
             if processed_params:
                 request_dict['params'] = processed_params
 
-            # And submit it. Should we check the response info?>>>> Yes, I think so. This will help serve a logging function, if nothing else.
+            # And submit it. Should we check the response info?
+            # >>>> Yes, I think so. This will help serve a logging function, if nothing else.
             response = requests.request(**request_dict)
 
 
@@ -1349,7 +1350,7 @@ def run_event_hooks(
             if method == "static":
                 emails = [target]
 
-            if method == "from_user_field":
+            elif method == "from_user_field":
 
                 if target.startswith("__metadata__"):
                         _username = document['metadata'].get(target[12:], None)
