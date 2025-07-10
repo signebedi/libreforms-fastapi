@@ -7791,7 +7791,7 @@ async def ui_docs(request: Request, config = Depends(get_config_depends),):
 ##########################
 
 @app.get("/ui/auth/login", response_class=HTMLResponse, include_in_schema=False)
-@requires(['unauthenticated'], status_code=404)
+@requires(['unauthenticated'], redirect="ui_home")
 async def ui_auth_login(request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
