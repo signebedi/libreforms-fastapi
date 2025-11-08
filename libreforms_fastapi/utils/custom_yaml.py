@@ -111,6 +111,9 @@ def get_yaml_type_constructors(**kwargs):
         # don't need to manage any special constructors at all.
         return int
 
+    def type_constructor_float(loader, node):
+        return float
+
     def type_constructor_str(loader, node):
         return str
 
@@ -135,15 +138,17 @@ def get_yaml_type_constructors(**kwargs):
     def type_constructor_bytes(loader, node):
         return bytes
 
-
     def type_constructor_bool(loader, node):
         return bool
 
+    def type_constructor_file(loader, node):
+        return str # This is obviously suboptimal, but we gotta figure out how we're going to handle file uploads eg. as str refs or as file objs
 
     # We create a constructor mapping that we'll use later to 
     # register the constructors.
     constructor_mapping = {
         '!int': type_constructor_int,
+        '!float': type_constructor_float,
         '!str': type_constructor_str,
         '!date': type_constructor_date,
         '!datetime': type_constructor_datetime,
@@ -153,6 +158,7 @@ def get_yaml_type_constructors(**kwargs):
         '!tuple': type_constructor_list,
         '!bytes': type_constructor_bytes,
         '!bool': type_constructor_bool,
+        '!file': type_constructor_file,
         **kwargs,
     }
 
