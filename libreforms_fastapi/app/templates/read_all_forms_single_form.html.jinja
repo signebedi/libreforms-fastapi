@@ -1,0 +1,364 @@
+{% extends "base.html.jinja" %}
+
+{% block header %}
+    <link href="{{ url_for('static', path='css/datatables.css') }}" rel="stylesheet">
+    <style>
+        .column-toggle-dropdown {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .column-toggle-dropdown .dropdown-item {
+            padding: 0.5rem 1rem;
+        }
+        .column-toggle-dropdown .form-check {
+            margin-bottom: 0;
+        }
+        .column-toggle-dropdown .form-check-label {
+            cursor: pointer;
+            width: 100%;
+        }
+    </style>
+{% endblock %}
+
+{% block title %}
+{{config.SITE_NAME}} — View Submissions: {{ form_name.replace('_', ' ').title() }}
+{% endblock %}
+
+{% block content %}
+<h4>View Submissions: {{ form_name.replace('_', ' ').title() }}</h4>
+
+<div class="mb-3">
+    <div class="btn-group">
+        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-columns-gap"></i> Select Columns
+        </button>
+        <ul class="dropdown-menu column-toggle-dropdown" id="columnToggles">
+            <!-- Column toggles will be populated here -->
+        </ul>
+    </div>
+</div>
+
+<div class="container-fluid table-responsive">
+    <div class="spinner-border spinner-border-sm loading-circle" role="status"></div>
+    <table id="readAllTable" class="table table-hover table-striped" style="display: none;">
+        <thead class="table-light">
+            <tr id="tableHeader">
+            </tr>
+        </thead>
+        <tbody>
+        </tbody>
+    </table>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="{{url_for('static', path='js/datatables.js')}}"></script>
+<script>
+$(document).ready(function () {
+
+    const spinner = document.querySelector('.loading-circle');
+    const readAllTable = document.getElementById('readAllTable');
+    const apiKey = "{{ request.user.api_key }}";
+    const formName = "{{ form_name }}";
+    let table = null;
+    let availableColumns = {
+        data: new Set(),
+        metadata: new Set()
+    };
+
+    // Default columns to display
+    const defaultDataColumns = 3; // First 3 data fields
+    const defaultMetadataColumns = ['created_by', 'created_at', 'last_modified'];
+
+    // https://www.geeksforgeeks.org/how-to-truncate-a-string-in-javascript/
+    function GFG(str, maxLength) {
+        if (str.length > maxLength) {
+            return str.substring(0, maxLength) + '...';
+        }
+        return str;
+    }
+
+    function formatValue(value) {
+        if (typeof value === 'object' && value !== null) {
+            return GFG(JSON.stringify(value), 60);
+        }
+        return GFG(String(value), 60);
+    }
+
+    function discoverColumns(formData) {
+        formData.forEach(record => {
+            // Discover data columns
+            if (record.data && typeof record.data === 'object') {
+                Object.keys(record.data).forEach(key => {
+                    availableColumns.data.add(key);
+                });
+            }
+            // Discover metadata columns
+            if (record.metadata && typeof record.metadata === 'object') {
+                Object.keys(record.metadata).forEach(key => {
+                    availableColumns.metadata.add(key);
+                });
+            }
+        });
+    }
+
+    function buildTableHeaders(selectedColumns) {
+        const headerRow = $('#tableHeader');
+        headerRow.empty();
+        
+        selectedColumns.forEach(col => {
+            const displayName = col.type === 'data' 
+                ? col.name.replace(/_/g, ' ')
+                : col.name.replace(/_/g, ' ');
+            headerRow.append(`<th>${displayName}</th>`);
+        });
+    }
+
+    function getSelectedColumns() {
+        const dataArray = Array.from(availableColumns.data);
+        const metadataArray = Array.from(availableColumns.metadata);
+        
+        let selected = [];
+        
+        // Add first 3 data columns by default
+        dataArray.slice(0, defaultDataColumns).forEach(col => {
+            selected.push({ type: 'data', name: col });
+        });
+        
+        // Add default metadata columns
+        defaultMetadataColumns.forEach(col => {
+            if (availableColumns.metadata.has(col)) {
+                selected.push({ type: 'metadata', name: col });
+            }
+        });
+        
+        return selected;
+    }
+
+    function buildColumnToggles(selectedColumns) {
+        const toggleContainer = $('#columnToggles');
+        toggleContainer.empty();
+        
+        const allColumns = [];
+        
+        // Add all data columns
+        Array.from(availableColumns.data).forEach(col => {
+            allColumns.push({ type: 'data', name: col });
+        });
+        
+        // Add all metadata columns
+        Array.from(availableColumns.metadata).forEach(col => {
+            allColumns.push({ type: 'metadata', name: col });
+        });
+        
+        // Add section headers
+        if (availableColumns.data.size > 0) {
+            toggleContainer.append(`
+                <li><h6 class="dropdown-header">Data Fields</h6></li>
+            `);
+            
+            Array.from(availableColumns.data).forEach(col => {
+                const isSelected = selectedColumns.some(
+                    sc => sc.type === 'data' && sc.name === col
+                );
+                const displayLabel = col.replace(/_/g, ' ');
+                
+                toggleContainer.append(`
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input column-toggle" 
+                                       id="col-data-${col}"
+                                       data-column-type="data" 
+                                       data-column-name="${col}"
+                                       ${isSelected ? 'checked' : ''}>
+                                <label class="form-check-label" for="col-data-${col}">
+                                    ${displayLabel}
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                `);
+            });
+        }
+        
+        if (availableColumns.metadata.size > 0) {
+            if (availableColumns.data.size > 0) {
+                toggleContainer.append(`<li><hr class="dropdown-divider"></li>`);
+            }
+            
+            toggleContainer.append(`
+                <li><h6 class="dropdown-header">Metadata Fields</h6></li>
+            `);
+            
+            Array.from(availableColumns.metadata).forEach(col => {
+                const isSelected = selectedColumns.some(
+                    sc => sc.type === 'metadata' && sc.name === col
+                );
+                const displayLabel = col.replace(/_/g, ' ');
+                
+                toggleContainer.append(`
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input column-toggle" 
+                                       id="col-metadata-${col}"
+                                       data-column-type="metadata" 
+                                       data-column-name="${col}"
+                                       ${isSelected ? 'checked' : ''}>
+                                <label class="form-check-label" for="col-metadata-${col}">
+                                    ${displayLabel}
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                `);
+            });
+        }
+        
+        // Add change handler - prevent dropdown from closing
+        $('.column-toggle').on('change', function(e) {
+            e.stopPropagation();
+            rebuildTable();
+        });
+        
+        // Prevent dropdown from closing when clicking inside
+        $('.dropdown-item').on('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+
+    function getActiveColumns() {
+        const active = [];
+        $('.column-toggle:checked').each(function() {
+            active.push({
+                type: $(this).data('column-type'),
+                name: $(this).data('column-name')
+            });
+        });
+        return active;
+    }
+
+    function buildTableRow(record, selectedColumns) {
+        let row = '<tr>';
+        
+        selectedColumns.forEach(col => {
+            let value = '';
+            
+            if (col.type === 'data' && record.data) {
+                value = record.data[col.name] !== undefined 
+                    ? formatValue(record.data[col.name]) 
+                    : '';
+            } else if (col.type === 'metadata' && record.metadata) {
+                const metaValue = record.metadata[col.name];
+                
+                // Special handling for specific metadata fields
+                if (col.name === 'document_id') {
+                    value = `<a href="/ui/form/read_one/${formName}/${metaValue}">${metaValue}</a>`;
+                } else if (col.name === 'created_by' || col.name === 'last_editor') {
+                    value = `<a target="_blank" href="/ui/auth/p/${metaValue}" class="badge bg-primary text-decoration-none" style="{%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${metaValue}">${metaValue}</a>`;
+                } else if (col.name === 'created_at' || col.name === 'last_modified') {
+                    value = `<span title="${metaValue}">${prettifyTimeDiff(metaValue, "{{config['TIMEZONE']|string}}")}</span>`;
+                } else {
+                    value = metaValue !== undefined ? formatValue(metaValue) : '';
+                }
+            }
+            
+            row += `<td>${value}</td>`;
+        });
+        
+        row += '</tr>';
+        return row;
+    }
+
+    function rebuildTable() {
+        if (table) {
+            table.destroy();
+        }
+        
+        const selectedColumns = getActiveColumns();
+        
+        buildTableHeaders(selectedColumns);
+        
+        $('#readAllTable tbody').empty();
+        window.allFormData.forEach(record => {
+            $('#readAllTable tbody').append(buildTableRow(record, selectedColumns));
+        });
+        
+        // Determine which columns should have datetime sorting
+        const dateTimeColumns = [];
+        selectedColumns.forEach((col, idx) => {
+            if (col.type === 'metadata' && 
+                (col.name === 'created_at' || col.name === 'last_modified')) {
+                dateTimeColumns.push(idx);
+            }
+        });
+        
+        const columnDefs = dateTimeColumns.length > 0 ? [{
+            targets: dateTimeColumns,
+            render: function(data, type, row) {
+                var date = $(data).attr('title');
+                return type === 'sort' ? date : data;
+            }
+        }] : [];
+        
+        // Find index of last_modified column for default sorting
+        const lastModifiedIdx = selectedColumns.findIndex(c => c.type === 'metadata' && c.name === 'last_modified');
+        const defaultOrder = lastModifiedIdx >= 0 ? [[lastModifiedIdx, 'desc']] : [];
+        
+        table = $('#readAllTable').DataTable({
+            order: defaultOrder,
+            columnDefs: columnDefs
+        });
+    }
+
+    // Fetch data
+    $.ajax({
+        url: `/api/form/read_all/${formName}?return_when_empty=true`,
+        type: "GET",
+        dataType: 'json',
+        beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
+        success: function(response) {
+            window.allFormData = response.documents || [];
+            
+            if (window.allFormData.length === 0) {
+                flashMessage("No submissions found for this form.", AlertCategories.INFO);
+                spinner.style.display = 'none';
+                return;
+            }
+            
+            // Discover all available columns
+            discoverColumns(window.allFormData);
+            
+            // Get default selected columns
+            const selectedColumns = getSelectedColumns();
+            
+            // Build column toggles
+            buildColumnToggles(selectedColumns);
+            
+            // Build table headers
+            buildTableHeaders(selectedColumns);
+            
+            // Populate table
+            window.allFormData.forEach(record => {
+                $('#readAllTable tbody').append(buildTableRow(record, selectedColumns));
+            });
+            
+            spinner.style.display = 'none';
+            readAllTable.style.display = '';
+            
+            // Initialize DataTable
+            rebuildTable();
+        },
+        error: function(xhr, status, error) {
+            console.error("Error fetching data:", error);
+            flashMessage("There was an issue fetching results.", AlertCategories.WARNING);
+            spinner.style.display = 'none';
+        }
+    });
+});
+</script>
+
+{% endblock %}

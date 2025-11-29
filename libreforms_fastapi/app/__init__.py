@@ -7341,6 +7341,29 @@ async def ui_form_read_all(request: Request, config = Depends(get_config_depends
         }
     )
 
+# Read all forms, for a given form name
+@app.get("/ui/form/read_all/{form_name}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], redirect="ui_auth_login")
+async def ui_form_read_all_single_form(form_name:str, request: Request, config = Depends(get_config_depends)):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    form_names = list(get_form_names(config_path=config.FORM_CONFIG_PATH))
+
+    if not form_name in form_names:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+
+    return templates.TemplateResponse(
+        request=request, 
+        name="read_all_forms_single_form.html.jinja", 
+        context={
+            "form_name": form_name,
+            **build_ui_context(),
+        }
+    )
+
+
 
 @app.get("/ui/form/request_unregistered/{form_name}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['unauthenticated'], status_code=404)
