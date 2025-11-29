@@ -46,6 +46,9 @@
             <!-- Column toggles will be populated here -->
         </ul>
     </div>
+    <button class="btn btn-outline-secondary ms-2" onclick="copyCurrentViewUrl()" title="Copy URL with current column selection">
+        <i class="bi bi-link-45deg"></i> Copy URL
+    </button>
 </div>
 
 <div class="container-fluid table-responsive">
@@ -57,12 +60,15 @@
 {% block scripts %}
 <script src="{{url_for('static', path='js/datatables.js')}}"></script>
 <script>
+
 $(document).ready(function () {
 
     const spinner = document.querySelector('.loading-circle');
     const tableContainer = document.getElementById('tableContainer');
     const apiKey = "{{ request.user.api_key }}";
     const formName = "{{ form_name }}";
+    const urlSelectedFields = {{ selected_fields | tojson }} || null;
+    
     let table = null;
     let availableColumns = {
         data: new Set(),
@@ -109,6 +115,33 @@ $(document).ready(function () {
     }
 
     function getSelectedColumns() {
+        // If URL parameters specify fields, use those
+        if (urlSelectedFields && urlSelectedFields.length > 0) {
+            const selected = [];
+            urlSelectedFields.forEach(fieldSpec => {
+                let type, name;
+                if (fieldSpec.includes(':')) {
+                    [type, name] = fieldSpec.split(':', 2);
+                } else {
+                    // Default to 'data' if no type specified
+                    type = 'data';
+                    name = fieldSpec;
+                }
+                
+                // Only add if the field exists in available columns
+                if ((type === 'data' && availableColumns.data.has(name)) ||
+                    (type === 'metadata' && availableColumns.metadata.has(name))) {
+                    selected.push({ type, name });
+                }
+            });
+            
+            // If we got valid fields from URL, return them
+            if (selected.length > 0) {
+                return selected;
+            }
+        }
+        
+        // Otherwise, use defaults
         const dataArray = Array.from(availableColumns.data);
         const metadataArray = Array.from(availableColumns.metadata);
         
@@ -221,6 +254,19 @@ $(document).ready(function () {
             });
         });
         return active;
+    }
+
+    window.copyCurrentViewUrl = function() {
+        const activeColumns = getActiveColumns();
+        const fieldParams = activeColumns.map(col => `${col.type}:${col.name}`).join(',');
+        const url = `${window.location.origin}${window.location.pathname}?fields=${encodeURIComponent(fieldParams)}`;
+        
+        navigator.clipboard.writeText(url).then(() => {
+            flashMessage("URL copied to clipboard!", AlertCategories.SUCCESS);
+        }).catch(err => {
+            console.error('Failed to copy URL:', err);
+            flashMessage("Failed to copy URL", AlertCategories.WARNING);
+        });
     }
 
     function renderTable(records, selectedColumns) {
