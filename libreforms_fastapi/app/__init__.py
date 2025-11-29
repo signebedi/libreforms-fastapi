@@ -7662,6 +7662,44 @@ async def ui_form_review_and_approval(request: Request, config = Depends(get_con
         }
     )
 
+
+
+# Form review and approval - form-specific UI page
+# Added by https://github.com/signebedi/libreforms-fastapi/issues/399
+@app.get("/ui/form/review_and_approval/{form_name}", response_class=HTMLResponse, include_in_schema=False)
+@requires(['authenticated'], redirect="ui_auth_login")
+async def ui_form_review_and_approval_single_form(
+    form_name: str, 
+    request: Request, 
+    fields: Optional[str] = None,  # Comma-separated list of fields
+    config = Depends(get_config_depends)
+):
+    if not config.UI_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+    
+    form_names = list(get_form_names(config_path=config.FORM_CONFIG_PATH))
+    # Really, we should be down-selecting to forms that have a valid approval chain defined...
+    if not form_name in form_names:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+    
+    # Parse fields parameter if provided
+    selected_fields = None
+    if fields:
+        # Expected format: "data:field1,data:field2,metadata:field3"
+        # or simplified: "field1,field2,metadata:field3" (assumes data if no prefix)
+        selected_fields = [f.strip() for f in fields.split(',') if f.strip()]
+    
+    return templates.TemplateResponse(
+        request=request, 
+        name="review_and_approval_single_form.html.jinja", 
+        context={
+            "form_names": form_names,
+            "form_name": form_name,
+            "selected_fields": selected_fields,
+            **build_ui_context(),
+        }
+    )
+
 @app.get("/ui/form/review_and_approval/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], redirect="ui_auth_login")
 async def ui_form_review_and_approval_individual(form_name:str, document_id:str, request: Request, config = Depends(get_config_depends), doc_db = Depends(get_doc_db), session: SessionLocal = Depends(get_db)):

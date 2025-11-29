@@ -1,0 +1,444 @@
+{% extends "base.html.jinja" %}
+
+{% block title %}
+{{config.SITE_NAME}} — Review & Approval: {{ form_name.replace('_', ' ').title() }}
+{% endblock %}
+
+{% block header %}
+    <link href="{{ url_for('static', path='css/datatables.css') }}" rel="stylesheet">
+    <style>
+        .column-toggle-dropdown {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .column-toggle-dropdown .dropdown-item {
+            padding: 0.5rem 1rem;
+        }
+        .column-toggle-dropdown .form-check {
+            margin-bottom: 0;
+        }
+        .column-toggle-dropdown .form-check-label {
+            cursor: pointer;
+            width: 100%;
+        }
+        
+        /* Make table rows clickable */
+        #readAllTable tbody tr {
+            cursor: pointer;
+        }
+        
+        /* Prevent action dropdown from triggering row click */
+        .action-dropdown {
+            cursor: default;
+        }
+        
+        table.dataTable tbody td {
+            word-break: break-word;
+            vertical-align: top;
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+<h4>Review & Approval: {{ form_name.replace('_', ' ').title() }}</h4>
+
+<div class="mb-3">
+    <div class="btn-group">
+        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-columns-gap"></i> Select Columns
+        </button>
+        <ul class="dropdown-menu column-toggle-dropdown" id="columnToggles">
+            <!-- Column toggles will be populated here -->
+        </ul>
+    </div>
+    <button class="btn btn-outline-secondary ms-2" onclick="copyCurrentViewUrl()" title="Copy URL with current column selection">
+        <i class="bi bi-link-45deg"></i> Copy URL
+    </button>
+</div>
+
+<div class="container-fluid table-responsive">
+    <div class="spinner-border spinner-border-sm loading-circle" role="status"></div>
+    <div id="tableContainer"></div>
+</div>
+<div id="noDataMessage" style="display: none;">There are no submissions that require your review or approval at this time.</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script src="{{url_for('static', path='js/datatables.js')}}"></script>
+<script>
+
+$(document).ready(function () {
+
+    const spinner = document.querySelector('.loading-circle');
+    const tableContainer = document.getElementById('tableContainer');
+    const noDataMessage = document.getElementById('noDataMessage');
+    const apiKey = "{{ request.user.api_key }}";
+    const formName = "{{ form_name }}";
+    const urlSelectedFields = {{ selected_fields | tojson }} || null;
+    
+    let table = null;
+    let availableColumns = {
+        data: new Set(),
+        metadata: new Set()
+    };
+
+    // Default columns to display
+    const defaultDataColumns = 3; // First 3 data fields
+    const defaultMetadataColumns = ['created_by', 'created_at', 'last_modified'];
+    
+    // Store document IDs for row click handling
+    let rowDocumentIds = [];
+
+    // https://www.geeksforgeeks.org/how-to-truncate-a-string-in-javascript/
+    function GFG(str, maxLength) {
+        if (str.length > maxLength) {
+            return str.substring(0, maxLength) + '...';
+        }
+        return str;
+    }
+
+    function formatValue(value) {
+        if (typeof value === 'object' && value !== null) {
+            return GFG(JSON.stringify(value), 60);
+        }
+        return GFG(String(value), 60);
+    }
+
+    function discoverColumns(formData) {
+        formData.forEach(record => {
+            // Discover data columns
+            if (record.data && typeof record.data === 'object') {
+                Object.keys(record.data).forEach(key => {
+                    availableColumns.data.add(key);
+                });
+            }
+            // Discover metadata columns
+            if (record.metadata && typeof record.metadata === 'object') {
+                Object.keys(record.metadata).forEach(key => {
+                    availableColumns.metadata.add(key);
+                });
+            }
+        });
+    }
+
+    function getSelectedColumns() {
+        // If URL parameters specify fields, use those
+        if (urlSelectedFields && urlSelectedFields.length > 0) {
+            const selected = [];
+            urlSelectedFields.forEach(fieldSpec => {
+                let type, name;
+                if (fieldSpec.includes(':')) {
+                    [type, name] = fieldSpec.split(':', 2);
+                } else {
+                    // Default to 'data' if no type specified
+                    type = 'data';
+                    name = fieldSpec;
+                }
+                
+                // Only add if the field exists in available columns
+                if ((type === 'data' && availableColumns.data.has(name)) ||
+                    (type === 'metadata' && availableColumns.metadata.has(name))) {
+                    selected.push({ type, name });
+                }
+            });
+            
+            // If we got valid fields from URL, return them
+            if (selected.length > 0) {
+                return selected;
+            }
+        }
+        
+        // Otherwise, use defaults
+        const dataArray = Array.from(availableColumns.data);
+        const metadataArray = Array.from(availableColumns.metadata);
+        
+        let selected = [];
+        
+        // Add first 3 data columns by default
+        dataArray.slice(0, defaultDataColumns).forEach(col => {
+            selected.push({ type: 'data', name: col });
+        });
+        
+        // Add default metadata columns
+        defaultMetadataColumns.forEach(col => {
+            if (availableColumns.metadata.has(col)) {
+                selected.push({ type: 'metadata', name: col });
+            }
+        });
+        
+        return selected;
+    }
+
+    function buildColumnToggles(selectedColumns) {
+        const toggleContainer = $('#columnToggles');
+        toggleContainer.empty();
+        
+        // Add section headers
+        if (availableColumns.data.size > 0) {
+            toggleContainer.append(`
+                <li><h6 class="dropdown-header">Data Fields</h6></li>
+            `);
+            
+            Array.from(availableColumns.data).forEach(col => {
+                const isSelected = selectedColumns.some(
+                    sc => sc.type === 'data' && sc.name === col
+                );
+                const displayLabel = col.replace(/_/g, ' ');
+                
+                toggleContainer.append(`
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input column-toggle" 
+                                       id="col-data-${col}"
+                                       data-column-type="data" 
+                                       data-column-name="${col}"
+                                       ${isSelected ? 'checked' : ''}>
+                                <label class="form-check-label" for="col-data-${col}">
+                                    ${displayLabel}
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                `);
+            });
+        }
+        
+        if (availableColumns.metadata.size > 0) {
+            if (availableColumns.data.size > 0) {
+                toggleContainer.append(`<li><hr class="dropdown-divider"></li>`);
+            }
+            
+            toggleContainer.append(`
+                <li><h6 class="dropdown-header">Metadata Fields</h6></li>
+            `);
+            
+            Array.from(availableColumns.metadata).forEach(col => {
+                const isSelected = selectedColumns.some(
+                    sc => sc.type === 'metadata' && sc.name === col
+                );
+                const displayLabel = col.replace(/_/g, ' ');
+                
+                toggleContainer.append(`
+                    <li>
+                        <div class="dropdown-item">
+                            <div class="form-check">
+                                <input type="checkbox" 
+                                       class="form-check-input column-toggle" 
+                                       id="col-metadata-${col}"
+                                       data-column-type="metadata" 
+                                       data-column-name="${col}"
+                                       ${isSelected ? 'checked' : ''}>
+                                <label class="form-check-label" for="col-metadata-${col}">
+                                    ${displayLabel}
+                                </label>
+                            </div>
+                        </div>
+                    </li>
+                `);
+            });
+        }
+        
+        // Add change handler - prevent dropdown from closing
+        $('.column-toggle').on('change', function(e) {
+            e.stopPropagation();
+            rebuildTable();
+        });
+        
+        // Prevent dropdown from closing when clicking inside
+        $('.dropdown-item').on('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+
+    function getActiveColumns() {
+        const active = [];
+        $('.column-toggle:checked').each(function() {
+            active.push({
+                type: $(this).data('column-type'),
+                name: $(this).data('column-name')
+            });
+        });
+        return active;
+    }
+
+    window.copyCurrentViewUrl = function() {
+        const activeColumns = getActiveColumns();
+        const fieldParams = activeColumns.map(col => `${col.type}:${col.name}`).join(',');
+        const url = `${window.location.origin}${window.location.pathname}?fields=${encodeURIComponent(fieldParams)}`;
+        
+        navigator.clipboard.writeText(url).then(() => {
+            flashMessage("URL copied to clipboard!", AlertCategories.SUCCESS);
+        }).catch(err => {
+            console.error('Failed to copy URL:', err);
+            flashMessage("Failed to copy URL", AlertCategories.WARNING);
+        });
+    }
+
+    function renderTable(records, selectedColumns) {
+        let tableHtml = '<table class="table table-hover table-striped table-light" id="readAllTable"><thead><tr>';
+        
+        // Always add Actions column first
+        tableHtml += '<th>Actions</th>';
+        
+        // Build headers
+        selectedColumns.forEach(col => {
+            const displayName = col.name.replace(/_/g, ' ');
+            tableHtml += `<th>${displayName}</th>`;
+        });
+        
+        tableHtml += '</tr></thead><tbody>';
+        
+        // Build rows
+        rowDocumentIds = [];
+        records.forEach((record, index) => {
+            rowDocumentIds[index] = record.metadata?.document_id;
+            tableHtml += `<tr data-index="${index}">`;
+            
+            // Always add Actions column first
+            tableHtml += `<td class="action-dropdown" onclick="event.stopPropagation();">
+                            <div class="nav-item dropdown">
+                                <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">${record.metadata.document_id}</a>
+                                <div class="dropdown-menu">
+                                    <a class="dropdown-item" href="/ui/form/review_and_approval/${formName}/${record.metadata.document_id}">Go to Review and Approval</a>
+                                    <a class="dropdown-item" href="/ui/form/read_one/${formName}/${record.metadata.document_id}">View this Submission</a>
+                                </div>
+                            </div>
+                        </td>`;
+            
+            selectedColumns.forEach(col => {
+                let value = '';
+                
+                if (col.type === 'data' && record.data) {
+                    value = record.data[col.name] !== undefined 
+                        ? formatValue(record.data[col.name]) 
+                        : '';
+                } else if (col.type === 'metadata' && record.metadata) {
+                    const metaValue = record.metadata[col.name];
+                    
+                    // Special handling for specific metadata fields
+                    if (col.name === 'document_id') {
+                        value = metaValue;
+                    } else if (col.name === 'created_by' || col.name === 'last_editor') {
+                        value = `<a target="_blank" href="/ui/auth/p/${metaValue}" class="badge bg-primary text-decoration-none" style="{%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${metaValue}" onclick="event.stopPropagation();">${metaValue}</a>`;
+                    } else if (col.name === 'created_at' || col.name === 'last_modified') {
+                        value = `<span title="${metaValue}">${prettifyTimeDiff(metaValue, "{{config['TIMEZONE']|string}}")}</span>`;
+                    } else {
+                        value = metaValue !== undefined ? formatValue(metaValue) : '';
+                    }
+                }
+                
+                tableHtml += `<td>${value}</td>`;
+            });
+            
+            tableHtml += '</tr>';
+        });
+        
+        tableHtml += '</tbody></table>';
+        return tableHtml;
+    }
+
+    function rebuildTable() {
+        if (table) {
+            table.destroy();
+        }
+        
+        const selectedColumns = getActiveColumns();
+        
+        // Render the entire table HTML
+        const tableHtml = renderTable(window.allFormData, selectedColumns);
+        $('#tableContainer').html(tableHtml);
+        
+        // Determine which columns should have datetime sorting
+        // Add 1 to all indices because Actions column is first
+        const dateTimeColumns = [];
+        selectedColumns.forEach((col, idx) => {
+            if (col.type === 'metadata' && 
+                (col.name === 'created_at' || col.name === 'last_modified')) {
+                dateTimeColumns.push(idx + 1); // +1 for Actions column
+            }
+        });
+        
+        const columnDefs = dateTimeColumns.length > 0 ? [{
+            targets: dateTimeColumns,
+            render: function(data, type, row) {
+                var date = $(data).attr('title');
+                return type === 'sort' ? date : data;
+            }
+        }] : [];
+        
+        // Find index of last_modified column for default sorting
+        // Add 1 because Actions column is first
+        const lastModifiedIdx = selectedColumns.findIndex(c => c.type === 'metadata' && c.name === 'last_modified');
+        const defaultOrder = lastModifiedIdx >= 0 ? [[lastModifiedIdx + 1, 'desc']] : [];
+        
+        table = $('#readAllTable').DataTable({
+            order: defaultOrder,
+            columnDefs: columnDefs,
+            language: {
+                "emptyTable": "There are no submissions that require your review or approval at this time"
+            }
+        });
+        
+        // Add click handler for rows (opens view submission in new tab)
+        $('#readAllTable tbody').on('click', 'tr', function(e) {
+            // Don't trigger if clicking on action dropdown
+            if ($(e.target).closest('.action-dropdown').length) {
+                return;
+            }
+            
+            const index = $(this).data('index');
+            const documentId = rowDocumentIds[index];
+            if (documentId) {
+                window.open(`/ui/form/read_one/${formName}/${documentId}`, '_blank');
+            }
+        });
+    }
+
+    // Fetch data
+    $.ajax({
+        url: `/api/form/read_all_needing_action?return_full_records_flat=true&form_name=${formName}`,
+        type: "GET",
+        dataType: 'json',
+        beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
+        success: function(response) {
+            window.allFormData = response.documents || [];
+            
+            if (window.allFormData.length === 0) {
+                spinner.style.display = 'none';
+                noDataMessage.style.display = '';
+                return;
+            }
+            
+            // Discover all available columns
+            discoverColumns(window.allFormData);
+            
+            // Get default selected columns
+            const selectedColumns = getSelectedColumns();
+            
+            // Build column toggles
+            buildColumnToggles(selectedColumns);
+            
+            // Render initial table
+            const tableHtml = renderTable(window.allFormData, selectedColumns);
+            $('#tableContainer').html(tableHtml);
+            
+            spinner.style.display = 'none';
+            
+            // Initialize DataTable
+            rebuildTable();
+        },
+        error: function(xhr, status, error) {
+            console.error("Error fetching data:", error);
+            flashMessage("There was an issue fetching results. There may be none to display.", AlertCategories.WARNING);
+            spinner.style.display = 'none';
+            noDataMessage.style.display = '';
+        }
+    });
+});
+
+</script>
+
+{% endblock %}
