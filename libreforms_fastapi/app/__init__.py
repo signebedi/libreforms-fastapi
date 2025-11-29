@@ -7672,7 +7672,9 @@ async def ui_form_review_and_approval_single_form(
     form_name: str, 
     request: Request, 
     fields: Optional[str] = None,  # Comma-separated list of fields
-    config = Depends(get_config_depends)
+    config = Depends(get_config_depends),
+    doc_db = Depends(get_doc_db), 
+    session: SessionLocal = Depends(get_db),
 ):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
@@ -7681,7 +7683,20 @@ async def ui_form_review_and_approval_single_form(
     # Really, we should be down-selecting to forms that have a valid approval chain defined...
     if not form_name in form_names:
         raise HTTPException(status_code=404, detail="This page does not exist")
-    
+
+    # We instantiate merely to deny the UI in instances where a form has no form stages defined
+    __form_model = get_form_model(
+        form_name=form_name, 
+        config_path=config.FORM_CONFIG_PATH,
+        session=session,
+        User=User,
+        Group=Group,
+        doc_db=doc_db,
+    )
+
+    if __form_model.form_stages == {}:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
     # Parse fields parameter if provided
     selected_fields = None
     if fields:
@@ -7699,6 +7714,7 @@ async def ui_form_review_and_approval_single_form(
             **build_ui_context(),
         }
     )
+
 
 @app.get("/ui/form/review_and_approval/{form_name}/{document_id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['authenticated'], redirect="ui_auth_login")
