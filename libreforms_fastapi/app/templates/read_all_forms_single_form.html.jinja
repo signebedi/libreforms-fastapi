@@ -17,6 +17,16 @@
             cursor: pointer;
             width: 100%;
         }
+        
+        /* Make table rows clickable */
+        #readAllTable tbody tr {
+            cursor: pointer;
+        }
+        
+        table.dataTable tbody td {
+            word-break: break-word;
+            vertical-align: top;
+        }
     </style>
 {% endblock %}
 
@@ -29,7 +39,7 @@
 
 <div class="mb-3">
     <div class="btn-group">
-        <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+        <button class="btn btn-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
             <i class="bi bi-columns-gap"></i> Select Columns
         </button>
         <ul class="dropdown-menu column-toggle-dropdown" id="columnToggles">
@@ -40,14 +50,7 @@
 
 <div class="container-fluid table-responsive">
     <div class="spinner-border spinner-border-sm loading-circle" role="status"></div>
-    <table id="readAllTable" class="table table-hover table-striped" style="display: none;">
-        <thead class="table-light">
-            <tr id="tableHeader">
-            </tr>
-        </thead>
-        <tbody>
-        </tbody>
-    </table>
+    <div id="tableContainer"></div>
 </div>
 {% endblock %}
 
@@ -57,7 +60,7 @@
 $(document).ready(function () {
 
     const spinner = document.querySelector('.loading-circle');
-    const readAllTable = document.getElementById('readAllTable');
+    const tableContainer = document.getElementById('tableContainer');
     const apiKey = "{{ request.user.api_key }}";
     const formName = "{{ form_name }}";
     let table = null;
@@ -69,6 +72,9 @@ $(document).ready(function () {
     // Default columns to display
     const defaultDataColumns = 3; // First 3 data fields
     const defaultMetadataColumns = ['created_by', 'created_at', 'last_modified'];
+
+    // Store document IDs for row click handling
+    let rowDocumentIds = [];
 
     // https://www.geeksforgeeks.org/how-to-truncate-a-string-in-javascript/
     function GFG(str, maxLength) {
@@ -102,18 +108,6 @@ $(document).ready(function () {
         });
     }
 
-    function buildTableHeaders(selectedColumns) {
-        const headerRow = $('#tableHeader');
-        headerRow.empty();
-        
-        selectedColumns.forEach(col => {
-            const displayName = col.type === 'data' 
-                ? col.name.replace(/_/g, ' ')
-                : col.name.replace(/_/g, ' ');
-            headerRow.append(`<th>${displayName}</th>`);
-        });
-    }
-
     function getSelectedColumns() {
         const dataArray = Array.from(availableColumns.data);
         const metadataArray = Array.from(availableColumns.metadata);
@@ -138,18 +132,6 @@ $(document).ready(function () {
     function buildColumnToggles(selectedColumns) {
         const toggleContainer = $('#columnToggles');
         toggleContainer.empty();
-        
-        const allColumns = [];
-        
-        // Add all data columns
-        Array.from(availableColumns.data).forEach(col => {
-            allColumns.push({ type: 'data', name: col });
-        });
-        
-        // Add all metadata columns
-        Array.from(availableColumns.metadata).forEach(col => {
-            allColumns.push({ type: 'metadata', name: col });
-        });
         
         // Add section headers
         if (availableColumns.data.size > 0) {
@@ -241,36 +223,53 @@ $(document).ready(function () {
         return active;
     }
 
-    function buildTableRow(record, selectedColumns) {
-        let row = '<tr>';
+    function renderTable(records, selectedColumns) {
+        let tableHtml = '<table class="table table-hover table-striped table-light" id="readAllTable"><thead><tr>';
         
+        // Build headers
         selectedColumns.forEach(col => {
-            let value = '';
-            
-            if (col.type === 'data' && record.data) {
-                value = record.data[col.name] !== undefined 
-                    ? formatValue(record.data[col.name]) 
-                    : '';
-            } else if (col.type === 'metadata' && record.metadata) {
-                const metaValue = record.metadata[col.name];
-                
-                // Special handling for specific metadata fields
-                if (col.name === 'document_id') {
-                    value = `<a href="/ui/form/read_one/${formName}/${metaValue}">${metaValue}</a>`;
-                } else if (col.name === 'created_by' || col.name === 'last_editor') {
-                    value = `<a target="_blank" href="/ui/auth/p/${metaValue}" class="badge bg-primary text-decoration-none" style="{%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${metaValue}">${metaValue}</a>`;
-                } else if (col.name === 'created_at' || col.name === 'last_modified') {
-                    value = `<span title="${metaValue}">${prettifyTimeDiff(metaValue, "{{config['TIMEZONE']|string}}")}</span>`;
-                } else {
-                    value = metaValue !== undefined ? formatValue(metaValue) : '';
-                }
-            }
-            
-            row += `<td>${value}</td>`;
+            const displayName = col.name.replace(/_/g, ' ');
+            tableHtml += `<th>${displayName}</th>`;
         });
         
-        row += '</tr>';
-        return row;
+        tableHtml += '</tr></thead><tbody>';
+        
+        // Build rows
+        rowDocumentIds = [];
+        records.forEach((record, index) => {
+            rowDocumentIds[index] = record.metadata?.document_id;
+            tableHtml += `<tr data-index="${index}">`;
+            
+            selectedColumns.forEach(col => {
+                let value = '';
+                
+                if (col.type === 'data' && record.data) {
+                    value = record.data[col.name] !== undefined 
+                        ? formatValue(record.data[col.name]) 
+                        : '';
+                } else if (col.type === 'metadata' && record.metadata) {
+                    const metaValue = record.metadata[col.name];
+                    
+                    // Special handling for specific metadata fields
+                    if (col.name === 'document_id') {
+                        value = metaValue;
+                    } else if (col.name === 'created_by' || col.name === 'last_editor') {
+                        value = `<a target="_blank" href="/ui/auth/p/${metaValue}" class="badge bg-primary text-decoration-none" style="{%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${metaValue}" onclick="event.stopPropagation();">${metaValue}</a>`;
+                    } else if (col.name === 'created_at' || col.name === 'last_modified') {
+                        value = `<span title="${metaValue}">${prettifyTimeDiff(metaValue, "{{config['TIMEZONE']|string}}")}</span>`;
+                    } else {
+                        value = metaValue !== undefined ? formatValue(metaValue) : '';
+                    }
+                }
+                
+                tableHtml += `<td>${value}</td>`;
+            });
+            
+            tableHtml += '</tr>';
+        });
+        
+        tableHtml += '</tbody></table>';
+        return tableHtml;
     }
 
     function rebuildTable() {
@@ -280,12 +279,9 @@ $(document).ready(function () {
         
         const selectedColumns = getActiveColumns();
         
-        buildTableHeaders(selectedColumns);
-        
-        $('#readAllTable tbody').empty();
-        window.allFormData.forEach(record => {
-            $('#readAllTable tbody').append(buildTableRow(record, selectedColumns));
-        });
+        // Render the entire table HTML
+        const tableHtml = renderTable(window.allFormData, selectedColumns);
+        $('#tableContainer').html(tableHtml);
         
         // Determine which columns should have datetime sorting
         const dateTimeColumns = [];
@@ -311,6 +307,15 @@ $(document).ready(function () {
         table = $('#readAllTable').DataTable({
             order: defaultOrder,
             columnDefs: columnDefs
+        });
+        
+        // Add click handler for rows
+        $('#readAllTable tbody').on('click', 'tr', function() {
+            const index = $(this).data('index');
+            const documentId = rowDocumentIds[index];
+            if (documentId) {
+                window.open(`/ui/form/read_one/${formName}/${documentId}`, '_blank');
+            }
         });
     }
 
@@ -338,16 +343,11 @@ $(document).ready(function () {
             // Build column toggles
             buildColumnToggles(selectedColumns);
             
-            // Build table headers
-            buildTableHeaders(selectedColumns);
-            
-            // Populate table
-            window.allFormData.forEach(record => {
-                $('#readAllTable tbody').append(buildTableRow(record, selectedColumns));
-            });
+            // Render initial table
+            const tableHtml = renderTable(window.allFormData, selectedColumns);
+            $('#tableContainer').html(tableHtml);
             
             spinner.style.display = 'none';
-            readAllTable.style.display = '';
             
             // Initialize DataTable
             rebuildTable();
