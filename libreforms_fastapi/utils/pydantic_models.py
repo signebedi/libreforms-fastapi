@@ -1024,6 +1024,11 @@ def get_form_html(
                     <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
                     <input type="{field_info["input_type"]}" class="form-control" id="{field_name}" name="{field_name}" {field_params}'''
 
+            # Add step attribute for number fields to allow decimals
+            # https://github.com/signebedi/libreforms-fastapi/issues/401
+            if field_info['input_type'] == 'number':
+                field_html += ' step="any"'
+
             if placeholder and not default:
                 field_html += f'''
                     placeholder="{placeholder or ''}"'''
