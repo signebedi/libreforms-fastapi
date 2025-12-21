@@ -1014,7 +1014,23 @@ def get_form_html(
                         <input type="text" readonly class="form-control" id="{field_name}" {mutable_attr}
                         name="{field_name}" {field_params} 
                         value="{_value}">
-                    </fieldset>'''
+        # Added in https://github.com/signebedi/libreforms-fastapi/issues/402
+        elif field_info['input_type'] == "url":
+            field_html += f'''
+                <fieldset class="form-check {conditional_class}" {conditional_attrs} style="padding-top: 20px;">
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label set-bold">{visible_field_name}</label>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
+                    <input type="url" class="form-control" id="{field_name}" name="{field_name}" {field_params}'''
+
+
+            field_html += f'''
+                value="{default or ''}"'''
+
+            field_html += f'''
+                    {' required' if required else ''}>
+                    <div class="valid-feedback"></div>
+                    <div class="invalid-feedback"></div>
+                </fieldset>'''
 
 
         elif field_info['input_type'] in ['text', 'number', 'email', 'date']:
