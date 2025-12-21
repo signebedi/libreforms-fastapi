@@ -1014,6 +1014,7 @@ def get_form_html(
                         <input type="text" readonly class="form-control" id="{field_name}" {mutable_attr}
                         name="{field_name}" {field_params} 
                         value="{_value}">
+                    </fieldset>'''
         # Added in https://github.com/signebedi/libreforms-fastapi/issues/402
         elif field_info['input_type'] == "url":
             field_html += f'''
