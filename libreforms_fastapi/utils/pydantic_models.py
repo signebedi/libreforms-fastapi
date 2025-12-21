@@ -689,7 +689,7 @@ def get_form_model(
         field_definitions[field_name] = (python_type, field)
 
     # Create dynamic model
-    dynamic_model = create_model(form_name, __config__=Config, **field_definitions)
+    dynamic_model = create_model(form_name, __pydantic_config__=Config, **field_definitions)
 
     # def get_additional_metadata(self):
     #     """
