@@ -94,6 +94,9 @@ from libreforms_fastapi.utils.scripts import (
     check_password_hash,
     percentage_alphanumeric_generate_password,
     prettify_time_diff,
+    validate_file_type, 
+    MimeTypeValidationError,
+    _extensions_to_mime_types,
 )
 
 # Import the tools used to generate signatures
@@ -120,6 +123,7 @@ from libreforms_fastapi.utils.document_database import (
 from libreforms_fastapi.utils.pydantic_models import (
     HelpRequest,
     DocsEditRequest,
+    AdminChangePasswordRequest,
     GroupModel,
     RelationshipTypeModel,
     UserRelationshipModel,
@@ -5531,6 +5535,94 @@ async def api_admin_modify_user(
     return JSONResponse(
         status_code=200,
         content={"status": "success", "message": f"Updated {field} for user id {id}"},
+    )
+
+
+# Admin-initiated password change, paired with the manage users admin UI route
+@app.patch(
+    "/api/admin/change_password/{id}",
+    dependencies=[Depends(api_key_auth)],
+    response_class=JSONResponse,
+)
+async def api_admin_change_password(
+    id:str,
+    user_request: AdminChangePasswordRequest,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    config = Depends(get_config_depends),
+    mailer = Depends(get_mailer),
+    session: SessionLocal = Depends(get_db),
+    key: str = Depends(X_API_KEY)
+):
+    """
+    Sets a new password, provided by the admin, for the given user. Requires site admin
+    permissions. Notifies the user by email and logs the action for audit purposes.
+    """
+
+    if not config.API_ENABLED:
+        raise HTTPException(status_code=404, detail="This page does not exist")
+
+    # Get the requesting user details
+    user = session.query(User).filter_by(api_key=key).first()
+
+    if not user or not user.site_admin:
+        raise HTTPException(status_code=404)
+
+    user_to_change = session.query(User).get(id)
+    if not user_to_change:
+        raise HTTPException(status_code=404, detail="Could not find user. Are you sure they exist?")
+
+    hashed_password = generate_password_hash(user_request.new_password.get_secret_value())
+    user_to_change.password = hashed_password
+
+    # Fix for https://github.com/signebedi/libreforms-fastapi/issues/240
+    current_time = datetime.now(config.TIMEZONE)
+    user_to_change.last_password_change = current_time
+    user_to_change.last_login = current_time
+
+    user_to_change.failed_login_attempts = 0
+
+    # Monitor password use, seee https://github.com/signebedi/libreforms-fastapi/issues/230
+    new_password = PasswordReuse(
+        user_id=user_to_change.id,
+        hashed_password=hashed_password,
+        timestamp=datetime.now(config.TIMEZONE)
+    )
+    session.add(new_password)
+
+    session.add(user_to_change)
+    session.commit()
+
+    # Email notification
+    if config.SMTP_ENABLED:
+
+        subject, content = render_email_message_from_jinja(
+            'user_password_changed',
+            config.EMAIL_CONFIG_PATH,
+            config=config,
+            user=user_to_change,
+        )
+
+        background_tasks.add_task(
+            mailer.send_mail,
+            subject=subject,
+            content=content,
+            to_address=user_to_change.email,
+        )
+
+    # Write this query to the TransactionLog
+    if config.COLLECT_USAGE_STATISTICS:
+        background_tasks.add_task(
+            write_api_call_to_transaction_log,
+            api_key=key,
+            endpoint=request.url.path,
+            remote_addr=request.client.host,
+            query_params={"user":user_to_change.username},
+        )
+
+    return JSONResponse(
+        status_code=200,
+        content={"status": "success", "message": f"Successfully changed password for user {user_to_change.username}"},
     )
 
 

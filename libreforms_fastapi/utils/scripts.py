@@ -1,8 +1,264 @@
-import re, random, string, os, secrets, hashlib, time
+import re, random, string, os, secrets, hashlib, time, mimetypes, json, zipfile
+from pathlib import Path
+from typing import List, Literal
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import hashes
 
+
+
+class MimeTypeValidationError(Exception):
+    """Raised when file mime type validation fails."""
+    pass
+
+
+def validate_file_type(
+    filepath: str | Path,
+    allowed_types: List[str],
+    method: Literal["magic", "extension", "both"] = "both",
+    strict: bool = True
+) -> bool:
+    """
+    Validate a file's MIME type against a list of allowed types.
+    
+    Args:
+        filepath: Path to the file to validate
+        allowed_types: List of allowed MIME types (e.g., ['image/jpeg', 'application/pdf'])
+        method: Validation method - 'magic' (byte signatures), 'extension' (filename),
+                or 'both' (must match on both methods)
+        strict: If True, raise exception on validation failure. If False, return False.
+    
+    Returns:
+        bool: True if validation passes
+        
+    Raises:
+        MimeTypeValidationError: If validation fails and strict=True
+        FileNotFoundError: If file doesn't exist
+    """
+    
+    filepath = Path(filepath)
+    
+    if not filepath.exists():
+        raise FileNotFoundError(f"File not found: {filepath}")
+    
+    if not filepath.is_file():
+        raise MimeTypeValidationError(f"Path is not a file: {filepath}")
+    
+    # Normalize allowed types to lowercase
+    allowed_types = [t.lower() for t in allowed_types]
+    
+    magic_mime = None
+    extension_mime = None
+    
+    # Method 1: Magic byte detection
+    if method in ("magic", "both"):
+        magic_mime = _guess_mime_from_magic(filepath)
+    
+    # Method 2: Extension-based detection
+    if method in ("extension", "both"):
+        extension_mime = _guess_mime_from_extension(filepath)
+    
+    # Validation logic
+    if method == "both":
+        # Both methods must agree and be in allowed list
+        if magic_mime is None or extension_mime is None:
+            error_msg = "Could not determine MIME type using both methods"
+            if strict:
+                raise MimeTypeValidationError(error_msg)
+            return False
+        
+        # Check if they match
+        if magic_mime != extension_mime:
+            error_msg = (
+                f"MIME type mismatch: magic bytes suggest '{magic_mime}' "
+                f"but extension suggests '{extension_mime}'"
+            )
+            if strict:
+                raise MimeTypeValidationError(error_msg)
+            return False
+        
+        # Check if in allowed list
+        if magic_mime not in allowed_types:
+            error_msg = f"File type '{magic_mime}' not in allowed types: {allowed_types}"
+            if strict:
+                raise MimeTypeValidationError(error_msg)
+            return False
+            
+    elif method == "magic":
+        if magic_mime is None or magic_mime not in allowed_types:
+            error_msg = f"File type '{magic_mime}' not in allowed types: {allowed_types}"
+            if strict:
+                raise MimeTypeValidationError(error_msg)
+            return False
+            
+    elif method == "extension":
+        if extension_mime is None or extension_mime not in allowed_types:
+            error_msg = f"File type '{extension_mime}' not in allowed types: {allowed_types}"
+            if strict:
+                raise MimeTypeValidationError(error_msg)
+            return False
+    
+    return True
+
+
+def _guess_mime_from_magic(filepath: Path) -> str | None:
+    """Guess MIME type from magic bytes."""
+    
+    # Expanded signatures dictionary
+    signatures = {
+        # Images
+        b'\x89PNG\r\n\x1a\n': 'image/png',
+        b'\xff\xd8\xff': 'image/jpeg',
+        b'GIF87a': 'image/gif',
+        b'GIF89a': 'image/gif',
+        b'BM': 'image/bmp',
+        b'\x00\x00\x01\x00': 'image/x-icon',
+        b'\x00\x00\x02\x00': 'image/x-icon',
+        b'RIFF': 'image/webp',  # Need to check for WEBP
+        b'II*\x00': 'image/tiff',
+        b'MM\x00*': 'image/tiff',
+        
+        # Documents
+        b'%PDF-': 'application/pdf',
+        b'\xd0\xcf\x11\xe0\xa1\xb1\x1a\xe1': 'application/msword',  # .doc
+        b'PK\x03\x04': 'application/zip',  # Also docx, xlsx, etc.
+        
+        # Archives
+        b'\x1f\x8b': 'application/gzip',
+        b'Rar!\x1a\x07': 'application/x-rar-compressed',
+        b'7z\xbc\xaf\x27\x1c': 'application/x-7z-compressed',
+        
+        # Audio/Video
+        b'ID3': 'audio/mpeg',  # MP3
+        b'\xff\xfb': 'audio/mpeg',  # MP3 (alternative)
+        b'ftyp': 'video/mp4',  # At offset 4
+        b'\x00\x00\x00\x18ftypmp42': 'video/mp4',
+        b'\x00\x00\x00\x1cftypmp42': 'video/mp4',
+        
+        # Text formats
+        b'<!DOCTYPE html': 'text/html',
+        b'<html': 'text/html',
+        b'<?xml': 'text/xml',
+    }
+    
+    try:
+        with open(filepath, 'rb') as f:
+            header = f.read(64)  # Read more bytes for better detection
+            
+        if len(header) == 0:
+            return 'application/x-empty'
+        
+        # Check against signatures
+        for magic, mime in signatures.items():
+            if header.startswith(magic):
+                # Special cases
+                if magic == b'RIFF':
+                    if header[8:12] == b'WAVE':
+                        return 'audio/wav'
+                    elif header[8:12] == b'WEBP':
+                        return 'image/webp'
+                    else:
+                        return 'application/octet-stream'
+                
+                # PK zip files need more inspection for Office docs
+                if magic == b'PK\x03\x04':
+                    return _detect_zip_variant(filepath)
+                
+                return mime
+        
+        # Check for MP4 with ftyp at offset 4
+        if len(header) >= 12 and header[4:8] == b'ftyp':
+            return 'video/mp4'
+        
+        # Try to detect JSON
+        if header.lstrip().startswith((b'{', b'[')):
+            try:
+                # Quick validation
+                with open(filepath, 'r', encoding='utf-8') as f:
+                    json.load(f)
+                return 'application/json'
+            except:
+                pass
+        
+        # Fallback: check if it's valid UTF-8 text
+        try:
+            with open(filepath, 'r', encoding='utf-8') as f:
+                f.read(1024)
+            return 'text/plain'
+        except:
+            return 'application/octet-stream'
+            
+    except Exception:
+        return None
+
+
+def _detect_zip_variant(filepath: Path) -> str:
+    """Detect specific type of ZIP-based file (docx, xlsx, etc.)."""
+    
+    try:
+        with zipfile.ZipFile(filepath, 'r') as zf:
+            filenames = zf.namelist()
+            
+            # Office Open XML detection
+            if 'word/' in ''.join(filenames):
+                return 'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+            elif 'xl/' in ''.join(filenames):
+                return 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+            elif 'ppt/' in ''.join(filenames):
+                return 'application/vnd.openxmlformats-officedocument.presentationml.presentation'
+            elif 'META-INF/' in ''.join(filenames):
+                return 'application/java-archive'  # JAR file
+            
+        return 'application/zip'
+    except:
+        return 'application/zip'
+
+def _extensions_to_mime_types(extensions: List[str]) -> List[str]:
+    """Convert file extensions to MIME types for validation."""
+    extension_map = {
+        'pdf': 'application/pdf',
+        'html': 'text/html',
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'svg': 'image/svg+xml',
+        'gif': 'image/gif',
+        'webp': 'image/webp',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'txt': 'text/plain',
+        'csv': 'text/csv',
+    }
+    return [extension_map.get(ext.lower(), f'application/{ext}') for ext in extensions]
+
+def _guess_mime_from_extension(filepath: Path) -> str | None:
+    """Guess MIME type from file extension."""
+    mime_type, _ = mimetypes.guess_type(str(filepath))
+    return mime_type.lower() if mime_type else None
+
+"""
+# Example usage
+allowed_images = ['image/jpeg', 'image/png', 'image/gif']
+allowed_docs = ['application/pdf', 'text/plain']
+
+try:
+    # This will pass if file is a valid image
+    validate_file_type('photo.jpg', allowed_images, method='both')
+    print("✓ File validated successfully")
+except MimeTypeValidationError as e:
+    print(f"✗ Validation failed: {e}")
+
+# Non-strict mode returns False instead of raising
+is_valid = validate_file_type(
+    'document.pdf',
+    allowed_images,
+    method='magic',
+    strict=False
+    )
+    print(f"Is valid: {is_valid}")
+"""
 
 
 def generate_unique_username(base_username):

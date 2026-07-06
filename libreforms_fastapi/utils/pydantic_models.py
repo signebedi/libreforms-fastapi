@@ -14,6 +14,7 @@ from pydantic import (
     EmailStr,
     constr,
     SecretStr,
+    ByteSize,
 )
 
 from pydantic.functional_validators import field_validator, model_validator
@@ -23,6 +24,12 @@ from pydantic.functional_validators import field_validator, model_validator
 # https://github.com/signebedi/libreforms-fastapi/issues/150.
 from libreforms_fastapi.utils.custom_yaml import (
     get_custom_loader,
+)
+
+# We import extension validation for files, see
+# https://github.com/signebedi/libreforms-fastapi/issues/270
+from libreforms_fastapi.utils.scripts import (
+    _extensions_to_mime_types
 )
 
 
@@ -585,6 +592,7 @@ def get_form_model(
     # Initialize empty data structures
     user_fields = [] # https://github.com/signebedi/libreforms-fastapi/issues/281
     form_fields = {} # https://github.com/signebedi/libreforms-fastapi/issues/280
+    file_fields = {} # Track file upload fields with their configurations https://github.com/signebedi/libreforms-fastapi/issues/270
 
     class Config:
         arbitrary_types_allowed = True
@@ -651,6 +659,39 @@ def get_form_model(
         if field_info.get("is_header", False):
             continue
 
+        # Handle file upload fields specially - they won't be part of the Pydantic model
+        # since files are transmitted separately via multipart/form-data
+        # https://github.com/signebedi/libreforms-fastapi/issues/270
+        if field_info.get("input_type") == "file":
+
+            # Get allowed extensions
+            permitted_extensions = field_info.get("file_upload_extensions_permitted", ['pdf', 'html', 'jpg', 'png', 'svg'])
+
+            # Store file field configuration for later use
+            file_fields[field_name] = {
+                "permitted_extensions": permitted_extensions,
+                "permitted_mime_types": _extensions_to_mime_types(permitted_extensions),
+                "max_size": field_info.get("file_upload_max_size", 50000000),
+                "required": field_info.get("required", False),
+                "description": field_info.get("description", ""),
+            }
+            
+            # Add a string field to the Pydantic model to store the filename reference
+            # This will be populated after the file is saved to disk
+            field_definitions[field_name] = (
+                Optional[str], 
+                Field(
+                    default=None,
+                    description=f"Filename reference for uploaded file. Config: {file_fields[field_name]}",
+                    repr=True
+                )
+            )
+            
+            # Skip the normal field processing below
+            continue
+
+
+
         # If this field links to a user account, then append that field to the 
         # user_fields list, see https://github.com/signebedi/libreforms-fastapi/issues/281
         if field_info.get("links_to_user", False):
@@ -709,6 +750,12 @@ def get_form_model(
     dynamic_model.user_fields = user_fields
     dynamic_model.form_fields = form_fields
 
+
+    # Attach file fields configuration to the dynamic model
+    # This will be used by the endpoint to handle file uploads separately
+    # https://github.com/signebedi/libreforms-fastapi/issues/270
+    dynamic_model.file_fields = file_fields
+
     # Attach the default email template poolice to the dynamic model, see 
     # https://github.com/signebedi/libreforms-fastapi/issues/356
     dynamic_model.disable_default_emails = disable_default_emails
@@ -743,12 +790,6 @@ def get_form_html(
     """
     Generates a list of Bootstrap 5 styled HTML form fields based on the input config and form name,
     supporting default values.
-
-    Params:
-        current_document (dict): optional document containing the form's existing data. If passed, it will override
-            the default content of the form config.
-        
-        ... Need to add the other params ...
 
     Returns: List[str] of HTML elements for the front-end
     """
@@ -820,6 +861,12 @@ def get_form_html(
         # Continue if we encounter a __config__ field
         if field_name == "__config__":
             continue
+
+
+        # Added from https://github.com/signebedi/libreforms-fastapi/issues/385
+        # immutable_on_edit: bool = field_info.get("make_immutable_on_edit", False)
+        # editing_current_record = update and not duplicate
+
 
         # Added from https://github.com/signebedi/libreforms-fastapi/issues/280
         links_to_form: str | None = field_info.get("links_to_form", False)
@@ -1015,6 +1062,36 @@ def get_form_html(
                         name="{field_name}" {field_params} 
                         value="{_value}">
                     </fieldset>'''
+
+        # Added in https://github.com/signebedi/libreforms-fastapi/issues/270
+        elif field_info['input_type'] == 'file':
+            # Assumption: Only a single file upload is supported per field
+            
+            # Get file-specific configurations with defaults
+            permitted_extensions = field_info.get('file_upload_extensions_permitted', ['pdf', 'html', 'jpg', 'png', 'svg'])
+            max_file_size_bytes = field_info.get('file_upload_max_size', 50000000)
+            
+            # Convert extensions list to accept attribute format (e.g., ".pdf,.html,.jpg")
+            accept_attr = ','.join([f".{ext}" for ext in permitted_extensions])
+            
+            # Convert max_file_size to bytes for validation (assuming format like "50mb")
+            # This will be used in client-side validation via data attribute
+            max_file_size = f"{round(max_file_size_bytes/1000000)}mb"
+            
+            field_html += f'''
+                <fieldset class="form-check {conditional_class}" {conditional_attrs} style="padding-top: 20px;">
+                    <label aria-labelledby="{description_id}" for="{field_name}" class="form-check-label set-bold">{visible_field_name}</label>
+                    <span id="{description_id}" class="form-text"> {' Required.' if required else ''} {description_text} {tooltip_text}</span>
+                    <input type="file" class="form-control" id="{field_name}" name="{field_name}" 
+                        accept="{accept_attr}" 
+                        data-max-size="{max_file_size_bytes}"
+                        {' required' if required else ''}>
+                    <div class="form-text">Accepted formats: {', '.join(permitted_extensions)}. Max size: {max_file_size}.</div>
+                    <div class="valid-feedback"></div>
+                    <div class="invalid-feedback"></div>
+                </fieldset>'''
+
+
         # Added in https://github.com/signebedi/libreforms-fastapi/issues/402
         elif field_info['input_type'] == "url":
             field_html += f'''
@@ -1214,6 +1291,14 @@ class EmailConfigUpdateRequest(BaseModel):
 
 
 
+class AdminChangePasswordRequest(BaseModel):
+    """This model validates admin-initiated password changes through the admin API.
+    Like admin user creation, it does not enforce the site password regex, leaving
+    that choice to the admin, see
+    https://github.com/signebedi/libreforms-fastapi/issues/251"""
+    new_password: SecretStr = Field(...)
+
+
 class GroupModel(BaseModel):
     """This model will be used for validating change to Groups through the admin API"""
     # id: int = Field(None)
@@ -1248,3 +1333,20 @@ class SiteConfig(BaseModel):
 class RequestUnregisteredForm(BaseModel):
     """The model will validate an email request body when users try request an unregistered form submission"""
     email: EmailStr  = Field(...)
+
+
+
+class FileUploadRequest(BaseModel):
+    """Model for file upload request"""
+    form_name: str = Field(..., description="Name of the form this file belongs to")
+    field_name: str = Field(..., description="Name of the field this file belongs to")
+    document_id: str = Field(..., description="Associated document ID (required)")
+    filename: Optional[str] = Field(None, description="Optional custom filename (without extension)")
+    
+    @field_validator('filename')
+    @classmethod
+    def strip_extension(cls, v: Optional[str]) -> Optional[str]:
+        """Remove file extension if provided in filename"""
+        if v is not None:
+            return Path(v).stem
+        return v
