@@ -1,10 +1,21 @@
-import os, shutil, json, operator
+import os, shutil, json, operator, threading
 from bson import ObjectId
 from fuzzywuzzy import fuzz
+from functools import wraps
 from datetime import datetime
 from zoneinfo import ZoneInfo
 from markupsafe import escape
+from contextlib import contextmanager
 from abc import ABC, abstractmethod
+
+# fcntl is only available on Unix. On other platforms the inter-process file
+# lock degrades to the in-process threading lock, which is still correct for a
+# single-worker deployment. Production runs on Linux (see the CLI/systemd and
+# Dockerfile), where the cross-process lock is active.
+try:
+    import fcntl
+except ImportError:
+    fcntl = None
 
 from typing import (
     Union,
@@ -346,6 +357,25 @@ class ManageDocumentDB(ABC):
 
 
 
+def _synchronized(method):
+    """
+    Serializes a ManageTinyDB write method across threads and processes on a
+    per-collection basis, preventing the unguarded read-modify-write of a
+    collection's JSON file from losing concurrent updates (see
+    excludes/issues.md 6). The decorated method must take form_name as its
+    first argument (positionally or by keyword).
+    """
+    @wraps(method)
+    def wrapper(self, *args, **kwargs):
+        if 'form_name' in kwargs:
+            form_name = kwargs['form_name']
+        else:
+            form_name = args[0]
+        with self._collection_write_lock(form_name):
+            return method(self, *args, **kwargs)
+    return wrapper
+
+
 class ManageTinyDB(ManageDocumentDB):
     def __init__(
         self, 
@@ -384,6 +414,50 @@ class ManageTinyDB(ManageDocumentDB):
 
         # Here we create a Query object to ship with the class
         self.Form = Query()
+
+        # Per-collection locks serialize the read-modify-write of each form's JSON
+        # file. The threading.RLock guards concurrency within this process (and is
+        # reentrant, so nested writes like restore_document -> delete_document do not
+        # deadlock); the flock on a per-collection .lock file extends the guarantee
+        # across uvicorn worker processes. See excludes/issues.md 6.
+        self._collection_locks = {}
+        self._collection_lock_state = {}
+        self._collection_locks_guard = threading.Lock()
+
+
+    def _collection_lock_path(self, form_name:str):
+        return os.path.join(self.db_path, f"{self.env}_{form_name}.lock")
+
+
+    @contextmanager
+    def _collection_write_lock(self, form_name:str):
+        """Reentrant, cross-process exclusive lock scoped to a single collection."""
+        with self._collection_locks_guard:
+            if form_name not in self._collection_locks:
+                self._collection_locks[form_name] = threading.RLock()
+                self._collection_lock_state[form_name] = {"handle": None, "depth": 0}
+            rlock = self._collection_locks[form_name]
+            state = self._collection_lock_state[form_name]
+
+        rlock.acquire()
+        try:
+            # Only the outermost acquisition on this collection takes the OS-level
+            # lock; nested reentrant calls just bump the depth counter.
+            if state["depth"] == 0 and fcntl is not None:
+                handle = open(self._collection_lock_path(form_name), "w")
+                fcntl.flock(handle, fcntl.LOCK_EX)
+                state["handle"] = handle
+            state["depth"] += 1
+
+            yield
+
+        finally:
+            state["depth"] -= 1
+            if state["depth"] == 0 and state["handle"] is not None:
+                fcntl.flock(state["handle"], fcntl.LOCK_UN)
+                state["handle"].close()
+                state["handle"] = None
+            rlock.release()
 
 
     def _initialize_database_collections(self):
@@ -440,9 +514,10 @@ class ManageTinyDB(ManageDocumentDB):
 
         return document_id_list
 
+    @_synchronized
     def create_document(
-        self, 
-        form_name:str, 
+        self,
+        form_name:str,
         json_data,
         # data_dict, 
         metadata:dict={},
@@ -535,8 +610,9 @@ class ManageTinyDB(ManageDocumentDB):
 
         return data_dict
 
+    @_synchronized
     def update_document(
-        self, 
+        self,
         form_name:str, 
         document_id:str, 
         json_data:str,
@@ -672,8 +748,9 @@ class ManageTinyDB(ManageDocumentDB):
 
         return document
 
+    @_synchronized
     def advance_document_stage(
-        self, 
+        self,
         form_name:str, 
         document_id:str, 
         username:str, 
@@ -834,9 +911,9 @@ class ManageTinyDB(ManageDocumentDB):
         return document
 
 
-    def fuzzy_search_documents(self, search_term:str, limit_users:Union[bool, dict]=False, form_name:Union[bool, str]=False, threshold=80, exclude_deleted:bool=True):
+    def fuzzy_search_documents(self, search_term:str, limit_users:Union[bool, dict]=False, form_name:Union[bool, str]=False, threshold=80, exclude_deleted:bool=True, escape_output:bool=False):
         """Searches for entries that match the search query."""
-        
+
         if isinstance(form_name, str):
             self._check_form_exists(form_name)
             data = self.databases[form_name].all()
@@ -864,7 +941,6 @@ class ManageTinyDB(ManageDocumentDB):
 
         if exclude_deleted:
 
-            print(data)
             data = [x for x in data if x['metadata'][self.is_deleted_field] == False]
 
         search_results = []
@@ -878,8 +954,19 @@ class ManageTinyDB(ManageDocumentDB):
 
         # Sort results based on score in descending order.
         sorted_results = sorted(search_results, key=lambda x: x[1], reverse=True)
-        return [doc for doc, score in sorted_results]
+        result_documents = [doc for doc, score in sorted_results]
 
+        # If we've opted to escape output, escape the user-supplied data fields. This
+        # matches get_all_documents/get_one_document and is used by the search routes,
+        # whose UI dumps the whole data object into an HTML sink. See excludes/issues.md 10.
+        if escape_output:
+            for document in result_documents:
+                if isinstance(document.get('data'), (dict, list)):
+                    document['data'] = escape_data_field(document['data'])
+
+        return result_documents
+
+    @_synchronized
     def delete_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, restore=False, metadata:dict={}, permanent:bool=False):
         """Deletes entries that match the search query, permanently or soft delete."""
         self._check_form_exists(form_name)
@@ -945,7 +1032,7 @@ class ManageTinyDB(ManageDocumentDB):
         return document
 
 
-    def get_all_documents_for_user(self, username: str, exclude_deleted:bool=True) -> list:
+    def get_all_documents_for_user(self, username: str, exclude_deleted:bool=True, escape_output:bool=False) -> list:
         """Retrieves all the documents created by a given user"""
 
         documents = []
@@ -954,6 +1041,7 @@ class ManageTinyDB(ManageDocumentDB):
                 form_name=f,
                 limit_users=username,
                 exclude_deleted=exclude_deleted,
+                escape_output=escape_output,
             )
 
             documents.extend(d)
@@ -1256,6 +1344,7 @@ class ManageTinyDB(ManageDocumentDB):
 
         return document
 
+    @_synchronized
     def restore_document(self, form_name:str, document_id:str, limit_users:Union[bool, str]=False, restore=False, metadata:dict={}):
         """Restores soft deleted entries that match the search query."""
         self._check_form_exists(form_name)
@@ -1273,6 +1362,7 @@ class ManageTinyDB(ManageDocumentDB):
 
         return document
 
+    @_synchronized
     def backup_collection(self, form_name:str):
         """Creates a backup of the specified form's database."""
         self._check_form_exists(form_name)
@@ -1294,6 +1384,7 @@ class ManageTinyDB(ManageDocumentDB):
 
         return backup_path
 
+    @_synchronized
     def restore_collection_from_backup(self, form_name:str, backup_filename:str, backup_before_overwriting:bool=True):
         """Restores the specified form's database from its backup."""
         self._check_form_exists(form_name)
@@ -1321,10 +1412,11 @@ class ManageTinyDB(ManageDocumentDB):
         self._initialize_database_collections()
 
     def unpack_document_journal(
-        self, 
-        document_id: str, 
+        self,
+        document_id: str,
         form_name: str,
-        limit_users:Union[bool, str]=False, 
+        limit_users:Union[bool, str]=False,
+        escape_output:bool=False,
     ) -> dict:
         """
         Retrieves the journal of a document with the given document_id and form_name, 
@@ -1361,11 +1453,14 @@ class ManageTinyDB(ManageDocumentDB):
             datetime_key = metadata_changes.get(self.last_modified_field, "Unknown timestamp")
             
             # Deep copy to ensure each entry in the unpacked journal is unique
+            entry_data = dict(current_state['data'])
+            if escape_output:
+                entry_data = escape_data_field(entry_data)
             unpacked_journal[datetime_key] = {
-                'data': dict(current_state['data']),
+                'data': entry_data,
                 'metadata': dict(current_state['metadata'])
             }
-        
+
         return dict(reversed(unpacked_journal.items()))
 
 
