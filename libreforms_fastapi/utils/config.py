@@ -220,10 +220,10 @@ def get_config(env):
 
         @field_validator('MAX_INACTIVITY_PERIOD')
         def set_max_inactivity_period(cls, v):
-            value_check = os.getenv('MAX_INACTIVITY_PERIOD', 'False') != "False"
-            if value_check is False:
+            raw_value = os.getenv('MAX_INACTIVITY_PERIOD', 'False')
+            if raw_value == 'False':
                 return False
-            days = int(value_check)
+            days = int(raw_value)
             return timedelta(days=days)
 
         # See https://github.com/signebedi/libreforms-fastapi/issues/237
@@ -231,10 +231,10 @@ def get_config(env):
 
         @field_validator('MAX_PASSWORD_AGE')
         def set_max_password_age(cls, v):
-            value_check = os.getenv('MAX_PASSWORD_AGE', 'False') != "False"
-            if value_check is False:
+            raw_value = os.getenv('MAX_PASSWORD_AGE', 'False')
+            if raw_value == 'False':
                 return False
-            days = int(value_check)
+            days = int(raw_value)
             return timedelta(days=days)
 
 
