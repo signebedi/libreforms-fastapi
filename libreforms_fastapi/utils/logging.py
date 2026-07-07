@@ -1,4 +1,4 @@
-import os, logging
+import os, logging, logging.handlers
 
 
 def set_logger(environment, log_file_name, namespace, log_directory=os.path.join(os.getcwd(), 'instance', 'log'), write_to_file:bool=True, log_level=logging.INFO):
