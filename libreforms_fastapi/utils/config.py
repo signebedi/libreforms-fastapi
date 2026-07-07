@@ -284,7 +284,7 @@ def get_config(env):
         SESSION_COOKIE_SECURE:bool = os.getenv('SESSION_COOKIE_SECURE', 'False') == 'True'
         SESSION_COOKIE_SAMESITE:str = os.getenv('SESSION_COOKIE_SAMESITE', "None")
 
-        MONGODB_ENABLED:bool = os.getenv('MONGODB_ENABLED:', 'False') == 'True'
+        MONGODB_ENABLED:bool = os.getenv('MONGODB_ENABLED', 'False') == 'True'
         MONGODB_URI: str = "" # Default to empty string
 
         @field_validator('MONGODB_URI')
@@ -297,31 +297,31 @@ def get_config(env):
             return MongoDsn.validate(uri)
 
         # Adding health check endpoints, see https://github.com/signebedi/libreforms-fastapi/issues/274
-        HEALTH_CHECKS_ENABLED:bool = os.getenv('HEALTH_CHECKS_ENABLED:', 'True') == 'True'
+        HEALTH_CHECKS_ENABLED:bool = os.getenv('HEALTH_CHECKS_ENABLED', 'True') == 'True'
 
 
         # SAML Authentication configuration settings, see discussion at
         # https://github.com/signebedi/libreforms-fastapi/issues/80 and
         # https://github.com/libreForms/libreForms-flask/issues/7.
-        SAML_ENABLED: bool = os.getenv('SAML_ENABLED:', 'False') == 'True'
-        SAML_IDP_ENTITY_ID: str | None = os.getenv('SAML_IDP_ENTITY_ID:', None)
-        SAML_IDP_SSO_URL: str | None = os.getenv('SAML_IDP_SSO_URL:', None)
-        SAML_IDP_SLO_URL: str | None = os.getenv('SAML_IDP_SLO_URL:', None)
-        SAML_IDP_X509_CERT: str | None = os.getenv('SAML_IDP_X509_CERT:', None)
-        SAML_STRICT: bool = os.getenv('SAML_STRICT:', "True") == 'True'
-        SAML_DEBUG: bool = os.getenv('SAML_DEBUG:', "False") == 'True'
-        SAML_NAME_ID_FORMAT: str = os.getenv('SAML_NAME_ID_FORMAT:', "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified")
-        SAML_SP_X509_CERT: str = os.getenv('SAML_SP_X509_CERT:', "")
-        SAML_SP_PRIVATE_KEY: str = os.getenv('SAML_SP_PRIVATE_KEY:', "")
+        SAML_ENABLED: bool = os.getenv('SAML_ENABLED', 'False') == 'True'
+        SAML_IDP_ENTITY_ID: str | None = os.getenv('SAML_IDP_ENTITY_ID', None)
+        SAML_IDP_SSO_URL: str | None = os.getenv('SAML_IDP_SSO_URL', None)
+        SAML_IDP_SLO_URL: str | None = os.getenv('SAML_IDP_SLO_URL', None)
+        SAML_IDP_X509_CERT: str | None = os.getenv('SAML_IDP_X509_CERT', None)
+        SAML_STRICT: bool = os.getenv('SAML_STRICT', "True") == 'True'
+        SAML_DEBUG: bool = os.getenv('SAML_DEBUG', "False") == 'True'
+        SAML_NAME_ID_FORMAT: str = os.getenv('SAML_NAME_ID_FORMAT', "urn:oasis:names:tc:SAML:2.0:nameid-format:unspecified")
+        SAML_SP_X509_CERT: str = os.getenv('SAML_SP_X509_CERT', "")
+        SAML_SP_PRIVATE_KEY: str = os.getenv('SAML_SP_PRIVATE_KEY', "")
 
         # These configurations govern over the bifurcation of server and client instances, along with UI_ENABLED above.
         # For more on decoupling server and client, see https://github.com/signebedi/libreforms-fastapi/issues/329
-        API_ENABLED: bool = os.getenv('API_ENABLED:', 'True') == 'True'
-        REMOTE_API_ADDR: AnyUrl | None = os.getenv('REMOTE_API_ADDR:', None)
-        REMOTE_API_KEY: str | None = os.getenv('REMOTE_API_KEY:', None)
+        API_ENABLED: bool = os.getenv('API_ENABLED', 'True') == 'True'
+        REMOTE_API_ADDR: AnyUrl | None = os.getenv('REMOTE_API_ADDR', None)
+        REMOTE_API_KEY: str | None = os.getenv('REMOTE_API_KEY', None)
 
         # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/386.
-        API_KEY_SELF_ROTATION_ENABLED: bool = os.getenv('API_KEY_SELF_ROTATION_ENABLED:', 'True') == 'True'
+        API_KEY_SELF_ROTATION_ENABLED: bool = os.getenv('API_KEY_SELF_ROTATION_ENABLED', 'True') == 'True'
 
 
     class ProductionConfig(Config):
@@ -346,11 +346,11 @@ def get_config(env):
         FORCE_HTTPS:bool = os.getenv('FORCE_HTTPS', 'True') == 'True'
 
         # Adding health check endpoints, see https://github.com/signebedi/libreforms-fastapi/issues/274
-        HEALTH_CHECKS_ENABLED:bool = os.getenv('HEALTH_CHECKS_ENABLED:', 'False') == 'True'
+        HEALTH_CHECKS_ENABLED:bool = os.getenv('HEALTH_CHECKS_ENABLED', 'False') == 'True'
 
         # Implemented in https://github.com/signebedi/libreforms-fastapi/issues/386. Disabled by
         # default in production.
-        API_KEY_SELF_ROTATION_ENABLED: bool = os.getenv('API_KEY_SELF_ROTATION_ENABLED:', 'False') == 'True'
+        API_KEY_SELF_ROTATION_ENABLED: bool = os.getenv('API_KEY_SELF_ROTATION_ENABLED', 'False') == 'True'
 
 
 
