@@ -412,6 +412,12 @@ def validate_help_smtp_enabled(config):
         raise ConfigurationError("SMTP must be enabled ('SMTP_ENABLED' = True) when enabling the user help page ('HELP_PAGE_ENABLED' = True).")
 
 def validate_mongodb_configuration(config):
+    # MongoDB support is not yet implemented - the ManageMongoDB class in
+    # libreforms_fastapi/utils/document_database.py is a stub. Remove this
+    # check when that class is implemented.
+    if config.MONGODB_ENABLED:
+        raise ConfigurationError("MongoDB support is not yet implemented. Please set 'MONGODB_ENABLED' to False to use the default TinyDB document database.")
+
     # If MongoDB is enabled, ensure the URI is not an empty string
     if config.MONGODB_ENABLED and config.MONGODB_URI == '':
         raise ConfigurationError("MongoDB URI cannot be an empty string ('MONGODB_URI') when MongoDB is enabled ('MONGODB_ENABLED' = True).")

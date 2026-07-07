@@ -3180,7 +3180,7 @@ async def api_form_restore(
 
 
 # Search forms
-@app.get("/api/form/search/{form_name}")
+@app.get("/api/form/search/{form_name}", dependencies=[Depends(api_key_auth)])
 async def api_form_search(
     form_name: str,
     background_tasks: BackgroundTasks,
@@ -3215,12 +3215,12 @@ async def api_form_search(
     form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
     limit_query_to = {}
 
-    for form_name in form_names:
-        if "read_own" in user_group_permissions[form_name]:
-            if "read_all" in user_group_permissions[form_name]:
-                limit_query_to[form_name] = False
+    for _form_name in form_names:
+        if "read_own" in user_group_permissions[_form_name]:
+            if "read_all" in user_group_permissions[_form_name]:
+                limit_query_to[_form_name] = False
             else:
-                limit_query_to[form_name] = user.username
+                limit_query_to[_form_name] = user.username
 
     documents = doc_db.fuzzy_search_documents(
         search_term=search_term,
