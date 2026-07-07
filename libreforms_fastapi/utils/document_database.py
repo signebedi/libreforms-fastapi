@@ -1335,7 +1335,7 @@ class ManageTinyDB(ManageDocumentDB):
         
         document = self.databases[form_name].get(doc_id=document_id)
         if not document:
-            raise DocumentDoesNotExist("The specified document does not exist.")
+            raise DocumentDoesNotExist(form_name, document_id)
 
         # If we are limiting user access based on group-based access controls, and this user is 
         # not the document creator, then return None

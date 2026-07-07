@@ -2392,10 +2392,18 @@ async def api_form_read_history(
             raise HTTPException(status_code=403, detail=f"{e}")
 
 
-    history = doc_db.unpack_document_journal(
-        document_id=document_id, 
-        form_name=form_name
-    )
+    try:
+        history = doc_db.unpack_document_journal(
+            document_id=document_id,
+            form_name=form_name,
+            limit_users=limit_query_to,
+        )
+
+    except DocumentDoesNotExist as e:
+        raise HTTPException(status_code=404, detail=f"{e}")
+
+    except InsufficientPermissions as e:
+        raise HTTPException(status_code=403, detail=f"{e}")
 
     if not history:
         raise HTTPException(status_code=404, detail="No history found for the requested document")
