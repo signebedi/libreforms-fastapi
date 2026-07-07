@@ -3234,6 +3234,7 @@ async def api_form_search(
         search_term=search_term,
         form_name=form_name,
         limit_users=limit_query_to,
+        escape_output=True,
     )
 
     # Write this query to the TransactionLog
@@ -3306,6 +3307,7 @@ async def api_form_search_all(
     documents = doc_db.fuzzy_search_documents(
         search_term=search_term,
         limit_users=limit_query_to,
+        escape_output=True,
     )
 
     # Write this query to the TransactionLog
@@ -5530,19 +5532,41 @@ async def api_admin_modify_user(
     session.add(user_to_change)
     session.commit()
 
+    # For a password reset we generate a random password but, historically, never
+    # delivered it to anyone - locking the user out. Notify the user by email (matching
+    # the dedicated change-password flow) and return the generated temporary password to
+    # the admin so it can be conveyed to the user. See excludes/issues.md 9.
+    if field == "password":
+        if config.SMTP_ENABLED:
+            subject, content = render_email_message_from_jinja(
+                'user_password_changed',
+                config.EMAIL_CONFIG_PATH,
+                config=config,
+                user=user_to_change,
+            )
+            background_tasks.add_task(
+                mailer.send_mail,
+                subject=subject,
+                content=content,
+                to_address=user_to_change.email,
+            )
+        response_message = f"Reset password for user id {id}. Temporary password: {new_value}"
+    else:
+        response_message = f"Updated {field} for user id {id}"
+
     # Write this query to the TransactionLog
     if config.COLLECT_USAGE_STATISTICS:
         background_tasks.add_task(
-            write_api_call_to_transaction_log, 
-            api_key=key, 
-            endpoint=request.url.path, 
-            remote_addr=request.client.host, 
+            write_api_call_to_transaction_log,
+            api_key=key,
+            endpoint=request.url.path,
+            remote_addr=request.client.host,
             query_params={},
         )
 
     return JSONResponse(
         status_code=200,
-        content={"status": "success", "message": f"Updated {field} for user id {id}"},
+        content={"status": "success", "message": response_message},
     )
 
 
