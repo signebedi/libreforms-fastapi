@@ -49,6 +49,11 @@
     <button class="btn btn-outline-secondary ms-2" onclick="copyCurrentViewUrl()" title="Copy URL with current column selection">
         <i class="bi bi-link-45deg"></i> Copy URL
     </button>
+    {% if config["EXCEL_EXPORT_ENABLED"] and form_name in request.user.permissions and ("read_own" in request.user.permissions[form_name] or "read_all" in request.user.permissions[form_name]) %}
+    <button class="btn btn-outline-secondary ms-2" id="exportSelectedColumns" style="display: none;" onclick="exportCurrentViewToExcel()" title="Export the selected columns to Excel">
+        <i class="bi bi-file-earmark-spreadsheet"></i> Export Columns
+    </button>
+    {% endif %}
 </div>
 
 <div class="container-fluid table-responsive">
@@ -269,6 +274,18 @@ $(document).ready(function () {
         });
     }
 
+    window.exportCurrentViewToExcel = function() {
+        const activeColumns = getActiveColumns();
+
+        if (activeColumns.length === 0) {
+            flashMessage("Please select at least one column to export", AlertCategories.WARNING);
+            return;
+        }
+
+        const fieldParams = activeColumns.map(col => `${col.type}:${col.name}`).join(',');
+        exportExcel(formName, apiKey, fieldParams);
+    }
+
     function renderTable(records, selectedColumns) {
         let tableHtml = '<table class="table table-hover table-striped table-light" id="readAllTable"><thead><tr>';
         
@@ -397,6 +414,8 @@ $(document).ready(function () {
             
             // Initialize DataTable
             rebuildTable();
+
+            $('#exportSelectedColumns').show();
         },
         error: function(xhr, status, error) {
             console.error("Error fetching data:", error);

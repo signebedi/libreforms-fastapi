@@ -472,8 +472,12 @@
     <script>
 
     // Not using Jquery for the file export 
-    function exportExcel(formName, apiKey) {
-        fetch(`/api/form/export_excel/${formName}`, {
+    function exportExcel(formName, apiKey, fields) {
+        // The optional `fields` param limits the export to the given columns, using the
+        // format `data:field1,metadata:created_by`
+        const query = fields ? `?fields=${encodeURIComponent(fields)}` : '';
+
+        fetch(`/api/form/export_excel/${formName}${query}`, {
             headers: {
                 'X-API-KEY': apiKey,
             }

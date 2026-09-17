@@ -1056,8 +1056,14 @@ class ManageTinyDB(ManageDocumentDB):
         exclude_deleted:bool=True,
         escape_output:bool=False,
         exclude_journal:bool=True,
+        fields:Union[bool, list]=False,
     ):
-        """Retrieves all the documents for the specified form and saves to excel"""
+        """Retrieves all the documents for the specified form and saves to excel.
+
+        When `fields` is passed, it should be a list of field specs of the form
+        `data:field_name` or `metadata:field_name` (bare names are treated as data
+        fields), and the export will be limited to those columns, in the order given.
+        """
 
         if not self.use_excel:
             return False
@@ -1083,6 +1089,25 @@ class ManageTinyDB(ManageDocumentDB):
         # Create the dataframe using flattened data
         import pandas as pd
         df = pd.DataFrame(documents)
+
+        # Limit the export to the requested fields, preserving the order they were passed in
+        if fields:
+            selected_columns = []
+            for field_spec in fields:
+                if ":" in field_spec:
+                    field_type, field_name = field_spec.split(":", 1)
+                else:
+                    field_type, field_name = "data", field_spec
+
+                column = f"__metadata__{field_name}" if field_type == "metadata" else field_name
+
+                if column in df.columns and column not in selected_columns:
+                    selected_columns.append(column)
+
+            if len(selected_columns) < 1:
+                return False
+
+            df = df[selected_columns]
 
         # Drop the journal if exclude_journal is passed (this is the default behavior) 
         # if exclude_journal:

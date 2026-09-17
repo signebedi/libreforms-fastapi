@@ -2671,6 +2671,7 @@ async def api_form_export_excel(
     form_name: str, 
     background_tasks: BackgroundTasks, 
     request: Request, 
+    fields: Optional[str] = None,  # Comma-separated list of fields
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db), 
@@ -2680,7 +2681,9 @@ async def api_form_export_excel(
     """
     Retrieves all documents of a specified form type, identified by the form name in the URL.
     It verifies the form's existence, checks user permissions, retrieves documents from the 
-    database, and returns the form as an excel file before logging the query.
+    database, and returns the form as an excel file before logging the query. Optionally, 
+    the `fields` query param may be passed to limit the export to a subset of columns, using
+    the same format as the read_all UI page, eg. `data:field1,metadata:created_by`.
     """
 
     if not config.API_ENABLED:
@@ -2712,9 +2715,15 @@ async def api_form_export_excel(
 
 
 
+    # Parse fields parameter if provided, using the same format as the read_all UI page
+    selected_fields = None
+    if fields:
+        selected_fields = [f.strip() for f in fields.split(',') if f.strip()]
+
     document_path = doc_db.get_all_documents_as_excel(
         form_name, 
-        limit_users=limit_query_to
+        limit_users=limit_query_to,
+        fields=selected_fields if selected_fields else False,
     )
 
     # Write this query to the TransactionLog
@@ -2728,7 +2737,7 @@ async def api_form_export_excel(
             api_key=key, 
             endpoint=endpoint, 
             remote_addr=remote_addr, 
-            query_params={},
+            query_params={"fields": fields} if fields else {},
         )
 
     if not document_path:
