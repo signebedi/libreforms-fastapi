@@ -211,3 +211,33 @@ def test_get_form_model_optional_field_without_default(client, tmp_path):
     assert model(required_input="Sample text").optional_input is None
     with pytest.raises(ValidationError):
         model(optional_input="Sample text")
+
+# Test that route names are unique, as url_for resolves a name to the first route registered with it
+def test_route_names_unique(client):
+    from collections import Counter
+    from libreforms_fastapi.app import app
+
+    names = Counter(route.name for route in app.routes)
+    assert [name for name, count in names.items() if count > 1] == []
+
+# Test that every name passed to url_for or a @requires redirect matches a route
+def test_url_for_names_resolve(client):
+    import re, glob
+    import libreforms_fastapi.app as app_package
+    from libreforms_fastapi.app import app
+
+    app_dir = os.path.dirname(app_package.__file__)
+    name_pattern = re.compile(r"""(?:url_for\(\s*|redirect=)["']([A-Za-z_]\w*)["']""")
+
+    referenced = set()
+    for path in glob.glob(os.path.join(app_dir, "templates", "*.jinja")):
+        with open(path) as f:
+            # Drop Jinja comments, which are never rendered
+            referenced |= set(name_pattern.findall(re.sub(r"\{#.*?#\}", "", f.read(), flags=re.DOTALL)))
+    for path in glob.glob(os.path.join(app_dir, "*.py")):
+        with open(path) as f:
+            referenced |= set(name_pattern.findall("".join(l for l in f if not l.lstrip().startswith("#"))))
+
+    route_names = {route.name for route in app.routes}
+    assert referenced, "No url_for references found"
+    assert sorted(referenced - route_names) == []
