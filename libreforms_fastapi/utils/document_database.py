@@ -1206,6 +1206,18 @@ class ManageTinyDB(ManageDocumentDB):
             reverse=(sort_method == "descending")
         )
 
+        # If we want to drop the journal from the response. We do this before stringifying,
+        # so we don't waste time converting large journals to strings only to discard them.
+        if exclude_journal:
+
+            _documents = []
+
+            for document in documents:
+                document['metadata'].pop(self.journal_field, None)
+                _documents.append(document)
+
+            documents = _documents
+
         # If we've opted to stringify each field...
         if stringify_output:
 
@@ -1241,17 +1253,6 @@ class ManageTinyDB(ManageDocumentDB):
                 #             if isinstance(element, str):
                 #                 _ = validate_html_content(element)
 
-
-        # If we want to drop the journal from the response
-        if exclude_journal:
-
-            _documents = []
-            
-            for document in documents:
-                document['metadata'].pop(self.journal_field, None)
-                _documents.append(document)
-
-            documents = _documents
 
 
 
