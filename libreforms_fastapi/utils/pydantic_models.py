@@ -705,7 +705,9 @@ def get_form_model(
 
 
         python_type = field_info["output_type"]
-        default_value = None if update else field_info.get("default", ...)
+        # Fields without a default in the form config default to None, so that optional fields are
+        # not required. Required fields ignore this, as they are given a default of ... below.
+        default_value = None if update else field_info.get("default", None)
         required = field_info.get("required", False)
         description = field_info.get("description", False)
 
@@ -1215,10 +1217,11 @@ def get_form_html(
                 field_html += f'''
         			<div><div id="content_{field_name}" style="width: 100%; height: 300px; overflow-y: auto; max-height: 700px; resize: vertical; margin-top: 10px; border: 2px solid var(--bs-secondary);"></div></div>
                     <script>
-                    window.onload = function() {{
+                    // Use addEventListener so that multiple lookup fields don't overwrite each other's handler
+                    window.addEventListener('load', function() {{
                         generateLookup('{links_to_form}', '{field_name}', {form_display_fields}, '{links_to_form_query_params}');
                         // getLookup('{links_to_form}', '{field_name}', document.getElementById('{field_name}', '{links_to_form_query_params}'));
-                    }}
+                    }});
                     </script>'''
             field_html += '''
                 </fieldset>'''

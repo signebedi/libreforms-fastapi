@@ -2533,7 +2533,7 @@ async def api_form_read_all(
     set_length: int = 0,
     return_when_empty: bool = False,
     query_params: Optional[str] = Query(None),
-    sort_by: str = "__metadata__created_date",
+    sort_by: str = "__metadata__created_at",
     sort_method: SortMethod = SortMethod.ascending, # Make this an enum of options
     # Deprecated in https://github.com/signebedi/libreforms-fastapi/issues/374
     sort_by_last_edited: bool = False, # Deprecated
@@ -2566,7 +2566,7 @@ async def api_form_read_all(
     <, <=, in, and nin operators. Example usage of this param: {"data":{"age": {"operator": 
     ">=", "value": 21},"name": {"operator": "==","value": "John"}}}.
 
-    You can pass `sort_by` to specify the field to sort by. The default is __metadata__created_date. 
+    You can pass `sort_by` to specify the field to sort by. The default is __metadata__created_at. 
     Valid options include any sortable field in the document.
 
     You can pass `sort_method` to determine the sort order. Use "ascending" to order from 

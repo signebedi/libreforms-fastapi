@@ -148,3 +148,66 @@ def test_api_form_create(client, test_api_key):
     assert "message" in data
     assert data["message"] == "Form submission received and validated"
 
+# Test for api_form_read_all sorting on a metadata field
+def test_api_form_read_all_sort_by_metadata(client, test_api_key):
+    for _ in range(2):
+        response = client.post(
+            "/api/form/create/example_form",
+            headers={"X-API-Key": test_api_key},
+            json={
+                "text_input": "Sample text",
+                "number_input": 99,
+                "email_input": "email@example.com",
+                "date_input": "2024-01-01",
+                "checkbox_input": ["Option1", "Option3"],
+                "radio_input": "Option2",
+                "select_input": "Option1",
+                "textarea_input": "This is a sample textarea content."
+            }
+        )
+        assert response.status_code == 200
+
+    response = client.get(
+        "/api/form/read_all/example_form?sort_by=__metadata__document_id&sort_method=descending",
+        headers={"X-API-Key": test_api_key},
+    )
+    assert response.status_code == 200
+    document_ids = [x["metadata"]["document_id"] for x in response.json()["documents"]]
+    assert len(document_ids) >= 2
+    assert document_ids == sorted(document_ids, reverse=True)
+
+    # The default sort_by should order by creation date
+    response = client.get(
+        "/api/form/read_all/example_form?sort_method=descending",
+        headers={"X-API-Key": test_api_key},
+    )
+    assert response.status_code == 200
+    created_at = [x["metadata"]["created_at"] for x in response.json()["documents"]]
+    assert created_at == sorted(created_at, reverse=True)
+
+
+# Test that optional fields are not required when the form config sets no default for them
+def test_get_form_model_optional_field_without_default(client, tmp_path):
+    from pydantic import ValidationError
+    from libreforms_fastapi.app import SessionLocal, User, Group
+    from libreforms_fastapi.utils.pydantic_models import get_form_model
+
+    config_path = tmp_path / "form_config.yml"
+    config_path.write_text(
+        "test_form:\n"
+        "  optional_input:\n"
+        "    input_type: text\n"
+        "    output_type: !str\n"
+        "    required: false\n"
+        "  required_input:\n"
+        "    input_type: text\n"
+        "    output_type: !str\n"
+        "    required: true\n"
+    )
+
+    with SessionLocal() as session:
+        model = get_form_model("test_form", config_path=str(config_path), session=session, User=User, Group=Group)
+
+    assert model(required_input="Sample text").optional_input is None
+    with pytest.raises(ValidationError):
+        model(optional_input="Sample text")

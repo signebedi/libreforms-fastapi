@@ -91,7 +91,7 @@ function generateLookup(formName, fieldName, displayFields, queryParams) {
     function fetchData(formName) {
         return new Promise((resolve, reject) => {
             $.ajax({
-                url: `/api/form/read_all/${formName}?flatten=true&exclude_journal=true&stringify_output=true&sort_by=%__metadata__last_edited&return_when_empty=true&${queryParams}`,
+                url: `/api/form/read_all/${formName}?flatten=true&exclude_journal=true&stringify_output=true&sort_by=__metadata__last_modified&sort_method=descending&return_when_empty=true&${queryParams}`,
                 type: "GET",
                 dataType: 'json',
                 beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
@@ -115,6 +115,9 @@ function generateLookup(formName, fieldName, displayFields, queryParams) {
             text: "Select an option below"
         }));
 
+        // Build the options off the page and add them all at once, which keeps the
+        // lookup fast when the linked form has a large number of records
+        const options = document.createDocumentFragment();
 
         var trimmedData = [];
         // Process documents
@@ -132,13 +135,20 @@ function generateLookup(formName, fieldName, displayFields, queryParams) {
             concatenatedFields = concatenatedFields.replace(/,\s*$/, '');
             trimmedData.push(concatenatedFields);
 
-            // Append each concatenated string as an option to the select element
-            $('#' + fieldName).append($('<option>', {
-                value: form['__metadata__document_id'],
-                'data-hidden': JSON.stringify(form),
-                text: concatenatedFields
-            }));
+            // Add each concatenated string as an option for the select element
+            const option = new Option(concatenatedFields, form['__metadata__document_id']);
+            option.setAttribute('data-hidden', JSON.stringify(form));
+            options.appendChild(option);
         });
+
+        const select = document.getElementById(fieldName);
+        select.appendChild(options);
+
+        // Select the record's existing value, in case it was loaded before these options were
+        const existingValue = select.getAttribute('data-existing-value');
+        if (existingValue && select.querySelector(`option[value="${existingValue}"]`)) {
+            select.value = existingValue;
+        }
     }).catch(error => {
         console.error("Error fetching data: ", error);
     });
@@ -210,6 +220,12 @@ $(document).ready(function() {
                 } else {
                     // For all other field types, just set the value
                     field.val(value);
+
+                    // Lookup options are loaded separately and may not be there yet, so keep
+                    // the value for generateLookup to select once they arrive
+                    if (field.hasClass('data-lookup')) {
+                        field.attr('data-existing-value', value);
+                    }
                 }
             }
         }
