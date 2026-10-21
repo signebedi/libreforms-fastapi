@@ -1417,7 +1417,7 @@ async def api_form_export(
     document_id: str, 
     background_tasks: BackgroundTasks, 
     request: Request, 
-    format: str = Query(default="json", enum=available_formats),
+    format: str = Query(default="json", json_schema_extra={"enum": available_formats}),
     config = Depends(get_config_depends),
     mailer = Depends(get_mailer), 
     doc_db = Depends(get_doc_db),
