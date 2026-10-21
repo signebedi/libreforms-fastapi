@@ -55,6 +55,9 @@ $(document).ready(function () {
     const noDataMessage = document.getElementById('noDataMessage');
     const apiKey = "{{ request.user.api_key }}";
     const formNames = {{ form_names | tojson }};
+    // Max number of records to show; we only ask each form for its most recently modified
+    // records, and without the journal, so large collections don't slow down the homepage
+    const recentActivityLength = 25;
     let allFormData = [];
 
 
@@ -62,7 +65,7 @@ $(document).ready(function () {
     function fetchData(formName) {
         return new Promise((resolve, reject) => {
             $.ajax({
-                url: `/api/form/read_all/${formName}?sort_by=%__metadata__last_edited&return_when_empty=true`,
+                url: `/api/form/read_all/${formName}?sort_by=__metadata__last_modified&sort_method=descending&set_length=${recentActivityLength}&exclude_journal=true&return_when_empty=true`,
                 type: "GET",
                 dataType: 'json',
                 beforeSend: function(xhr){xhr.setRequestHeader('X-API-KEY', apiKey);},
@@ -84,6 +87,10 @@ $(document).ready(function () {
         results.forEach(documents => {
             allFormData = allFormData.concat(documents);
         });
+
+        // Keep only the most recently modified records across all forms
+        allFormData.sort((a, b) => new Date(b['metadata']['last_modified']) - new Date(a['metadata']['last_modified']));
+        allFormData = allFormData.slice(0, recentActivityLength);
 
         // Now process allFormData
         allFormData.forEach(form => {
