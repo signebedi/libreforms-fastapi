@@ -3929,10 +3929,10 @@ async def api_auth_create(
 
         if config.REQUIRE_EMAIL_VERIFICATION:
 
-            _key = signatures.write_key(scope=['email_verification'], expiration=48, active=True, email=email)
+            _key = signatures.write_key(scope=['email_verification'], expiration=48, active=True, email=new_email)
 
             subject, content = render_email_message_from_jinja(
-                'user_registered_verification', 
+                'user_registered_verification',
                 config.EMAIL_CONFIG_PATH,
                 config=config,
                 username=new_username, 
