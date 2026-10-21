@@ -1,54 +1,36 @@
-import re, os, json, tempfile, logging, sys
-import asyncio, jwt, difflib, importlib, platform
-from datetime import datetime, timedelta
+import re, os, json, logging
+import asyncio, jwt
+from datetime import datetime
 from contextlib import contextmanager
 from functools import lru_cache
-from pathlib import Path
 from immutables import Map
-from typing import Dict, Optional, Annotated, Any, List
-from urllib.parse import urlparse
-from markupsafe import escape
-from bson import ObjectId
+from typing import Optional
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
-from enum import Enum
-import requests
 
-from pydantic import ValidationError, EmailStr
 from fastapi import (
     FastAPI,
-    Body,
     Request,
-    Response,
     HTTPException,
-    BackgroundTasks,
     Depends,
-    Query,
-    File,
-    UploadFile,
 )
 from fastapi.responses import (
-    HTMLResponse, 
-    FileResponse,
-    JSONResponse, 
-    RedirectResponse
+    HTMLResponse,
+    JSONResponse,
 )
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from fastapi.security import (
     APIKeyHeader,
     OAuth2PasswordBearer,
-    OAuth2PasswordRequestForm,
 )
 from fastapi.exceptions import RequestValidationError
 from starlette.middleware.authentication import (
     AuthenticationMiddleware,
 )
 from starlette.authentication import (
-    AuthCredentials, 
-    AuthenticationBackend, 
-    AuthenticationError, 
-    # SimpleUser,
+    AuthCredentials,
+    AuthenticationBackend,
     BaseUser,
     UnauthenticatedUser,
     requires,
@@ -65,7 +47,6 @@ from sqlalchemy_signing import (
 
 from libreforms_fastapi.__metadata__ import (
     __version__,
-    __name__,
     __license__,
     __maintainer__,
     __email__,
@@ -75,77 +56,26 @@ from libreforms_fastapi.__metadata__ import (
 from libreforms_fastapi.utils.smtp import Mailer
 from libreforms_fastapi.utils.logging import set_logger
 
-from libreforms_fastapi.utils.config import (
-    get_config,
-    validate_and_write_configs,
-)
+from libreforms_fastapi.utils.config import get_config
 
-from libreforms_fastapi.utils.sqlalchemy_models import (
-    Base, 
-    get_sqlalchemy_models,
-    test_relational_database_connection,
-)
+from libreforms_fastapi.utils.sqlalchemy_models import get_sqlalchemy_models
 
-from libreforms_fastapi.utils.scripts import (
-    check_configuration_assumptions,
-    generate_password_hash,
-    generate_dummy_password_hash,
-    generate_unique_username,
-    check_password_hash,
-    percentage_alphanumeric_generate_password,
-    prettify_time_diff,
-    validate_file_type, 
-    MimeTypeValidationError,
-    _extensions_to_mime_types,
-)
+from libreforms_fastapi.utils.scripts import check_configuration_assumptions
 
 # Import the tools used to generate signatures
-from libreforms_fastapi.utils.certificates import (
-    verify_record_signature,
-    DigitalSignatureManager,
-    RuntimeKeypair,
-)
+from libreforms_fastapi.utils.certificates import RuntimeKeypair
 # Import the document database factory function and several
 # Exceptions that can help with error handling / determining 
 # HTTP response codes.
-from libreforms_fastapi.utils.document_database import (
-    get_document_database,
-    CollectionDoesNotExist,
-    DocumentDoesNotExist,
-    DocumentIsDeleted,
-    InsufficientPermissions,
-    DocumentIsNotDeleted,
-    SignatureError,
-    DocumentAlreadyHasValidSignature,
-    NoChangesProvided,
-)
+from libreforms_fastapi.utils.document_database import get_document_database
 
 from libreforms_fastapi.utils.pydantic_models import (
-    HelpRequest,
-    DocsEditRequest,
-    AdminChangePasswordRequest,
-    GroupModel,
-    RelationshipTypeModel,
-    UserRelationshipModel,
-    FormConfigUpdateRequest,
-    EmailConfigUpdateRequest,
-    RequestUnregisteredForm,
-    SiteConfig,
     get_user_model,
     get_form_model,
     get_form_names,
-    get_form_html,
-    load_form_config,
-    get_form_config_yaml,
-    write_form_config_yaml,
-    get_form_backups,
 )
 
-from libreforms_fastapi.utils.docs import (
-    get_docs,
-    write_docs,
-    render_markdown_content,
-)
+from libreforms_fastapi.utils.docs import render_markdown_content
 
 from libreforms_fastapi.utils.custom_tinydb import CustomEncoder
 
@@ -153,13 +83,7 @@ from libreforms_fastapi.utils.custom_tinydb import CustomEncoder
 from libreforms_fastapi.utils.parameterized_caching import parameterized_lru_cache
 
 # Import to render more powerful email content
-from libreforms_fastapi.utils.jinja_emails import ( 
-    render_email_message_from_jinja,
-    write_email_config_yaml,
-    test_email_config,
-    get_email_yaml,
-)
-from jinja2 import Environment, select_autoescape, TemplateError, UndefinedError
+from libreforms_fastapi.utils.jinja_emails import render_email_message_from_jinja
 
 
 # Here we set the application config using the get_config
@@ -553,8 +477,6 @@ with get_config_context() as config:
     if config.SAML_ENABLED:
 
         # import saml dependencies 
-        from onelogin.saml2.auth import OneLogin_Saml2_Auth
-        from onelogin.saml2.utils import OneLogin_Saml2_Utils
 
         from libreforms_fastapi.utils.saml import generate_saml_config, verify_metadata
         
