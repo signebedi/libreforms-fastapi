@@ -5846,7 +5846,7 @@ async def api_admin_get_submissions(
 
 # Delete form
 @app.delete("/api/admin/delete_form/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
-async def api_form_delete(
+async def api_admin_delete_form(
     form_name: str, 
     document_id:str,
     background_tasks: BackgroundTasks,
@@ -5944,7 +5944,7 @@ async def api_form_delete(
 
 
 @app.patch("/api/admin/restore_form/{form_name}/{document_id}", dependencies=[Depends(api_key_auth)])
-async def api_form_restore(
+async def api_admin_restore_form(
     form_name: str,
     document_id:str,
     background_tasks: BackgroundTasks,
@@ -8667,7 +8667,7 @@ async def ui_admin_manage_relationship_types(request: Request, config = Depends(
 # Edit Group
 @app.get("/ui/admin/update_relationship_type/{id}", response_class=HTMLResponse, include_in_schema=False)
 @requires(['admin'], redirect="ui_home")
-async def ui_admin_update_group(id:str, request: Request, config = Depends(get_config_depends),):
+async def ui_admin_update_relationship_type(id:str, request: Request, config = Depends(get_config_depends),):
     if not config.UI_ENABLED:
         raise HTTPException(status_code=404, detail="This page does not exist")
 
