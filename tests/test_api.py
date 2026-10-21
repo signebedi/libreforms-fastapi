@@ -148,3 +148,31 @@ def test_api_form_create(client, test_api_key):
     assert "message" in data
     assert data["message"] == "Form submission received and validated"
 
+# Test for api_form_read_all sorting on a metadata field
+def test_api_form_read_all_sort_by_metadata(client, test_api_key):
+    for _ in range(2):
+        response = client.post(
+            "/api/form/create/example_form",
+            headers={"X-API-Key": test_api_key},
+            json={
+                "text_input": "Sample text",
+                "number_input": 99,
+                "email_input": "email@example.com",
+                "date_input": "2024-01-01",
+                "checkbox_input": ["Option1", "Option3"],
+                "radio_input": "Option2",
+                "select_input": "Option1",
+                "textarea_input": "This is a sample textarea content."
+            }
+        )
+        assert response.status_code == 200
+
+    response = client.get(
+        "/api/form/read_all/example_form?sort_by=__metadata__document_id&sort_method=descending",
+        headers={"X-API-Key": test_api_key},
+    )
+    assert response.status_code == 200
+    document_ids = [x["metadata"]["document_id"] for x in response.json()["documents"]]
+    assert len(document_ids) >= 2
+    assert document_ids == sorted(document_ids, reverse=True)
+

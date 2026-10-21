@@ -1201,7 +1201,7 @@ class ManageTinyDB(ManageDocumentDB):
         # https://github.com/signebedi/libreforms-fastapi/issues/374.
         documents = sorted(
             documents,
-            key=lambda doc: doc['metadata'].get(sort_by.lstrip("__metadata__"), "")
+            key=lambda doc: doc['metadata'].get(sort_by.removeprefix("__metadata__"), "")
             if sort_by.startswith("__metadata__") else doc['data'].get(sort_by, ""),
             reverse=(sort_method == "descending")
         )
