@@ -1215,10 +1215,11 @@ def get_form_html(
                 field_html += f'''
         			<div><div id="content_{field_name}" style="width: 100%; height: 300px; overflow-y: auto; max-height: 700px; resize: vertical; margin-top: 10px; border: 2px solid var(--bs-secondary);"></div></div>
                     <script>
-                    window.onload = function() {{
+                    // Use addEventListener so that multiple lookup fields don't overwrite each other's handler
+                    window.addEventListener('load', function() {{
                         generateLookup('{links_to_form}', '{field_name}', {form_display_fields}, '{links_to_form_query_params}');
                         // getLookup('{links_to_form}', '{field_name}', document.getElementById('{field_name}', '{links_to_form_query_params}'));
-                    }}
+                    }});
                     </script>'''
             field_html += '''
                 </fieldset>'''
