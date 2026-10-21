@@ -185,3 +185,29 @@ def test_api_form_read_all_sort_by_metadata(client, test_api_key):
     created_at = [x["metadata"]["created_at"] for x in response.json()["documents"]]
     assert created_at == sorted(created_at, reverse=True)
 
+
+# Test that optional fields are not required when the form config sets no default for them
+def test_get_form_model_optional_field_without_default(client, tmp_path):
+    from pydantic import ValidationError
+    from libreforms_fastapi.app import SessionLocal, User, Group
+    from libreforms_fastapi.utils.pydantic_models import get_form_model
+
+    config_path = tmp_path / "form_config.yml"
+    config_path.write_text(
+        "test_form:\n"
+        "  optional_input:\n"
+        "    input_type: text\n"
+        "    output_type: !str\n"
+        "    required: false\n"
+        "  required_input:\n"
+        "    input_type: text\n"
+        "    output_type: !str\n"
+        "    required: true\n"
+    )
+
+    with SessionLocal() as session:
+        model = get_form_model("test_form", config_path=str(config_path), session=session, User=User, Group=Group)
+
+    assert model(required_input="Sample text").optional_input is None
+    with pytest.raises(ValidationError):
+        model(optional_input="Sample text")

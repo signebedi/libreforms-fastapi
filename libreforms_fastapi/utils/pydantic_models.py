@@ -705,7 +705,9 @@ def get_form_model(
 
 
         python_type = field_info["output_type"]
-        default_value = None if update else field_info.get("default", ...)
+        # Fields without a default in the form config default to None, so that optional fields are
+        # not required. Required fields ignore this, as they are given a default of ... below.
+        default_value = None if update else field_info.get("default", None)
         required = field_info.get("required", False)
         description = field_info.get("description", False)
 
