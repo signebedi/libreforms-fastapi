@@ -159,7 +159,7 @@ from libreforms_fastapi.utils.jinja_emails import (
     test_email_config,
     get_email_yaml,
 )
-from jinja2 import Environment, select_autoescape
+from jinja2 import Environment, select_autoescape, TemplateError, UndefinedError
 
 
 # Here we set the application config using the get_config
