@@ -1139,7 +1139,7 @@ class ManageTinyDB(ManageDocumentDB):
         stringify_output:bool=False,
         # sort_by_last_edited:bool=False,
         # newest_first:bool=False,
-        sort_by="__metadata__created_date",
+        sort_by="__metadata__created_at",
         sort_method="ascending",
         query_params=None,
     ):

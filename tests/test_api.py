@@ -176,3 +176,12 @@ def test_api_form_read_all_sort_by_metadata(client, test_api_key):
     assert len(document_ids) >= 2
     assert document_ids == sorted(document_ids, reverse=True)
 
+    # The default sort_by should order by creation date
+    response = client.get(
+        "/api/form/read_all/example_form?sort_method=descending",
+        headers={"X-API-Key": test_api_key},
+    )
+    assert response.status_code == 200
+    created_at = [x["metadata"]["created_at"] for x in response.json()["documents"]]
+    assert created_at == sorted(created_at, reverse=True)
+
