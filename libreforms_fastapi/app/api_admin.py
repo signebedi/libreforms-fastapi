@@ -1340,7 +1340,7 @@ async def api_admin_create_user_relationship(
     # We need to check whether each of these exist
     _user = session.query(User).filter_by(id=new_relationship_request.user_id).first()
     _related_user = session.query(User).filter_by(id=new_relationship_request.related_user_id).first()
-    _relationship_type = session.query(User).filter_by(id=new_relationship_request.relationship_type_id).first()
+    _relationship_type = session.query(RelationshipType).filter_by(id=new_relationship_request.relationship_type_id).first()
 
     if not all([
         _user,

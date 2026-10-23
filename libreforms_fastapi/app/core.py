@@ -159,7 +159,7 @@ def cache_form_stage_data_for_specified_user(
         if stage_method == "static":
             # If this user is the specified approver, then append all the stage-
             # specific data to the user's list of documents needing their action
-            if current_user.email == stage_conf.target:
+            if current_user.email == stage_conf.get('target', None):
                 user_specific_data.extend(stage_specific_data)
 
         # Then do group based approval
