@@ -67,8 +67,11 @@
 </head>
 <body>
 
+    <!-- Skip link for keyboard and screen reader users -->
+    <a href="#main-content" class="visually-hidden-focusable d-inline-block p-2">Skip to main content</a>
+
     <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark" aria-label="Main navigation">
         <div class="container-fluid">
             {# <a class="navbar-brand" href="{{ url_for('ui_home') }}">{{ config['SITE_NAME'] }}<small> v.{{ version }}</small></a> #}
             <a class="navbar-brand" href="{{ url_for('ui_home') }}">{{ config['SITE_NAME'] }}</a>
@@ -86,7 +89,7 @@
 
 
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Submit Forms</a>
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Submit Forms</a>
                         <div class="dropdown-menu">
                             {% for form in available_forms %}
                             {% if form in request.user.permissions and "create" in request.user.permissions[form]  %}
@@ -108,12 +111,12 @@
                         </div>
                     </li>
 
-                    <div class="nav-item dropdown">
-                        <button class="nav-link dropdown-toggle" type="button" id="AdminMenu"
+                    <li class="nav-item dropdown">
+                        <button class="nav-link dropdown-toggle" type="button" id="manageSubmissionsMenu"
                                 data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                             Manage Submissions
                         </button>
-                        <ul class="dropdown-menu" aria-labelledby="AdminMenu">
+                        <ul class="dropdown-menu" aria-labelledby="manageSubmissionsMenu">
 
                             {% if config["VIEW_ALL_PAGE_ENABLED"] %}
                             <li><a class="dropdown-item" href="{{ url_for('ui_form_read_all') }}">View All</a></li>
@@ -170,7 +173,7 @@
 
 
                         </ul>
-                    </div>
+                    </li>
 
                     <!-- Review and Approval -->
                     {# <li class="nav-item">
@@ -178,7 +181,7 @@
                     </li> #}
 
                     <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-haspopup="true" aria-expanded="false">Account</a>
+                        <a class="nav-link dropdown-toggle" data-bs-toggle="dropdown" href="#" role="button" aria-expanded="false">Account</a>
                         <div class="dropdown-menu">
                             <a class="dropdown-item" href="{{ url_for( 'ui_auth_profile' ) }}">Profile</a>
                             <a class="dropdown-item" href="{{ url_for( 'ui_auth_change_password' ) }}">Change Password</a>
@@ -192,7 +195,7 @@
 
                     {% if request.user.site_admin %}
 
-                    <div class="nav-item dropdown">
+                    <li class="nav-item dropdown">
                         <button class="nav-link dropdown-toggle" type="button" id="AdminMenu"
                                 data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false">
                             Admin
@@ -298,7 +301,7 @@
                                 </div>
                             </li>
                         </ul>
-                    </div>
+                    </li>
 
                     {% endif %}
 
@@ -314,10 +317,13 @@
 
 
                     {% if config['SEARCH_BAR_ENABLED'] %}
-                    <form id="searchForm" class="d-flex">
-                        <input class="form-control me-sm-2" type="search" id="searchTerm" placeholder="Search">
-                        <button class="btn btn-secondary my-2 my-sm-0" onclick="searchQuery(this.value);" type="submit">Search</button>
-                    </form>
+                    <li class="nav-item">
+                        <form id="searchForm" class="d-flex" role="search">
+                            <label for="searchTerm" class="visually-hidden">Search form submissions</label>
+                            <input class="form-control me-sm-2" type="search" id="searchTerm" placeholder="Search">
+                            <button class="btn btn-secondary my-2 my-sm-0" type="submit">Search</button>
+                        </form>
+                    </li>
                     {% endif %}
 
                     {% else %}
@@ -355,16 +361,16 @@
                 <ul class="navbar-nav ms-auto mb-2 mb-lg-0" >
                     <li class="nav-item">
 
-                        <button title="Toggle theme" id="theme-toggle" class="theme-button" style="float: right;
+                        <button type="button" title="Toggle theme" id="theme-toggle" class="theme-button" aria-label="Toggle dark theme" aria-pressed="false" style="float: right;
                         ">
 
                             <!-- Moon SVG -->
-                            <svg class="icon" id="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg class="icon" id="moon-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                             </svg>
 
                             <!-- Sun SVG -->
-                            <svg class="icon" style="display: none;" id="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg class="icon" style="display: none;" id="sun-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="5"></circle>
                                 <line x1="12" y1="1" x2="12" y2="3"></line>
                                 <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -391,7 +397,7 @@
     <!-- End of Alert Notification Area -->
 
     <!-- Start of Main Content -->
-    <main class="container mt-5 content">
+    <main id="main-content" tabindex="-1" class="container mt-5 content">
     {% block content %}{% endblock %}
     </main>
     <!-- End of Main Content -->
@@ -405,14 +411,14 @@
                     <p class="mb-0 mb-md-0">
                         &copy; {{ current_year }} Sig Janoska-Bedi
 
-                        <button title="Toggle theme" id="theme-toggle" class="theme-button">
+                        <button type="button" title="Toggle theme" id="theme-toggle" class="theme-button" aria-label="Toggle dark theme" aria-pressed="false">
                             <!-- Moon SVG -->
-                            <svg class="icon" id="moon-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg class="icon" id="moon-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
                             </svg>
 
                             <!-- Sun SVG -->
-                            <svg class="icon" style="display: none;" id="sun-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <svg class="icon" style="display: none;" id="sun-icon" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="#ffffff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                                 <circle cx="12" cy="12" r="5"></circle>
                                 <line x1="12" y1="1" x2="12" y2="3"></line>
                                 <line x1="12" y1="21" x2="12" y2="23"></line>
@@ -450,7 +456,7 @@
     <div class="offcanvas offcanvas-start" tabindex="-1" id="offcanvasPrivacy" aria-labelledby="offcanvasPrivacyLabel">
         <div class="offcanvas-header">
             <h5 class="offcanvas-title" id="offcanvasPrivacyLabel">Privacy Policy</h5>
-            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Accept the privacy policy"></button>
+            <button type="button" class="btn-close text-reset" data-bs-dismiss="offcanvas" aria-label="Close the privacy policy"></button>
         </div>
         <div class="offcanvas-body">
 
@@ -529,8 +535,8 @@
 
                     // Assuming response.record_count contains the number of actions needed
                     if (response.record_count && response.record_count > 0) {
-                        // Create the badge
-                        var badge = `<span class="badge bg-primary">${response.record_count}</span>`;
+                        // Create the badge, with screen reader context for the bare count
+                        var badge = `<span class="badge bg-primary">${response.record_count}<span class="visually-hidden"> submissions awaiting your review</span></span>`;
                         
                         // Insert the badge into the container
                         $('#actionBadgeContainer').html(badge);
@@ -590,18 +596,22 @@
             let moonIcon = document.getElementById('moon-icon');
             let sunIcon = document.getElementById('sun-icon');
 
+            let themeToggle = document.getElementById('theme-toggle');
+
             if (theme === 'dark') {
                 darkTheme.removeAttribute('disabled');
                 lightTheme.setAttribute('disabled', 'true');
                 moonIcon.style.display = 'none';
                 sunIcon.style.display = 'block';
-                document.body.setAttribute('data-theme', 'dark'); 
+                document.body.setAttribute('data-theme', 'dark');
+                if (themeToggle) themeToggle.setAttribute('aria-pressed', 'true');
             } else {
                 lightTheme.removeAttribute('disabled');
                 darkTheme.setAttribute('disabled', 'true');
                 moonIcon.style.display = 'block';
                 sunIcon.style.display = 'none';
-                document.body.removeAttribute('data-theme'); 
+                document.body.removeAttribute('data-theme');
+                if (themeToggle) themeToggle.setAttribute('aria-pressed', 'false');
             }
             
         // Dispatch the theme change event
