@@ -241,3 +241,129 @@ def test_url_for_names_resolve(client):
     route_names = {route.name for route in app.routes}
     assert referenced, "No url_for references found"
     assert sorted(referenced - route_names) == []
+
+# Test that a form with a static-method approval stage doesn't crash the needing-action
+# endpoint, which base.html polls on every authenticated page (bug audit item 34)
+def test_api_form_read_all_needing_action_with_static_stage(client, test_api_key):
+    with open(config.FORM_CONFIG_PATH, "a") as f:
+        f.write(
+            "staged_form:\n"
+            "  __config__:\n"
+            "    form_stages:\n"
+            "      review:\n"
+            "        method: static\n"
+            "        target: approver@example.com\n"
+            "  note_field:\n"
+            "    input_type: text\n"
+            "    output_type: !str\n"
+            "    required: false\n"
+        )
+
+    response = client.get(
+        "/api/form/read_all_needing_action?return_count_only=true",
+        headers={"X-API-Key": test_api_key},
+    )
+    assert response.status_code == 200
+
+# Test that search skips forms the user has no read permission on instead of raising, and
+# honors read_all for users without read_own (bug audit item 35)
+def test_api_form_search_permissions(client, test_api_key):
+    from libreforms_fastapi.app import SessionLocal, User, Group
+
+    # A form no group has permissions on: search used to raise a KeyError over it
+    with open(config.FORM_CONFIG_PATH, "a") as f:
+        f.write(
+            "ungranted_form:\n"
+            "  some_field:\n"
+            "    input_type: text\n"
+            "    output_type: !str\n"
+            "    required: false\n"
+        )
+
+    # Create a document with a distinctive, repeated token so the fuzzy search always
+    # aligns on it (see issue 19 on segment alignment)
+    response = client.post(
+        "/api/form/create/example_form",
+        headers={"X-API-Key": test_api_key},
+        json={
+            "text_input": ("xylophone " * 10).strip(),
+            "number_input": 99,
+            "email_input": "email@example.com",
+            "date_input": "2024-01-01",
+            "checkbox_input": ["Option1", "Option3"],
+            "radio_input": "Option2",
+            "select_input": "Option1",
+            "textarea_input": "This is a sample textarea content."
+        }
+    )
+    assert response.status_code == 200
+
+    response = client.get("/api/form/search?search_term=xylophone", headers={"X-API-Key": test_api_key})
+    assert response.status_code == 200
+    assert any(x["metadata"]["form_name"] == "example_form" for x in response.json()["documents"])
+
+    # A user whose only permission is example_form:read_all should see other users'
+    # documents in search results
+    response = client.post(
+        "/api/auth/create",
+        headers={"Content-Type": "application/json"},
+        json={
+            "username": "readalluser",
+            "password": "Strongpassword123!",
+            "verify_password": "Strongpassword123!",
+            "email": "readall@example.com",
+            "opt_out": False
+        }
+    )
+    assert response.status_code == 200
+    read_all_key = response.json()["api_key"]
+
+    with SessionLocal() as session:
+        read_all_group = Group(id=3, name="read_all_only", permissions=["example_form:read_all"])
+        session.add(read_all_group)
+        user = session.query(User).filter_by(username="readalluser").first()
+        user.groups = [read_all_group]
+        session.commit()
+
+    response = client.get("/api/form/search?search_term=xylophone", headers={"X-API-KEY": read_all_key})
+    assert response.status_code == 200
+    assert any(x["metadata"]["form_name"] == "example_form" for x in response.json()["documents"])
+
+# Test that the relationship-type existence check queries the RelationshipType table,
+# not the User table (bug audit item 57)
+def test_api_admin_create_user_relationship_type_lookup(client, test_api_key):
+    from libreforms_fastapi.app import SessionLocal, User, RelationshipType
+
+    with SessionLocal() as session:
+        user = session.query(User).filter_by(username="testuser").first()
+        user.site_admin = True
+        session.commit()
+        user_id = user.id
+        related_user_id = session.query(User).filter_by(username="testuser1").first().id
+
+    headers = {"X-API-Key": test_api_key}
+
+    # Create more relationship types than there are users, so that a valid type id
+    # exceeds every user id; the old code validated the type id against the User table
+    for name, reciprocal in [
+        ("mentor", "mentee"), ("supervisor", "report"), ("sponsor", "sponsee"),
+        ("advisor", "advisee"), ("proxy", "principal"), ("trainer", "trainee"),
+    ]:
+        response = client.post(
+            "/api/admin/create_relationship_type",
+            headers=headers,
+            json={"name": name, "reciprocal_name": reciprocal, "description": "x", "exclusive_relationship": False}
+        )
+        assert response.status_code == 200
+
+    with SessionLocal() as session:
+        max_type_id = max(t.id for t in session.query(RelationshipType).all())
+        max_user_id = max(u.id for u in session.query(User).all())
+    assert max_type_id > max_user_id, "Precondition: need a type id with no matching user id"
+
+    response = client.post(
+        "/api/admin/create_user_relationship",
+        headers=headers,
+        json={"user_id": user_id, "related_user_id": related_user_id, "relationship_type_id": max_type_id}
+    )
+    assert response.status_code == 200

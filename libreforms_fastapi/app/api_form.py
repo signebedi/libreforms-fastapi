@@ -2211,12 +2211,15 @@ async def api_form_search(
     form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
     limit_query_to = {}
 
+    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT
+    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307. Forms the
+    # user has no read permission on are skipped, rather than raising a KeyError.
     for _form_name in form_names:
-        if "read_own" in user_group_permissions[_form_name]:
-            if "read_all" in user_group_permissions[_form_name]:
-                limit_query_to[_form_name] = False
-            else:
-                limit_query_to[_form_name] = user.username
+        _form_permissions = user_group_permissions.get(_form_name, [])
+        if "read_all" in _form_permissions:
+            limit_query_to[_form_name] = False
+        elif "read_own" in _form_permissions:
+            limit_query_to[_form_name] = user.username
 
     documents = doc_db.fuzzy_search_documents(
         search_term=search_term,
@@ -2283,12 +2286,15 @@ async def api_form_search_all(
     form_names = get_form_names(config_path=config.FORM_CONFIG_PATH)
     limit_query_to = {}
 
+    # read_all IS THE HIGHER PRIVILEGE OF THE TWO - SO WE SHOULD CHECK FOR THAT FIRST, AS IT
+    # INCLUDES read_own. https://github.com/signebedi/libreforms-fastapi/issues/307. Forms the
+    # user has no read permission on are skipped, rather than raising a KeyError.
     for form_name in form_names:
-        if "read_own" in user_group_permissions[form_name]:
-            if "read_all" in user_group_permissions[form_name]:
-                limit_query_to[form_name] = False
-            else:
-                limit_query_to[form_name] = user.username
+        _form_permissions = user_group_permissions.get(form_name, [])
+        if "read_all" in _form_permissions:
+            limit_query_to[form_name] = False
+        elif "read_own" in _form_permissions:
+            limit_query_to[form_name] = user.username
 
     # print("\n\n\n", limit_query_to)
 
