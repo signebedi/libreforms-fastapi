@@ -392,8 +392,9 @@
     </nav>
     <!-- End of Navbar -->
 
-    <!-- Start of Alert Notification Area -->
-    <div class="alerts-container"></div>
+    <!-- Start of Alert Notification Area: a live region present at page load, so
+         dynamically inserted flash messages are announced by screen readers -->
+    <div class="alerts-container" aria-live="polite"></div>
     <!-- End of Alert Notification Area -->
 
     <!-- Start of Main Content -->

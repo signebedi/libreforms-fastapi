@@ -12,17 +12,21 @@ function flashMessage(message, category) {
         category = AlertCategories.INFO;
     }
 
-    // Proceed with creating and appending the alert message
+    // Proceed with creating and appending the alert message. Errors and warnings
+    // use role=alert so they are announced immediately; the rest rely on the
+    // polite .alerts-container live region in the base template.
+    var urgent = category === AlertCategories.DANGER || category === AlertCategories.WARNING;
     var alertDiv = $('<div></div>', {
         "class": "alert alert-dismissible alert-" + category,
-        "role": "status"
-    }).attr("aria-live", category === AlertCategories.INFO ? "polite" : "assertive");
+        "role": urgent ? "alert" : "status"
+    });
 
     var dismissBtn = $('<button></button>', {
         "type": "button",
         "class": "btn-close",
         "data-bs-dismiss": "alert",
-        "title": "dismiss-alert"
+        "aria-label": "Dismiss this message",
+        "title": "Dismiss"
     });
 
     alertDiv.append(dismissBtn);
