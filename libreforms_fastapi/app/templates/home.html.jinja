@@ -17,24 +17,33 @@
 
 {% if config['RECENT_ACTIVITY_ENABLED'] and request.user.is_authenticated %}
 
-    <h4 style="padding-top: 20px;">Recent Activity</h4>
+    <section aria-labelledby="recentActivityHeading">
 
-    <div class="spinner-border spinner-border-sm loading-circle" role="status"></div>
+    <h2 class="h4" id="recentActivityHeading" style="padding-top: 20px;">Recent Activity</h2>
+
+    {# Live region: announces loading, loaded and empty states to screen readers #}
+    <div id="recentActivityStatus" role="status" aria-live="polite">
+        <div class="spinner-border spinner-border-sm loading-circle" aria-hidden="true"></div>
+        <span id="recentActivityStatusText" class="visually-hidden">Loading recent activity</span>
+        <div id="noDataMessage" style="display: none;">There is no recent activity to display</div>
+    </div>
     <table id="readAllTable" class="table table-hover table-striped table-light" style="display: none;">
+        <caption class="visually-hidden">The most recently created or modified form submissions, newest first</caption>
         <thead>
             <tr>
-                <th>Record</th>
-                <th>Form</th>
-                <th>Last Editor</th>
-                <th>Last Modified</th>
-                <th>Created By</th>
-                <th>Created At</th>
+                <th scope="col">Record</th>
+                <th scope="col">Form</th>
+                <th scope="col">Last Editor</th>
+                <th scope="col">Last Modified</th>
+                <th scope="col">Created By</th>
+                <th scope="col">Created At</th>
             </tr>
         </thead>
         <tbody>
         </tbody>
     </table>
-    <div id="noDataMessage" style="display: none;">There is no recent activity to display</div>
+
+    </section>
 
 {% endif %}
 </div>
@@ -51,10 +60,14 @@
 $(document).ready(function () {
 
     const spinner = document.querySelector('.loading-circle');
+    const statusText = document.getElementById('recentActivityStatusText');
     const readAllTable = document.getElementById('readAllTable');
     const noDataMessage = document.getElementById('noDataMessage');
     const apiKey = "{{ request.user.api_key }}";
     const formNames = {{ form_names | tojson }};
+    // When other users' profiles are not viewable, render last editor / created by
+    // as plain text: a link disabled only with pointer-events stays keyboard-operable
+    const profileLinksEnabled = {{ 'true' if config['OTHER_PROFILES_ENABLED'] or request.user.site_admin else 'false' }};
     // Max number of records to show; we only ask each form for its most recently modified
     // records, and without the journal, so large collections don't slow down the homepage
     const recentActivityLength = 25;
@@ -92,23 +105,29 @@ $(document).ready(function () {
         allFormData.sort((a, b) => new Date(b['metadata']['last_modified']) - new Date(a['metadata']['last_modified']));
         allFormData = allFormData.slice(0, recentActivityLength);
 
+        // Render a user badge: a profile link when profiles are viewable, plain text otherwise
+        function renderUserBadge(username) {
+            if (profileLinksEnabled) {
+                return `<a target="_blank" rel="noopener" href="/ui/auth/p/${username}" class="badge bg-primary text-decoration-none">${username}<span class="visually-hidden"> (profile opens in a new tab)</span></a>`;
+            }
+            return `<span class="badge bg-primary">${username}</span>`;
+        }
+
+        // Render a prettified timestamp; the datetime attribute keeps the machine-readable
+        // value, which the DataTables sort below also relies on
+        function renderTimestamp(timestamp) {
+            return `<time datetime="${timestamp}" title="${timestamp}">${prettifyTimeDiff(timestamp, "{{config['TIMEZONE']|string}}")}</time>`;
+        }
+
         // Now process allFormData
         allFormData.forEach(form => {
             let row = `<tr>
                             <td><a href="/ui/form/read_one/${form['metadata']['form_name']}/${form['metadata']['document_id']}">${form['metadata']['document_id']}</a></td>
                             <td>${form['metadata']['form_name'].replace(/_/g, ' ')}</td>
-                            <td>
-                                <a target="_blank" href="/ui/auth/p/${form['metadata']['last_editor']}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${form['metadata']['last_editor']}">
-                                    ${form['metadata']['last_editor']}
-                                </a>
-                            </td>
-                            <td><span title="${form['metadata']['last_modified']}">${prettifyTimeDiff(form['metadata']['last_modified'], "{{config['TIMEZONE']|string}}")}</span></td>
-                            <td>
-                                <a target="_blank" href="/ui/auth/p/${form['metadata']['created_by']}" class="badge bg-primary text-decoration-none" style=" {%if not config['OTHER_PROFILES_ENABLED'] and not request.user.site_admin%} pointer-events: none;{%endif%}" aria-label="Link to ${form['metadata']['created_by']}">
-                                    ${form['metadata']['created_by']}
-                                </a>
-                            </td>
-                            <td><span title="${form['metadata']['created_at']}">${prettifyTimeDiff(form['metadata']['created_at'], "{{config['TIMEZONE']|string}}")}</span></td>
+                            <td>${renderUserBadge(form['metadata']['last_editor'])}</td>
+                            <td>${renderTimestamp(form['metadata']['last_modified'])}</td>
+                            <td>${renderUserBadge(form['metadata']['created_by'])}</td>
+                            <td>${renderTimestamp(form['metadata']['created_at'])}</td>
                         </tr>`;
             $("#readAllTable tbody").append(row);
         });
@@ -116,6 +135,9 @@ $(document).ready(function () {
 
 
         spinner.style.display = 'none'; // Hide the spinner
+        statusText.textContent = allFormData.length
+            ? `Recent activity loaded: showing the ${allFormData.length} most recently modified records.`
+            : 'There is no recent activity to display';
         readAllTable.style.display = ''; // Show the table
 
 
@@ -131,11 +153,11 @@ $(document).ready(function () {
             order: [[3, 'desc']],
             // This is a fix to properly sort prettified datetimes
             columnDefs: [
-                { 
-                    targets: [3, 5], 
+                {
+                    targets: [3, 5],
                     render: function(data, type, row) {
-                        var date = $(data).attr('title');
-                        return type === 'sort' ? date : data; 
+                        var date = $(data).attr('datetime');
+                        return type === 'sort' ? date : data;
                     }
                 }
             ]
@@ -145,8 +167,9 @@ $(document).ready(function () {
         console.error("Error fetching data:", error);
         // flashMessage("There was an issue fetching results. There may be none to display.", AlertCategories.WARNING);
         spinner.style.display = 'none'; // Hide the spinner
-        readAllTable.style.display = 'none'; 
-        noDataMessage.style.display = ''; 
+        statusText.textContent = ''; // The visible message below is announced instead
+        readAllTable.style.display = 'none';
+        noDataMessage.style.display = '';
 
     });
 });
